@@ -1,0 +1,224 @@
+{
+    "docs": [
+        {
+            "location": "/",
+            "text": "Client Encryption API documentation\n\n\nThis is an encryption library created by ReCheck devs team. \n\n\nWe are glad to receive any feedback you want to give us. \n\n\nA \nSequence Diagram\n\n\nApplication layer (high-level code)\n\n\nfunction init(_baseUrl, _token, _network)\n\n\nInitialises the token and challenge. Where token is optional. If the token is absent then by default the library is being used in the browser. \n\n\nThe library is currently written so that it can use either Ethereum or Aethernity key pair. \n\n\n\n\nasync function login(keyPair)\n\n\nAttemps to log in with the provided key pair. The function retunrs a newly created token.\n\n\n\n\nasync function loginWithChallenge(challenge, keyPair)\n\n\nLoggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.  \n\n\n\n\nasync function submitFile(fileObj, userChainId, userChainIdPubKey)\n\n\nUpon execution of the function the following things happen. The file is being encrypted on the client side prior to which uploaded to the server. The server records info on the blockchain. The server returns the status code and receipt. \n\n\nreturns\n \nExample\n\n\n\n { \n  status: 'OK',\n  code: '200',\n  blockchain: 'ae',\n  action: 'upload',\n  receipt: \n   { hash: 'th_xoWkCki44SyQhYDQYoyr6CdE8TkzsZFwrQLtKcXMNZspnoZBh',\n     rawTx: 'tx_+QF2CwH4QrhAPrSS95Az/ZnL1CdHXu+Bpz238+T8W/Mwb2nKh/nqBpMqAeP63wmp3OWfXzT4IxJR6xUzs/mEnrZIZSJ6jmq9CbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H4oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdYMAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweDU0NjYzMDdkNjdiZWRjM2JmMDBjN2NlNGEyMDQwNDBiY2Q3NTY2NDE2MGY2M2E2NmM5ZjQxZDdlYmQ1OGUwM2YGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPH1SG5',\n     result: \n      { callerId: 'ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc',\n        callerNonce: 248,\n        contractId: 'ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd',\n        gasPrice: 1000000000,\n        gasUsed: 2989,\n        height: 161100,\n        log: [],\n        returnType: 'ok',\n        returnValue: 'cb_/8CwV/U=' },\n     decodedResult: true },\n  docId: '0x5466307d67bedc3bf00c7ce4a204040bcd75664160f63a66c9f41d7ebd58e03f',\n  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' }\n\n\n\n\n\n\n\nasync function decryptWithKeyPair(userId, docChainId, keyPair)\n\n\nTakes as parameters: \n- the userId\n- the chain ID of the file\n- the key pair of the user (currently AEternity supported only) \n\n\nBrowser renders the docId as QR code and the user's device scans the QR. User device requests decryption info from server. After getting the decrypted password, it encrypts it again and sends it to the server. \n\n\nReturns the data for the file + encrypted password. \n\n\n\n\nasync function submitCredentials(docChainId, userChainId)\n\n\nThe browser creates a temporary key pair and submits a temporary public key. This key is used to decrypt the password coming from the mobile device. It expects document ID and the user's one for which the document is available.\n\n\n\n\nasync function pollForFile(credentialsResponse, receiverPubKey)\n\n\nTakes as parameters:\n\n\n\n\ncredentialsResponce\n\n\n\n\nExample\n\n\ncredentialsReponse: \n{\n  userId:\"0x23423432\", \n  docId:\"0x234234\"\n} \n\n\n\n\n\n\nreceiver Public Key\n\n\n\n\nThis function asks the server if there is a document shared with the user, so that it can fetch them. When the file becomes available (decrypted with the password provided by the mobile device) it is returned to the client as a result. \n\n\n\n\nasync function openFile(docChainId, userChainId, keyPair)\n\n\nTakes the user's credentials and scans for the requested file. If the user has permission (owns the file, or it has been shared to them) and the ile exists, then it is being decrypted and returned to the user. \n\n\nreturn\n \nExample\n where the \npayload\n has the contents of the file.\n\n\nopenResult { code: 200,\n  status: 'unknown',\n  action: 'download',\n  docId: '0xc566de26a73d9795566ec393a3e5a775aea26fea9d3711a6ce399d4cb50990c8',\n  ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n  hash: '0x0',\n  name: 'secret',\n  extension: '.pdf',\n  receipt: '{\"hash\":\"th_JhWaB2tTF7vc57W6KmodvoUafxRYGQK4xbP3teb5ZoyGsympn\",\"rawTx\":\"tx_+QF2CwH4QrhA3OHYiMLbFCicYtuTyCP2Blr0xjqh75/6aKXQfshlXUt5Vv7D+Rxj7V2a14WY+9CkqEwOyMkpwWrzX4vswaTqAbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H6oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdzwAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM1NjZkZTI2YTczZDk3OTU1NjZlYzM5M2EzZTVhNzc1YWVhMjZmZWE5ZDM3MTFhNmNlMzk5ZDRjYjUwOTkwYzgGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkN1KXDL\",\"result\":{\"callerId\":\"ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc\",\"callerNonce\":250,\"contractId\":\"ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd\",\"gasPrice\":1000000000,\"gasUsed\":2989,\"height\":161541,\"log\":[],\"returnType\":\"ok\",\"returnValue\":\"cb_/8CwV/U=\"},\"decodedResult\":true}',\n  dateCreated: '2019-10-31T11:58:31.000Z',\n  dateUpdated: '2019-10-31T11:58:31.000Z',\n  category: 'OTHER',\n  keywords: '',\n  isEncrypted: true,\n  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n  payload: 'very secret file contents #674100 312321',\n  encryption: {} }\n\n\n\n\n\n\nasync function verifyFileDecryption(fileContents, userId, docId)\n\n\nGiven the contents of the file this function checks the hashed record on the blockchain and returns the file hash, the user ID. Returns \nSTATUS ERROR\n if the validation fails. \n\n\n\n\nasync function selectFiles(selectionType, files, recipients)\n\n\nThis function is for the user to select several files which they want to manage (open/share) at a time. The result of this function is used in \ngetSelectedFiles\n to retrieve the list of files and users. Files and recepients are arrays. For each file ID corresponds a recepient ID. Using these two arrays one can design relations of the type M:M. \n\n\nFor example 3 files shared with 5 recepients.\n\n\nreturns\n \nqrCode\n, where \nqrCode\n is 0x.. \n\n\n\n\nasync function getSelectedFiles(selectionHash)\n\n\nTakes the selection hash and returns the list of files and recepients (userIDs).\n\n\n\n\nasync function shareFile(docId, recipientId, keyPair)\n\n\nTakes a document ID, a recipient ID and the sender's key pair. Decrypts the document password and then re-encrypts it with recipient's public key, so that they can access it via their private key. \n\n\n\n\nregisterHash(docChainId, requestType, targetUserId, keyPair, poll = false)\n\n\nA function that registers the hash of a file directly on the blockchain. \n\n\n\n\nverifyHash(docChainId, userId)\n\n\n\n\nasync function prepareSelection(selection)\n\n\nTakes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.\n\n\n\n\nasync function execSelection(selection, keyPair)\n\n\nOn the basis of the first parameter provided it will execute \nOpen\n or \nShare\n on each file that is belonging to the selection.  \n\n\nretunrs\n \nExample on OPEN\n\n\nexec result [ \n  { docId:'0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',\ndata:\n  { code: 200,\n    status: 'unknown',\n    action: 'download',\n    docId:\n    '0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',\n    ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n    hash: '0x0',\n    name: 'secret',\n    extension: '.pdf',\n    receipt:\n    '{\"hash\":\"th_17swnB9gvGorAWrEYk6tJxhGhPH3Z9kQ7ioDVqqSs8EPgjUWQ\",\"rawTx\":\"tx_+QF2CwH4QrhAlgYZFBs58BWWCu5wby1eKhWsuJB+8P8DrIVXG2ay3N7KSpEIdYq+C9vLsj1yw+0h++jX5n5niFkvX9T+fLz0C7kBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H1oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCc4gAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM0OTk2MWEzNzU1ZWY2NDZiZWFmOTNiY2QwZmUyMDc3OTFlYTBkYjNmNTk0NjBkYWQxNmZiMGZkMjNjOTRiY2UGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPC47oQ\",\"result\":{\"callerId\":\"ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc\",\"callerNonce\":245,\"contractId\":\"ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd\",\"gasPrice\":1000000000,\"gasUsed\":2989,\"height\":160593,\"log\":[],\"returnType\":\"ok\",\"returnValue\":\"cb_/8CwV/U=\"},\"decodedResult\":true}',\n    dateCreated: '2019-10-29T12:42:10.000Z',\n    dateUpdated: '2019-10-29T12:42:10.000Z',\n    category: 'OTHER',\n    keywords: '',\n    isEncrypted: true,\n    userId: 'ak_wnSecLhxY8fD88JDsQTSskHcahNhjEqBhifxYtYZUSP4fWW3v',\n    payload: 'very secret file contents #416510 3453454kk',\n    encryption: {} } } \n    ]\n\n\n\n\n\n\nLow level code\n\n\n\n\nExported functions :\n\n\n\n\n\n\ndebug: debugMode,\n\n\n\n\n\n\ninit: init - Specify API token and API host\n\n\n\n\n\n\nlogin: login,\n\n\n\n\n\n\nloginWithChallenge: loginWithChallenge,\n\n\n\n\n\n\nnewKeyPair: generateAkKeyPair - Create a keypair and recovery phrase \n\n\n\n\n\n\nstore: submitFile - Encrypt, upload and register a file or any data \n\n\n\n\n\n\n/\n Retrieve file - used in case of browser interaction \n/\n- prepare: submitCredentials,\n- decrypt: decryptWithKeyPair,\n- poll: pollForFile,\n\n\n/\n Retrieve fle - used in case of client interaction \n/\n- open: openFile,\n\n\n\n\nvalidate: validateFile,\n\n\nselect: selectFiles,\n\n\nselection: getSelectedFiles,\n\n\nshare: shareFile,\n\n\nprepareSelection: prepareSelection,\n\n\nexecSelection: execSelection",
+            "title": "Home"
+        },
+        {
+            "location": "/#client-encryption-api-documentation",
+            "text": "This is an encryption library created by ReCheck devs team.   We are glad to receive any feedback you want to give us.   A  Sequence Diagram",
+            "title": "Client Encryption API documentation"
+        },
+        {
+            "location": "/#application-layer-high-level-code",
+            "text": "",
+            "title": "Application layer (high-level code)"
+        },
+        {
+            "location": "/#function-init_baseurl-_token-_network",
+            "text": "Initialises the token and challenge. Where token is optional. If the token is absent then by default the library is being used in the browser.   The library is currently written so that it can use either Ethereum or Aethernity key pair.",
+            "title": "function init(_baseUrl, _token, _network)"
+        },
+        {
+            "location": "/#async-function-loginkeypair",
+            "text": "Attemps to log in with the provided key pair. The function retunrs a newly created token.",
+            "title": "async function login(keyPair)"
+        },
+        {
+            "location": "/#async-function-loginwithchallengechallenge-keypair",
+            "text": "Loggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.",
+            "title": "async function loginWithChallenge(challenge, keyPair)"
+        },
+        {
+            "location": "/#async-function-submitfilefileobj-userchainid-userchainidpubkey",
+            "text": "Upon execution of the function the following things happen. The file is being encrypted on the client side prior to which uploaded to the server. The server records info on the blockchain. The server returns the status code and receipt.   returns   Example  \n { \n  status: 'OK',\n  code: '200',\n  blockchain: 'ae',\n  action: 'upload',\n  receipt: \n   { hash: 'th_xoWkCki44SyQhYDQYoyr6CdE8TkzsZFwrQLtKcXMNZspnoZBh',\n     rawTx: 'tx_+QF2CwH4QrhAPrSS95Az/ZnL1CdHXu+Bpz238+T8W/Mwb2nKh/nqBpMqAeP63wmp3OWfXzT4IxJR6xUzs/mEnrZIZSJ6jmq9CbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H4oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdYMAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweDU0NjYzMDdkNjdiZWRjM2JmMDBjN2NlNGEyMDQwNDBiY2Q3NTY2NDE2MGY2M2E2NmM5ZjQxZDdlYmQ1OGUwM2YGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPH1SG5',\n     result: \n      { callerId: 'ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc',\n        callerNonce: 248,\n        contractId: 'ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd',\n        gasPrice: 1000000000,\n        gasUsed: 2989,\n        height: 161100,\n        log: [],\n        returnType: 'ok',\n        returnValue: 'cb_/8CwV/U=' },\n     decodedResult: true },\n  docId: '0x5466307d67bedc3bf00c7ce4a204040bcd75664160f63a66c9f41d7ebd58e03f',\n  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' }",
+            "title": "async function submitFile(fileObj, userChainId, userChainIdPubKey)"
+        },
+        {
+            "location": "/#async-function-decryptwithkeypairuserid-docchainid-keypair",
+            "text": "Takes as parameters: \n- the userId\n- the chain ID of the file\n- the key pair of the user (currently AEternity supported only)   Browser renders the docId as QR code and the user's device scans the QR. User device requests decryption info from server. After getting the decrypted password, it encrypts it again and sends it to the server.   Returns the data for the file + encrypted password.",
+            "title": "async function decryptWithKeyPair(userId, docChainId, keyPair)"
+        },
+        {
+            "location": "/#async-function-submitcredentialsdocchainid-userchainid",
+            "text": "The browser creates a temporary key pair and submits a temporary public key. This key is used to decrypt the password coming from the mobile device. It expects document ID and the user's one for which the document is available.",
+            "title": "async function submitCredentials(docChainId, userChainId)"
+        },
+        {
+            "location": "/#async-function-pollforfilecredentialsresponse-receiverpubkey",
+            "text": "Takes as parameters:   credentialsResponce   Example  credentialsReponse: \n{\n  userId:\"0x23423432\", \n  docId:\"0x234234\"\n}    receiver Public Key   This function asks the server if there is a document shared with the user, so that it can fetch them. When the file becomes available (decrypted with the password provided by the mobile device) it is returned to the client as a result.",
+            "title": "async function pollForFile(credentialsResponse, receiverPubKey)"
+        },
+        {
+            "location": "/#async-function-openfiledocchainid-userchainid-keypair",
+            "text": "Takes the user's credentials and scans for the requested file. If the user has permission (owns the file, or it has been shared to them) and the ile exists, then it is being decrypted and returned to the user.   return   Example  where the  payload  has the contents of the file.  openResult { code: 200,\n  status: 'unknown',\n  action: 'download',\n  docId: '0xc566de26a73d9795566ec393a3e5a775aea26fea9d3711a6ce399d4cb50990c8',\n  ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n  hash: '0x0',\n  name: 'secret',\n  extension: '.pdf',\n  receipt: '{\"hash\":\"th_JhWaB2tTF7vc57W6KmodvoUafxRYGQK4xbP3teb5ZoyGsympn\",\"rawTx\":\"tx_+QF2CwH4QrhA3OHYiMLbFCicYtuTyCP2Blr0xjqh75/6aKXQfshlXUt5Vv7D+Rxj7V2a14WY+9CkqEwOyMkpwWrzX4vswaTqAbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H6oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdzwAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM1NjZkZTI2YTczZDk3OTU1NjZlYzM5M2EzZTVhNzc1YWVhMjZmZWE5ZDM3MTFhNmNlMzk5ZDRjYjUwOTkwYzgGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkN1KXDL\",\"result\":{\"callerId\":\"ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc\",\"callerNonce\":250,\"contractId\":\"ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd\",\"gasPrice\":1000000000,\"gasUsed\":2989,\"height\":161541,\"log\":[],\"returnType\":\"ok\",\"returnValue\":\"cb_/8CwV/U=\"},\"decodedResult\":true}',\n  dateCreated: '2019-10-31T11:58:31.000Z',\n  dateUpdated: '2019-10-31T11:58:31.000Z',\n  category: 'OTHER',\n  keywords: '',\n  isEncrypted: true,\n  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n  payload: 'very secret file contents #674100 312321',\n  encryption: {} }",
+            "title": "async function openFile(docChainId, userChainId, keyPair)"
+        },
+        {
+            "location": "/#async-function-verifyfiledecryptionfilecontents-userid-docid",
+            "text": "Given the contents of the file this function checks the hashed record on the blockchain and returns the file hash, the user ID. Returns  STATUS ERROR  if the validation fails.",
+            "title": "async function verifyFileDecryption(fileContents, userId, docId)"
+        },
+        {
+            "location": "/#async-function-selectfilesselectiontype-files-recipients",
+            "text": "This function is for the user to select several files which they want to manage (open/share) at a time. The result of this function is used in  getSelectedFiles  to retrieve the list of files and users. Files and recepients are arrays. For each file ID corresponds a recepient ID. Using these two arrays one can design relations of the type M:M.   For example 3 files shared with 5 recepients.  returns   qrCode , where  qrCode  is 0x..",
+            "title": "async function selectFiles(selectionType, files, recipients)"
+        },
+        {
+            "location": "/#async-function-getselectedfilesselectionhash",
+            "text": "Takes the selection hash and returns the list of files and recepients (userIDs).",
+            "title": "async function getSelectedFiles(selectionHash)"
+        },
+        {
+            "location": "/#async-function-sharefiledocid-recipientid-keypair",
+            "text": "Takes a document ID, a recipient ID and the sender's key pair. Decrypts the document password and then re-encrypts it with recipient's public key, so that they can access it via their private key.",
+            "title": "async function shareFile(docId, recipientId, keyPair)"
+        },
+        {
+            "location": "/#registerhashdocchainid-requesttype-targetuserid-keypair-poll-false",
+            "text": "A function that registers the hash of a file directly on the blockchain.",
+            "title": "registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)"
+        },
+        {
+            "location": "/#verifyhashdocchainid-userid",
+            "text": "",
+            "title": "verifyHash(docChainId, userId)"
+        },
+        {
+            "location": "/#async-function-prepareselectionselection",
+            "text": "Takes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.",
+            "title": "async function prepareSelection(selection)"
+        },
+        {
+            "location": "/#async-function-execselectionselection-keypair",
+            "text": "On the basis of the first parameter provided it will execute  Open  or  Share  on each file that is belonging to the selection.    retunrs   Example on OPEN  exec result [ \n  { docId:'0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',\ndata:\n  { code: 200,\n    status: 'unknown',\n    action: 'download',\n    docId:\n    '0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',\n    ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',\n    hash: '0x0',\n    name: 'secret',\n    extension: '.pdf',\n    receipt:\n    '{\"hash\":\"th_17swnB9gvGorAWrEYk6tJxhGhPH3Z9kQ7ioDVqqSs8EPgjUWQ\",\"rawTx\":\"tx_+QF2CwH4QrhAlgYZFBs58BWWCu5wby1eKhWsuJB+8P8DrIVXG2ay3N7KSpEIdYq+C9vLsj1yw+0h++jX5n5niFkvX9T+fLz0C7kBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H1oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCc4gAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM0OTk2MWEzNzU1ZWY2NDZiZWFmOTNiY2QwZmUyMDc3OTFlYTBkYjNmNTk0NjBkYWQxNmZiMGZkMjNjOTRiY2UGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPC47oQ\",\"result\":{\"callerId\":\"ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc\",\"callerNonce\":245,\"contractId\":\"ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd\",\"gasPrice\":1000000000,\"gasUsed\":2989,\"height\":160593,\"log\":[],\"returnType\":\"ok\",\"returnValue\":\"cb_/8CwV/U=\"},\"decodedResult\":true}',\n    dateCreated: '2019-10-29T12:42:10.000Z',\n    dateUpdated: '2019-10-29T12:42:10.000Z',\n    category: 'OTHER',\n    keywords: '',\n    isEncrypted: true,\n    userId: 'ak_wnSecLhxY8fD88JDsQTSskHcahNhjEqBhifxYtYZUSP4fWW3v',\n    payload: 'very secret file contents #416510 3453454kk',\n    encryption: {} } } \n    ]",
+            "title": "async function execSelection(selection, keyPair)"
+        },
+        {
+            "location": "/#low-level-code",
+            "text": "",
+            "title": "Low level code"
+        },
+        {
+            "location": "/#exported-functions",
+            "text": "debug: debugMode,    init: init - Specify API token and API host    login: login,    loginWithChallenge: loginWithChallenge,    newKeyPair: generateAkKeyPair - Create a keypair and recovery phrase     store: submitFile - Encrypt, upload and register a file or any data     /  Retrieve file - used in case of browser interaction  /\n- prepare: submitCredentials,\n- decrypt: decryptWithKeyPair,\n- poll: pollForFile,  /  Retrieve fle - used in case of client interaction  /\n- open: openFile,   validate: validateFile,  select: selectFiles,  selection: getSelectedFiles,  share: shareFile,  prepareSelection: prepareSelection,  execSelection: execSelection",
+            "title": "Exported functions :"
+        },
+        {
+            "location": "/LowLevelCode/",
+            "text": "Low-level cod\u0435\n\n\nasync function _session25519(key1, key2)\n\n\nUses two strings, in our case six words per key, to create four keys for the user's key pair.\n\n\n\n\nfunction getHash(string)\n\n\nUses keccak256 (sha3) and returns the hash with the 0x prefix. \n\n\n\n\ngetRequestHash(requestBodyOrUrl)\n\n\nIn favor of better transaction validation, we decided to hash the content of every API call. This function is going to order the fields in JSON alphabetically and then hash it. This hash then will be added to the post request for back-end verification.  \n\n\n\n\nfunction encodeBase58Check(src)\n\n\nEncoding 32 byte[] into an address .\n\n\n\n\nfunction decodeBase58Check(src)\n\n\nDecoding into 32 byte[].\n\n\n\n\nfunction sign(data, privateKey)\n\n\nFunction to cryptogrphically sign, in our case a document, with user's private key.\n\n\n\n\nasync function generateAkKeyPair(passphrase)\n\n\nGenerates key pair, account, for AEternity blockchain. Takes as parameter the passphrase, which the user receives as back-up words or generates new words with the \ndiceware\n method. Then uses the session25519 function with 6 words per key.\n\n\n    key1 = words.slice(0, 6).join(' ');//0-5\n    key2 = words.slice(6, 12).join(' ');//6-11\n\n else {\n    key1 = diceware(6)\n    key2 = diceware(6)\n  }\n\n  let phrase = `${key1} ${key2}`;\n\n\n\n\nThen uses these keys to generate the user's key pair, containing four different keys with the full phrase.\n\n\n case\"ae\":\n    let publicSignBuffer = Buffer.from(keys.publicSignKey);\n    secretSignBuffer = Buffer.from(keys.secretSignKey); // 64-bytes private key\n    let address = `ak_${encodeBase58Check(publicSignBuffer)}`;\n    return {\n        address: address,\n        publicKey: address,\n        secretKey: secretSignBuffer.toString('hex'),\n        publicEncKey: encodeBase58Check(publicEncBuffer),\n        secretEncKey: secretEncBuffer.toString('hex'),\n        phrase: phrase\n    };\n\ncase  \"eth\":\n    secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key\n    let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;\n    let publicSignKey = EthCrypto.publicKeyByPrivateKey(secretSignKey);\n    let publicAddress = EthCrypto.publicKey.toAddress(publicSignKey);\n\n    return {\n        address: publicAddress,\n        publicKey: publicSignKey,\n        secretKey: secretSignKey,\n        publicEncKey: encodeBase58Check(publicEncBuffer),\n        secretEncKey: secretEncBuffer.toString('hex'),\n        phrase: phrase\n    };\n\n\n\n\nreturns\n \nkeyPair\n object\n\n\n\n\nconst akPairToRaw = (akPair) => {}\n\n\nConverts and returns the Encryption key pair in raw bytes.\n\n\n\n\nconst encrypt = (secretOrSharedKey, json, key) => {}\n\n\nTakes as input secret or shared key, a JSON object and a key. Using asymmetric public key encryption. \n\n\nTaken from \nTweetNaCl Box example\n\n\nreturns\n \nBase64 encoded message\n\n\n\n\nconst decrypt = (secretOrSharedKey, messageWithNonce, key) => {}\n\n\nTakes secret or shared key, encrypted message, and a key. Decrypts the message. \n\n\nTaken from \nTweetNaCl Box example\n\n\nreturns\n \nJSON.parse(Base64 decrypted message)\n or \nbase64decryptedMessage\n if it comes from Java. \n\n\n\n\nasync function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair)\n\n\nEncrypts the data, and returns and object with the cyphered data. \n\n\nencrypted = {\n\n    payload: encryptedData,\n    dstPublicEncKey: dstPublicEncKey,\n    srcPublicEncKey: srcAkPair.publicEncKey\n\n  } \n\n\n\n\n\n\nfunction decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)\n\n\nDecrypts the data using TweetNacl box method and returns the decyphered data.\n\n\n\n\nconst encryptDataWithSymetricKey = (data, key) => {}\n\n\nEncrypts data with symmetric key using the TweetNaCl secret box methods. \n\n\nreturns\n \nBase64 encrypted message\n\n\n\n\nconst decryptDataWithSymmetricKey = (messageWithNonce, key) => {}\n\n\nDecrypts the messageWithNonce with symmetric key using the TweetNacl secret box method. \n\n\nreturns\n \nUTF8 encoded decrypted message\n\n\n\n\nasync function encryptFileToPublicKey(fileData, dstPublicKey) {}\n\n\nThis function creates sym key. Encrypts and returns an object with the cyphered data and the information to recreate the sym key, and decrypt the message if you have the rest of the information.\n\n\n\n\nasync function getFileUploadData(fileObj, userChainId, userChainIdPubKey)\n\n\nEncrypts the data with \nencryptFileToPublicKey\n method. Returns the following object\n\n\nlet fileUploadData = {\n        userId: userChainId,\n        docId: docChainId,\n        requestId: requestId,\n        requestType: requestType,\n        requestBodyHashSignature: 'NULL',\n        trailHash: trailHash,\n        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))\n        docName: fileObj.name,\n        category: fileObj.category,\n        keywords: fileObj.keywords,\n        payload: encryptedFile.payload,\n        encryption: {\n            docHash: docOriginalHash,\n            salt: encryptedFile.credentials.salt,\n            passHash: syncPassHash,\n            encryptedPassA: encryptedFile.credentials.encryptedPass,\n            pubKeyA: encryptedFile.credentials.encryptingPubKey\n        }\n    };\n\n\n\n\nThis object is then hashed with \ngetRequestHash\n. After that the hash is being added to the object before the creation of post request. \n\n\n    fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);\n\n\n\n\n\n\n\nasync function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey)\n\n\nThis function takes the file, gives it to the browser, the browser can now compose the full password and decrypt the file. \n\n\nreturns\n \nAn object with decrypted message\n\n\n\n\nfunction getEndpointUrl(action, appendix)\n\n\nGets the server route for the specific API call.\n\n\n\n\nsignMessage(message, secretKey)\n\n\nThis function is to encapsulate the different ways to sing a message depending on the network. At the moment it is to sign with either Eth or AE sign. \n\n\n\n\nverifyMessage(message, signature, pubKey)",
+            "title": "LowLevelCode"
+        },
+        {
+            "location": "/LowLevelCode/#low-level-cod",
+            "text": "",
+            "title": "Low-level cod\u0435"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-_session25519key1-key2",
+            "text": "Uses two strings, in our case six words per key, to create four keys for the user's key pair.",
+            "title": "async function _session25519(key1, key2)"
+        },
+        {
+            "location": "/LowLevelCode/#function-gethashstring",
+            "text": "Uses keccak256 (sha3) and returns the hash with the 0x prefix.",
+            "title": "function getHash(string)"
+        },
+        {
+            "location": "/LowLevelCode/#getrequesthashrequestbodyorurl",
+            "text": "In favor of better transaction validation, we decided to hash the content of every API call. This function is going to order the fields in JSON alphabetically and then hash it. This hash then will be added to the post request for back-end verification.",
+            "title": "getRequestHash(requestBodyOrUrl)"
+        },
+        {
+            "location": "/LowLevelCode/#function-encodebase58checksrc",
+            "text": "Encoding 32 byte[] into an address .",
+            "title": "function encodeBase58Check(src)"
+        },
+        {
+            "location": "/LowLevelCode/#function-decodebase58checksrc",
+            "text": "Decoding into 32 byte[].",
+            "title": "function decodeBase58Check(src)"
+        },
+        {
+            "location": "/LowLevelCode/#function-signdata-privatekey",
+            "text": "Function to cryptogrphically sign, in our case a document, with user's private key.",
+            "title": "function sign(data, privateKey)"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-generateakkeypairpassphrase",
+            "text": "Generates key pair, account, for AEternity blockchain. Takes as parameter the passphrase, which the user receives as back-up words or generates new words with the  diceware  method. Then uses the session25519 function with 6 words per key.      key1 = words.slice(0, 6).join(' ');//0-5\n    key2 = words.slice(6, 12).join(' ');//6-11\n\n else {\n    key1 = diceware(6)\n    key2 = diceware(6)\n  }\n\n  let phrase = `${key1} ${key2}`;  Then uses these keys to generate the user's key pair, containing four different keys with the full phrase.   case\"ae\":\n    let publicSignBuffer = Buffer.from(keys.publicSignKey);\n    secretSignBuffer = Buffer.from(keys.secretSignKey); // 64-bytes private key\n    let address = `ak_${encodeBase58Check(publicSignBuffer)}`;\n    return {\n        address: address,\n        publicKey: address,\n        secretKey: secretSignBuffer.toString('hex'),\n        publicEncKey: encodeBase58Check(publicEncBuffer),\n        secretEncKey: secretEncBuffer.toString('hex'),\n        phrase: phrase\n    };\n\ncase  \"eth\":\n    secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key\n    let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;\n    let publicSignKey = EthCrypto.publicKeyByPrivateKey(secretSignKey);\n    let publicAddress = EthCrypto.publicKey.toAddress(publicSignKey);\n\n    return {\n        address: publicAddress,\n        publicKey: publicSignKey,\n        secretKey: secretSignKey,\n        publicEncKey: encodeBase58Check(publicEncBuffer),\n        secretEncKey: secretEncBuffer.toString('hex'),\n        phrase: phrase\n    };  returns   keyPair  object",
+            "title": "async function generateAkKeyPair(passphrase)"
+        },
+        {
+            "location": "/LowLevelCode/#const-akpairtoraw-akpair",
+            "text": "Converts and returns the Encryption key pair in raw bytes.",
+            "title": "const akPairToRaw = (akPair) =&gt; {}"
+        },
+        {
+            "location": "/LowLevelCode/#const-encrypt-secretorsharedkey-json-key",
+            "text": "Takes as input secret or shared key, a JSON object and a key. Using asymmetric public key encryption.   Taken from  TweetNaCl Box example  returns   Base64 encoded message",
+            "title": "const encrypt = (secretOrSharedKey, json, key) =&gt; {}"
+        },
+        {
+            "location": "/LowLevelCode/#const-decrypt-secretorsharedkey-messagewithnonce-key",
+            "text": "Takes secret or shared key, encrypted message, and a key. Decrypts the message.   Taken from  TweetNaCl Box example  returns   JSON.parse(Base64 decrypted message)  or  base64decryptedMessage  if it comes from Java.",
+            "title": "const decrypt = (secretOrSharedKey, messageWithNonce, key) =&gt; {}"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-encryptdatatopublickeywithkeypairdata-dstpublicenckey-srcakpair",
+            "text": "Encrypts the data, and returns and object with the cyphered data.   encrypted = {\n\n    payload: encryptedData,\n    dstPublicEncKey: dstPublicEncKey,\n    srcPublicEncKey: srcAkPair.publicEncKey\n\n  }",
+            "title": "async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair)"
+        },
+        {
+            "location": "/LowLevelCode/#function-decryptdatawithpublicandprivatekeypayload-srcpublicenckey-secretkey",
+            "text": "Decrypts the data using TweetNacl box method and returns the decyphered data.",
+            "title": "function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)"
+        },
+        {
+            "location": "/LowLevelCode/#const-encryptdatawithsymetrickey-data-key",
+            "text": "Encrypts data with symmetric key using the TweetNaCl secret box methods.   returns   Base64 encrypted message",
+            "title": "const encryptDataWithSymetricKey = (data, key) =&gt; {}"
+        },
+        {
+            "location": "/LowLevelCode/#const-decryptdatawithsymmetrickey-messagewithnonce-key",
+            "text": "Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box method.   returns   UTF8 encoded decrypted message",
+            "title": "const decryptDataWithSymmetricKey = (messageWithNonce, key) =&gt; {}"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-encryptfiletopublickeyfiledata-dstpublickey",
+            "text": "This function creates sym key. Encrypts and returns an object with the cyphered data and the information to recreate the sym key, and decrypt the message if you have the rest of the information.",
+            "title": "async function encryptFileToPublicKey(fileData, dstPublicKey) {}"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-getfileuploaddatafileobj-userchainid-userchainidpubkey",
+            "text": "Encrypts the data with  encryptFileToPublicKey  method. Returns the following object  let fileUploadData = {\n        userId: userChainId,\n        docId: docChainId,\n        requestId: requestId,\n        requestType: requestType,\n        requestBodyHashSignature: 'NULL',\n        trailHash: trailHash,\n        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))\n        docName: fileObj.name,\n        category: fileObj.category,\n        keywords: fileObj.keywords,\n        payload: encryptedFile.payload,\n        encryption: {\n            docHash: docOriginalHash,\n            salt: encryptedFile.credentials.salt,\n            passHash: syncPassHash,\n            encryptedPassA: encryptedFile.credentials.encryptedPass,\n            pubKeyA: encryptedFile.credentials.encryptingPubKey\n        }\n    };  This object is then hashed with  getRequestHash . After that the hash is being added to the object before the creation of post request.       fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);",
+            "title": "async function getFileUploadData(fileObj, userChainId, userChainIdPubKey)"
+        },
+        {
+            "location": "/LowLevelCode/#async-function-processencryptedfileinfoencryptedfileinfo-devicepublickey-browserprivatekey",
+            "text": "This function takes the file, gives it to the browser, the browser can now compose the full password and decrypt the file.   returns   An object with decrypted message",
+            "title": "async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey)"
+        },
+        {
+            "location": "/LowLevelCode/#function-getendpointurlaction-appendix",
+            "text": "Gets the server route for the specific API call.",
+            "title": "function getEndpointUrl(action, appendix)"
+        },
+        {
+            "location": "/LowLevelCode/#signmessagemessage-secretkey",
+            "text": "This function is to encapsulate the different ways to sing a message depending on the network. At the moment it is to sign with either Eth or AE sign.",
+            "title": "signMessage(message, secretKey)"
+        },
+        {
+            "location": "/LowLevelCode/#verifymessagemessage-signature-pubkey",
+            "text": "",
+            "title": "verifyMessage(message, signature, pubKey)"
+        },
+        {
+            "location": "/WebSequenceDiagram/",
+            "text": "Put the following code on https://www.websequencediagrams.com/ to get the \nSequence diagram\n.\n\n\nSenderBrowser->SenderBrowser: 0 onFile open/upload/send\nSenderBrowser->SenderBrowser: 1 get doc original hash\nSenderBrowser->SenderBrowser: 2 generate symetric pass\nSenderBrowser->SenderBrowser: 3 get sym pass hash\nSenderBrowser->SenderBrowser: 4 generate symetric pass salt\nSenderBrowser->SenderBrowser: 5 encrypt file with concat sym hash(pass + salt)\nSenderBrowser->SenderBrowser: 6 generate temp pub-priv keypair(A)\nSenderBrowser->SenderBrowser: 7 encrypt sym pass(A+encrKey)\nSenderBrowser->+Server: 8 upload doc orig. hash, encr. file, salt, sym pass hash, encr.pass(A+encrKey), temp pub key(A)\nServer-->-SenderBrowser: 9 OK / doc original hash\nRecBrowser->RecBrowser: 10 onDocOpenInViewer generate temp pub-priv keypair(B)\nRecBrowser->+Server: 11 submit temp pub key(B) + original doc hash\nServer-->-RecBrowser: 12 OK / doc original hash\nRecBrowser->RecBrowser: 13 Display QR code (doc original hash)\nRecBrowser->+Server: 14 poll for encrypted pass(B) by doc original hash\nRecDevice->RecBrowser: 15 scan qr code for original hash\nRecDevice->+Server: 16 get credentials by doc original hash from QR\nServer-->-RecDevice: 17 encrypted sym pass(A+encrKey), encryptor pub key(A), temp pubkey(B)\nRecDevice->RecDevice: 18 decrypt sym password(A+encrKey)\nRecDevice->RecDevice: 19 get hash of decrypted password\nRecDevice->RecDevice: 20 encrypt decrypted password with temp pubkey(B)\nRecDevice->+Server: 21 submit encrypted pass(B) + pass hash + doc original hash\nServer-->-RecDevice: 22 OK / doc original hash\nServer->Server: 23 check decrypted pass hash\nServer->-RecBrowser: 24 polling result = encrypted device pass(B) + salt + encrypted file\nRecBrowser->RecBrowser: 25 decrypt password with temp priv key(B)\nRecBrowser->RecBrowser: 26 decrypt file with hash(decrPass + salt)\nRecBrowser->RecBrowser: 27 get decryptedDocHash\nRecBrowser->+Server: 28 validate decryptedDocHash\nServer-->-RecBrowser: 29 validation result\nRecBrowser->RecBrowser: 30 push to fileviewer or saveAs\n\n\n\n\nA fast link to it : \n\n\nhttps://www.websequencediagrams.com/?lz=U2VuZGVyQnJvd3Nlci0-AAINOiAwIG9uRmlsZSBvcGVuL3VwbG9hZC9zZW5kCgAaHjEgZ2V0IGRvYyBvcmlnaW5hbCBoYXNoABcfMiBnZW5lcmF0ZSBzeW1ldHJpYyBwYXNzAE4fMwBoBXN5bQAoBQBFJDQAUhcgc2FsdACBPB81IGVuY3J5cHQgZmlsZSB3aXRoIGNvbmNhAH0GaGFzaCgAgQMFKwBJBSkAggsfNgCBagp0ZW1wIHB1Yi1wcml2IGtleXBhaXIoQQAiIDcAgQgJAIF7CChBK2VuY3JLZXkAbRErU2VydmVyOiA4IACDSAYAgxwJLgCDHQUsAIFZBS4AgVcFLACCCgUsAIJMDgAaBwBYDywAgTQJIGtleQCBLgZydmVyLS0-LQCERA85IE9LIC8AhAkTUmVjAIR-CQACCjogMTAgb25Eb2NPcGVuSW5WaWV3ZXIAghUgQikAQg0AgW0JMTEgc3VibWl0AIEiDkIpICsAhSAKZG9jAIUmCACBPAgAgQMNMgCBETEzIERpc3BsYXkgUVIgY29kZSAoAIYLEQCBGhg0IHBvbGwgZm9yAIRxCGVkAINgBkIpIGJ5AIIzFkRldmljZQCCOQ81IHNjYW4gcXIAfQZmb3IAHxoAgigKNgCHRgVjcmVkZW50aWFscwBgFSBmcm9tIFFSAIImDgCBAQY6IDEAhRsJZWQAhRIUAIRwBnlwdG9yAIQ5CwCESwoAgx4GAIFKDwBUCTggZGUAhXMOd29yZACFeQwAIhc5AIkhBQCBOgVvZgA9CACCVwd3b3JkAFoXMjAAh3oJACISAIgLBgCBHxoAhngJMgCFAgkAg0USKwCJQAogKwCKMhUAglITMgCEfxkAhwUHPgByCTMgY2hlY2sAgWQPAB8OAIVnDTIAhQAGaW5nIHJlc3VsdCA9AIUDC2QAhGkFAIEzC3NhbHQgKwCFJQtmaWxlAIdIGTI1AIM4CQCCMhQAigYHAIdEEACBEg02AIN6CQCLCwoAiwUFZGVjclAAiwIMAGwZNwCNLQYAg30IRG9jSACJBhAAgzIKOCB2YWxpZGF0ZQAgEgCIIBYyOQArCGlvbgCCPgcAiVoZMzAgcHVzaCB0bwCMYAV2AIluBm9yIHNhdmVBcw&s=default",
+            "title": "WebSequenceDiagram"
+        }
+    ]
+}
