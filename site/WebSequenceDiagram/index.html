@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>WebSequenceDiagram - Recheck client-js encryption library</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="../css/highlight.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+	
+	<script src="../js/jquery-1.10.2.min.js"></script>
+        <script src="../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../js/highlight.pack.js"></script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="..">Recheck client-js encryption library</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                    <li >
+                        <a href="..">Home</a>
+                    </li>
+                    <li >
+                        <a href="../LowLevelCode/">LowLevelCode</a>
+                    </li>
+                    <li class="active">
+                        <a href="./">WebSequenceDiagram</a>
+                    </li>
+                </ul>
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                    <li >
+                        <a rel="next" href="../LowLevelCode/">
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li class="disabled">
+                        <a rel="prev" >
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<p>Put the following code on https://www.websequencediagrams.com/ to get the <strong>Sequence diagram</strong>.</p>
+<pre><code>SenderBrowser-&gt;SenderBrowser: 0 onFile open/upload/send
+SenderBrowser-&gt;SenderBrowser: 1 get doc original hash
+SenderBrowser-&gt;SenderBrowser: 2 generate symetric pass
+SenderBrowser-&gt;SenderBrowser: 3 get sym pass hash
+SenderBrowser-&gt;SenderBrowser: 4 generate symetric pass salt
+SenderBrowser-&gt;SenderBrowser: 5 encrypt file with concat sym hash(pass + salt)
+SenderBrowser-&gt;SenderBrowser: 6 generate temp pub-priv keypair(A)
+SenderBrowser-&gt;SenderBrowser: 7 encrypt sym pass(A+encrKey)
+SenderBrowser-&gt;+Server: 8 upload doc orig. hash, encr. file, salt, sym pass hash, encr.pass(A+encrKey), temp pub key(A)
+Server--&gt;-SenderBrowser: 9 OK / doc original hash
+RecBrowser-&gt;RecBrowser: 10 onDocOpenInViewer generate temp pub-priv keypair(B)
+RecBrowser-&gt;+Server: 11 submit temp pub key(B) + original doc hash
+Server--&gt;-RecBrowser: 12 OK / doc original hash
+RecBrowser-&gt;RecBrowser: 13 Display QR code (doc original hash)
+RecBrowser-&gt;+Server: 14 poll for encrypted pass(B) by doc original hash
+RecDevice-&gt;RecBrowser: 15 scan qr code for original hash
+RecDevice-&gt;+Server: 16 get credentials by doc original hash from QR
+Server--&gt;-RecDevice: 17 encrypted sym pass(A+encrKey), encryptor pub key(A), temp pubkey(B)
+RecDevice-&gt;RecDevice: 18 decrypt sym password(A+encrKey)
+RecDevice-&gt;RecDevice: 19 get hash of decrypted password
+RecDevice-&gt;RecDevice: 20 encrypt decrypted password with temp pubkey(B)
+RecDevice-&gt;+Server: 21 submit encrypted pass(B) + pass hash + doc original hash
+Server--&gt;-RecDevice: 22 OK / doc original hash
+Server-&gt;Server: 23 check decrypted pass hash
+Server-&gt;-RecBrowser: 24 polling result = encrypted device pass(B) + salt + encrypted file
+RecBrowser-&gt;RecBrowser: 25 decrypt password with temp priv key(B)
+RecBrowser-&gt;RecBrowser: 26 decrypt file with hash(decrPass + salt)
+RecBrowser-&gt;RecBrowser: 27 get decryptedDocHash
+RecBrowser-&gt;+Server: 28 validate decryptedDocHash
+Server--&gt;-RecBrowser: 29 validation result
+RecBrowser-&gt;RecBrowser: 30 push to fileviewer or saveAs
+</code></pre>
+
+<p>A fast link to it : </p>
+<p><em>https://www.websequencediagrams.com/?lz=U2VuZGVyQnJvd3Nlci0-AAINOiAwIG9uRmlsZSBvcGVuL3VwbG9hZC9zZW5kCgAaHjEgZ2V0IGRvYyBvcmlnaW5hbCBoYXNoABcfMiBnZW5lcmF0ZSBzeW1ldHJpYyBwYXNzAE4fMwBoBXN5bQAoBQBFJDQAUhcgc2FsdACBPB81IGVuY3J5cHQgZmlsZSB3aXRoIGNvbmNhAH0GaGFzaCgAgQMFKwBJBSkAggsfNgCBagp0ZW1wIHB1Yi1wcml2IGtleXBhaXIoQQAiIDcAgQgJAIF7CChBK2VuY3JLZXkAbRErU2VydmVyOiA4IACDSAYAgxwJLgCDHQUsAIFZBS4AgVcFLACCCgUsAIJMDgAaBwBYDywAgTQJIGtleQCBLgZydmVyLS0-LQCERA85IE9LIC8AhAkTUmVjAIR-CQACCjogMTAgb25Eb2NPcGVuSW5WaWV3ZXIAghUgQikAQg0AgW0JMTEgc3VibWl0AIEiDkIpICsAhSAKZG9jAIUmCACBPAgAgQMNMgCBETEzIERpc3BsYXkgUVIgY29kZSAoAIYLEQCBGhg0IHBvbGwgZm9yAIRxCGVkAINgBkIpIGJ5AIIzFkRldmljZQCCOQ81IHNjYW4gcXIAfQZmb3IAHxoAgigKNgCHRgVjcmVkZW50aWFscwBgFSBmcm9tIFFSAIImDgCBAQY6IDEAhRsJZWQAhRIUAIRwBnlwdG9yAIQ5CwCESwoAgx4GAIFKDwBUCTggZGUAhXMOd29yZACFeQwAIhc5AIkhBQCBOgVvZgA9CACCVwd3b3JkAFoXMjAAh3oJACISAIgLBgCBHxoAhngJMgCFAgkAg0USKwCJQAogKwCKMhUAglITMgCEfxkAhwUHPgByCTMgY2hlY2sAgWQPAB8OAIVnDTIAhQAGaW5nIHJlc3VsdCA9AIUDC2QAhGkFAIEzC3NhbHQgKwCFJQtmaWxlAIdIGTI1AIM4CQCCMhQAigYHAIdEEACBEg02AIN6CQCLCwoAiwUFZGVjclAAiwIMAGwZNwCNLQYAg30IRG9jSACJBhAAgzIKOCB2YWxpZGF0ZQAgEgCIIBYyOQArCGlvbgCCPgcAiVoZMzAgcHVzaCB0bwCMYAV2AIluBm9yIHNhdmVBcw&amp;s=default</em></p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>var base_url = '..';</script>
+        <script data-main="../mkdocs/js/search.js" src="../mkdocs/js/require.js"></script>
+        <script src="../js/base.js"></script><div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

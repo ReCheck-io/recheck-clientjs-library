@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="None">
+        
+        
+        <link rel="shortcut icon" href="./img/favicon.ico">
+        <title>Recheck client-js encryption library</title>
+        <link href="./css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="./css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="./css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="./css/highlight.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+	
+	<script src="./js/jquery-1.10.2.min.js"></script>
+        <script src="./js/bootstrap-3.0.3.min.js"></script>
+        <script src="./js/highlight.pack.js"></script> 
+    </head>
+
+    <body class="homepage">
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href=".">Recheck client-js encryption library</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                    <li class="active">
+                        <a href=".">Home</a>
+                    </li>
+                    <li >
+                        <a href="LowLevelCode/">LowLevelCode</a>
+                    </li>
+                    <li >
+                        <a href="WebSequenceDiagram/">WebSequenceDiagram</a>
+                    </li>
+                </ul>
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                    <li class="disabled">
+                        <a rel="next" >
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li >
+                        <a rel="prev" href="LowLevelCode/">
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#client-encryption-api-documentation">Client Encryption API documentation</a></li>
+        <li class="main "><a href="#application-layer-high-level-code">Application layer (high-level code)</a></li>
+            <li><a href="#function-init_baseurl-_token-_network">function init(_baseUrl, _token, _network)</a></li>
+            <li><a href="#async-function-loginkeypair">async function login(keyPair)</a></li>
+            <li><a href="#async-function-loginwithchallengechallenge-keypair">async function loginWithChallenge(challenge, keyPair)</a></li>
+            <li><a href="#async-function-submitfilefileobj-userchainid-userchainidpubkey">async function submitFile(fileObj, userChainId, userChainIdPubKey)</a></li>
+            <li><a href="#async-function-decryptwithkeypairuserid-docchainid-keypair">async function decryptWithKeyPair(userId, docChainId, keyPair)</a></li>
+            <li><a href="#async-function-submitcredentialsdocchainid-userchainid">async function submitCredentials(docChainId, userChainId)</a></li>
+            <li><a href="#async-function-pollforfilecredentialsresponse-receiverpubkey">async function pollForFile(credentialsResponse, receiverPubKey)</a></li>
+            <li><a href="#async-function-openfiledocchainid-userchainid-keypair">async function openFile(docChainId, userChainId, keyPair)</a></li>
+            <li><a href="#async-function-verifyfiledecryptionfilecontents-userid-docid">async function verifyFileDecryption(fileContents, userId, docId)</a></li>
+            <li><a href="#async-function-selectfilesselectiontype-files-recipients">async function selectFiles(selectionType, files, recipients)</a></li>
+            <li><a href="#async-function-getselectedfilesselectionhash">async function getSelectedFiles(selectionHash)</a></li>
+            <li><a href="#async-function-sharefiledocid-recipientid-keypair">async function shareFile(docId, recipientId, keyPair)</a></li>
+            <li><a href="#registerhashdocchainid-requesttype-targetuserid-keypair-poll-false">registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)</a></li>
+            <li><a href="#verifyhashdocchainid-userid">verifyHash(docChainId, userId)</a></li>
+            <li><a href="#async-function-prepareselectionselection">async function prepareSelection(selection)</a></li>
+            <li><a href="#async-function-execselectionselection-keypair">async function execSelection(selection, keyPair)</a></li>
+        <li class="main "><a href="#low-level-code">Low level code</a></li>
+            <li><a href="#exported-functions">Exported functions :</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="client-encryption-api-documentation">Client Encryption API documentation</h1>
+<p>This is an encryption library created by ReCheck devs team. </p>
+<p>We are glad to receive any feedback you want to give us. </p>
+<p>A <a href="WebSequenceDiagram/">Sequence Diagram</a></p>
+<h1 id="application-layer-high-level-code">Application layer (high-level code)</h1>
+<h3 id="function-init_baseurl-_token-_network">function init(_baseUrl, _token, _network)</h3>
+<p>Initialises the token and challenge. Where token is optional. If the token is absent then by default the library is being used in the browser. </p>
+<p>The library is currently written so that it can use either Ethereum or Aethernity key pair. </p>
+<hr />
+<h3 id="async-function-loginkeypair">async function login(keyPair)</h3>
+<p>Attemps to log in with the provided key pair. The function retunrs a newly created token.</p>
+<hr />
+<h3 id="async-function-loginwithchallengechallenge-keypair">async function loginWithChallenge(challenge, keyPair)</h3>
+<p>Loggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.  </p>
+<hr />
+<h3 id="async-function-submitfilefileobj-userchainid-userchainidpubkey">async function submitFile(fileObj, userChainId, userChainIdPubKey)</h3>
+<p>Upon execution of the function the following things happen. The file is being encrypted on the client side prior to which uploaded to the server. The server records info on the blockchain. The server returns the status code and receipt. </p>
+<p><code>returns</code> <em>Example</em></p>
+<pre><code>
+ { 
+  status: 'OK',
+  code: '200',
+  blockchain: 'ae',
+  action: 'upload',
+  receipt: 
+   { hash: 'th_xoWkCki44SyQhYDQYoyr6CdE8TkzsZFwrQLtKcXMNZspnoZBh',
+     rawTx: 'tx_+QF2CwH4QrhAPrSS95Az/ZnL1CdHXu+Bpz238+T8W/Mwb2nKh/nqBpMqAeP63wmp3OWfXzT4IxJR6xUzs/mEnrZIZSJ6jmq9CbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H4oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdYMAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweDU0NjYzMDdkNjdiZWRjM2JmMDBjN2NlNGEyMDQwNDBiY2Q3NTY2NDE2MGY2M2E2NmM5ZjQxZDdlYmQ1OGUwM2YGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPH1SG5',
+     result: 
+      { callerId: 'ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc',
+        callerNonce: 248,
+        contractId: 'ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd',
+        gasPrice: 1000000000,
+        gasUsed: 2989,
+        height: 161100,
+        log: [],
+        returnType: 'ok',
+        returnValue: 'cb_/8CwV/U=' },
+     decodedResult: true },
+  docId: '0x5466307d67bedc3bf00c7ce4a204040bcd75664160f63a66c9f41d7ebd58e03f',
+  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' }
+
+</code></pre>
+
+<hr />
+<h3 id="async-function-decryptwithkeypairuserid-docchainid-keypair">async function decryptWithKeyPair(userId, docChainId, keyPair)</h3>
+<p>Takes as parameters: 
+- the userId
+- the chain ID of the file
+- the key pair of the user (currently AEternity supported only) </p>
+<p>Browser renders the docId as QR code and the user's device scans the QR. User device requests decryption info from server. After getting the decrypted password, it encrypts it again and sends it to the server. </p>
+<p>Returns the data for the file + encrypted password. </p>
+<hr />
+<h3 id="async-function-submitcredentialsdocchainid-userchainid">async function submitCredentials(docChainId, userChainId)</h3>
+<p>The browser creates a temporary key pair and submits a temporary public key. This key is used to decrypt the password coming from the mobile device. It expects document ID and the user's one for which the document is available.</p>
+<hr />
+<h3 id="async-function-pollforfilecredentialsresponse-receiverpubkey">async function pollForFile(credentialsResponse, receiverPubKey)</h3>
+<p>Takes as parameters:</p>
+<ul>
+<li>credentialsResponce</li>
+</ul>
+<p><em>Example</em></p>
+<pre><code>credentialsReponse: 
+{
+  userId:&quot;0x23423432&quot;, 
+  docId:&quot;0x234234&quot;
+} 
+</code></pre>
+
+<ul>
+<li>receiver Public Key</li>
+</ul>
+<p>This function asks the server if there is a document shared with the user, so that it can fetch them. When the file becomes available (decrypted with the password provided by the mobile device) it is returned to the client as a result. </p>
+<hr />
+<h3 id="async-function-openfiledocchainid-userchainid-keypair">async function openFile(docChainId, userChainId, keyPair)</h3>
+<p>Takes the user's credentials and scans for the requested file. If the user has permission (owns the file, or it has been shared to them) and the ile exists, then it is being decrypted and returned to the user. </p>
+<p><code>return</code> <em>Example</em> where the <strong>payload</strong> has the contents of the file.</p>
+<pre><code>openResult { code: 200,
+  status: 'unknown',
+  action: 'download',
+  docId: '0xc566de26a73d9795566ec393a3e5a775aea26fea9d3711a6ce399d4cb50990c8',
+  ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  hash: '0x0',
+  name: 'secret',
+  extension: '.pdf',
+  receipt: '{&quot;hash&quot;:&quot;th_JhWaB2tTF7vc57W6KmodvoUafxRYGQK4xbP3teb5ZoyGsympn&quot;,&quot;rawTx&quot;:&quot;tx_+QF2CwH4QrhA3OHYiMLbFCicYtuTyCP2Blr0xjqh75/6aKXQfshlXUt5Vv7D+Rxj7V2a14WY+9CkqEwOyMkpwWrzX4vswaTqAbkBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H6oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCdzwAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM1NjZkZTI2YTczZDk3OTU1NjZlYzM5M2EzZTVhNzc1YWVhMjZmZWE5ZDM3MTFhNmNlMzk5ZDRjYjUwOTkwYzgGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkN1KXDL&quot;,&quot;result&quot;:{&quot;callerId&quot;:&quot;ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc&quot;,&quot;callerNonce&quot;:250,&quot;contractId&quot;:&quot;ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd&quot;,&quot;gasPrice&quot;:1000000000,&quot;gasUsed&quot;:2989,&quot;height&quot;:161541,&quot;log&quot;:[],&quot;returnType&quot;:&quot;ok&quot;,&quot;returnValue&quot;:&quot;cb_/8CwV/U=&quot;},&quot;decodedResult&quot;:true}',
+  dateCreated: '2019-10-31T11:58:31.000Z',
+  dateUpdated: '2019-10-31T11:58:31.000Z',
+  category: 'OTHER',
+  keywords: '',
+  isEncrypted: true,
+  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  payload: 'very secret file contents #674100 312321',
+  encryption: {} }
+</code></pre>
+
+<hr />
+<h3 id="async-function-verifyfiledecryptionfilecontents-userid-docid">async function verifyFileDecryption(fileContents, userId, docId)</h3>
+<p>Given the contents of the file this function checks the hashed record on the blockchain and returns the file hash, the user ID. Returns <em>STATUS ERROR</em> if the validation fails. </p>
+<hr />
+<h3 id="async-function-selectfilesselectiontype-files-recipients">async function selectFiles(selectionType, files, recipients)</h3>
+<p>This function is for the user to select several files which they want to manage (open/share) at a time. The result of this function is used in <em>getSelectedFiles</em> to retrieve the list of files and users. Files and recepients are arrays. For each file ID corresponds a recepient ID. Using these two arrays one can design relations of the type M:M. </p>
+<p><em>For example 3 files shared with 5 recepients.</em></p>
+<p><code>returns</code> <em>qrCode</em>, where <strong>qrCode</strong> is 0x.. </p>
+<hr />
+<h3 id="async-function-getselectedfilesselectionhash">async function getSelectedFiles(selectionHash)</h3>
+<p>Takes the selection hash and returns the list of files and recepients (userIDs).</p>
+<hr />
+<h3 id="async-function-sharefiledocid-recipientid-keypair">async function shareFile(docId, recipientId, keyPair)</h3>
+<p>Takes a document ID, a recipient ID and the sender's key pair. Decrypts the document password and then re-encrypts it with recipient's public key, so that they can access it via their private key. </p>
+<hr />
+<h3 id="registerhashdocchainid-requesttype-targetuserid-keypair-poll-false">registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)</h3>
+<p>A function that registers the hash of a file directly on the blockchain. </p>
+<hr />
+<h3 id="verifyhashdocchainid-userid">verifyHash(docChainId, userId)</h3>
+<hr />
+<h3 id="async-function-prepareselectionselection">async function prepareSelection(selection)</h3>
+<p>Takes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.</p>
+<hr />
+<h3 id="async-function-execselectionselection-keypair">async function execSelection(selection, keyPair)</h3>
+<p>On the basis of the first parameter provided it will execute <em>Open</em> or <em>Share</em> on each file that is belonging to the selection.  </p>
+<p><code>retunrs</code> <em>Example on OPEN</em></p>
+<pre><code>exec result [ 
+  { docId:'0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',
+data:
+  { code: 200,
+    status: 'unknown',
+    action: 'download',
+    docId:
+    '0xc49961a3755ef646beaf93bcd0fe207791ea0db3f59460dad16fb0fd23c94bce',
+    ownerId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+    hash: '0x0',
+    name: 'secret',
+    extension: '.pdf',
+    receipt:
+    '{&quot;hash&quot;:&quot;th_17swnB9gvGorAWrEYk6tJxhGhPH3Z9kQ7ioDVqqSs8EPgjUWQ&quot;,&quot;rawTx&quot;:&quot;tx_+QF2CwH4QrhAlgYZFBs58BWWCu5wby1eKhWsuJB+8P8DrIVXG2ay3N7KSpEIdYq+C9vLsj1yw+0h++jX5n5niFkvX9T+fLz0C7kBLfkBKisBoQEkhQ/kbCTuXjLXWs0RnlCVu9NN9PUf+s7T6zyA3VVpE4H1oQXSMfXgDxiL+RtAV1KovE/uEIfP1vvtSbgijixIfdg21wOHAZ6/bhxIAIMCc4gAgwGGoIQ7msoAuMkrEd8llA1rUVJUTiBTZWN1cmVkIERvY3VtZW50AQQweGM0OTk2MWEzNzU1ZWY2NDZiZWFmOTNiY2QwZmUyMDc3OTFlYTBkYjNmNTk0NjBkYWQxNmZiMGZkMjNjOTRiY2UGnwCgFklB6O51o3sXf/0VemPy1rAbpaGyNkqAnbKq2RU2TRR/AQQweDhCRkRGQ0RDQzkwRjY1RDQzMDlCMDBCQzE3MjUwMjZFNkNENDlBQzgyNEM4RDZGMjMzNjk5RDcxNUU1N0FGMkPC47oQ&quot;,&quot;result&quot;:{&quot;callerId&quot;:&quot;ak_H5rDi9NViUebs6QFYYM2TKMifqtBCau77D48mF6AqJjuJA4tc&quot;,&quot;callerNonce&quot;:245,&quot;contractId&quot;:&quot;ct_2ba9tN5TXAtQD4WwKiRkMhM2p5c5ML7wJt9Q8XrVpK8RbMhYUd&quot;,&quot;gasPrice&quot;:1000000000,&quot;gasUsed&quot;:2989,&quot;height&quot;:160593,&quot;log&quot;:[],&quot;returnType&quot;:&quot;ok&quot;,&quot;returnValue&quot;:&quot;cb_/8CwV/U=&quot;},&quot;decodedResult&quot;:true}',
+    dateCreated: '2019-10-29T12:42:10.000Z',
+    dateUpdated: '2019-10-29T12:42:10.000Z',
+    category: 'OTHER',
+    keywords: '',
+    isEncrypted: true,
+    userId: 'ak_wnSecLhxY8fD88JDsQTSskHcahNhjEqBhifxYtYZUSP4fWW3v',
+    payload: 'very secret file contents #416510 3453454kk',
+    encryption: {} } } 
+    ]
+</code></pre>
+
+<hr />
+<h1 id="low-level-code"><a href="LowLevelCode/">Low level code</a></h1>
+<hr />
+<h2 id="exported-functions">Exported functions :</h2>
+<ul>
+<li>
+<p>debug: debugMode,</p>
+</li>
+<li>
+<p>init: init - Specify API token and API host</p>
+</li>
+<li>
+<p>login: login,</p>
+</li>
+<li>
+<p>loginWithChallenge: loginWithChallenge,</p>
+</li>
+<li>
+<p>newKeyPair: generateAkKeyPair - Create a keypair and recovery phrase </p>
+</li>
+<li>
+<p>store: submitFile - Encrypt, upload and register a file or any data </p>
+</li>
+</ul>
+<p>/<em> Retrieve file - used in case of browser interaction </em>/
+- prepare: submitCredentials,
+- decrypt: decryptWithKeyPair,
+- poll: pollForFile,</p>
+<p>/<em> Retrieve fle - used in case of client interaction </em>/
+- open: openFile,</p>
+<ul>
+<li>validate: validateFile,</li>
+<li>select: selectFiles,</li>
+<li>selection: getSelectedFiles,</li>
+<li>share: shareFile,</li>
+<li>prepareSelection: prepareSelection,</li>
+<li>execSelection: execSelection</li>
+</ul></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>var base_url = '.';</script>
+        <script data-main="./mkdocs/js/search.js" src="./mkdocs/js/require.js"></script>
+        <script src="./js/base.js"></script><div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
+
+<!--
+MkDocs version : 0.16.3
+Build Date UTC : 2020-03-12 14:22:07
+-->
