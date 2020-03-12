@@ -8,24 +8,24 @@ A [Sequence Diagram](WebSequenceDiagram.md)
 # Application layer (high-level code)
 
 
-### function init(_baseUrl, _token, _network) 
+#### function init(_baseUrl, _token, _network) 
 Initialises the token and challenge. Where token is optional. If the token is absent then by default the library is being used in the browser. 
 
 The library is currently written so that it can use either Ethereum or Aethernity key pair. 
 
 ---
 
-### async function login(keyPair)
+#### async function login(keyPair)
 Attemps to log in with the provided key pair. The function retunrs a newly created token.
 
 ---
 
-### async function loginWithChallenge(challenge, keyPair)
+#### async function loginWithChallenge(challenge, keyPair)
 Loggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.  
 
 ---
 
-### async function submitFile(fileObj, userChainId, userChainIdPubKey)
+#### async function submitFile(fileObj, userChainId, userChainIdPubKey)
 Upon execution of the function the following things happen. The file is being encrypted on the client side prior to which uploaded to the server. The server records info on the blockchain. The server returns the status code and receipt. 
 
 ``` returns``` _Example_
@@ -58,7 +58,7 @@ Upon execution of the function the following things happen. The file is being en
 
 ---
 
-### async function decryptWithKeyPair(userId, docChainId, keyPair)
+#### async function decryptWithKeyPair(userId, docChainId, keyPair)
 
 Takes as parameters: 
 - the userId
@@ -71,13 +71,13 @@ Returns the data for the file + encrypted password.
 
 ---
 
-### async function submitCredentials(docChainId, userChainId)
+#### async function submitCredentials(docChainId, userChainId)
 
 The browser creates a temporary key pair and submits a temporary public key. This key is used to decrypt the password coming from the mobile device. It expects document ID and the user's one for which the document is available.
 
 ---
 
-### async function pollForFile(credentialsResponse, receiverPubKey)
+#### async function pollForFile(credentialsResponse, receiverPubKey)
 Takes as parameters:
  
 - credentialsResponce
@@ -96,7 +96,7 @@ This function asks the server if there is a document shared with the user, so th
 
 ---
 
-### async function openFile(docChainId, userChainId, keyPair) 
+#### async function openFile(docChainId, userChainId, keyPair) 
 Takes the user's credentials and scans for the requested file. If the user has permission (owns the file, or it has been shared to them) and the ile exists, then it is being decrypted and returned to the user. 
 
 
@@ -123,13 +123,13 @@ openResult { code: 200,
 
 ---
 
-### async function verifyFileDecryption(fileContents, userId, docId)
+#### async function verifyFileDecryption(fileContents, userId, docId)
 
 Given the contents of the file this function checks the hashed record on the blockchain and returns the file hash, the user ID. Returns _STATUS ERROR_ if the validation fails. 
 
 ---
 
-### async function selectFiles(selectionType, files, recipients) 
+#### async function selectFiles(selectionType, files, recipients) 
 This function is for the user to select several files which they want to manage (open/share) at a time. The result of this function is used in _getSelectedFiles_ to retrieve the list of files and users. Files and recepients are arrays. For each file ID corresponds a recepient ID. Using these two arrays one can design relations of the type M:M. 
 
 _For example 3 files shared with 5 recepients._
@@ -138,35 +138,35 @@ _For example 3 files shared with 5 recepients._
 
 ---
 
-### async function getSelectedFiles(selectionHash)
+#### async function getSelectedFiles(selectionHash)
 
 Takes the selection hash and returns the list of files and recepients (userIDs).
 
 ---
 
-### async function shareFile(docId, recipientId, keyPair)
+#### async function shareFile(docId, recipientId, keyPair)
 
 Takes a document ID, a recipient ID and the sender's key pair. Decrypts the document password and then re-encrypts it with recipient's public key, so that they can access it via their private key. 
 
 
 ---
 
-### registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)
+#### registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)
 
 A function that registers the hash of a file directly on the blockchain. 
 
 ---
 
-### verifyHash(docChainId, userId)
+#### verifyHash(docChainId, userId)
 
 ---
 
-### async function prepareSelection(selection) 
+#### async function prepareSelection(selection) 
 Takes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.
 
 ---
 
-### async function execSelection(selection, keyPair)
+#### async function execSelection(selection, keyPair)
 
 On the basis of the first parameter provided it will execute _Open_ or _Share_ on each file that is belonging to the selection.  
 
@@ -204,7 +204,7 @@ data:
 
 --- 
 
-## Exported functions : 
+### Exported functions : 
 
 - debug: debugMode,
 
