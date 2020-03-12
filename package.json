@@ -1,0 +1,22 @@
+{
+  "name": "recheck-clientjs-library",
+  "version": "1.0.1",
+  "description": "Encryption library that uses two PKI key pairs. ",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReCheck-io/recheck-clientjs-library.git"
+  },
+  "keywords": [
+    "encryption",
+    "npm",
+    "blockchain",
+    "PKI"
+  ],
+  "author": "ReCheck team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ReCheck-io/recheck-clientjs-library/issues"
+  },
+  "homepage": "https://github.com/ReCheck-io/recheck-clientjs-library#readme"
+}
