@@ -1,35 +1,35 @@
 # Low-level codе
-#### async function _session25519(key1, key2)
+#### session25519 ( key1, key2 )
 Uses two strings, in our case six words per key, to create four keys for the user's key pair.
 
 ---
 
-#### function getHash(string)
+#### getHash ( string )
 Uses keccak256 (sha3) and returns the hash with the 0x prefix. 
 
 ---
 
-#### getRequestHash(requestBodyOrUrl)
+#### getRequestHash ( requestBodyOrUrl )
 In favor of better transaction validation, we decided to hash the content of every API call. This function is going to order the fields in JSON alphabetically and then hash it. This hash then will be added to the post request for back-end verification.  
 
 ---
 
-#### function encodeBase58Check(src)
+#### encodeBase58Check ( src )
 Encoding 32 byte[] into an address .
 
 ---
 
-#### function decodeBase58Check(src)
+#### decodeBase58Check ( src )
 Decoding into 32 byte[].
 
 ---
 
-#### function sign(data, privateKey)
+#### sign ( data, privateKey )
 Function to cryptogrphically sign, in our case a document, with user's private key.
 
 ---
 
-#### async function generateAkKeyPair(passphrase)
+#### generateAkKeyPair ( passphrase )
 Generates key pair, account, for AEternity blockchain. Takes as parameter the passphrase, which the user receives as back-up words or generates new words with the **diceware** method. Then uses the session25519 function with 6 words per key.
 ```
     key1 = words.slice(0, 6).join(' ');//0-5
@@ -77,13 +77,13 @@ case  "eth":
 
 ---
 
-#### const akPairToRaw = (akPair) => {}
+#### akPairToRaw = (akPair) => {}
 
 Converts and returns the Encryption key pair in raw bytes.
 
 ---
 
-#### const encrypt = (secretOrSharedKey, json, key) => {} 
+#### encrypt = (secretOrSharedKey, json, key) => {} 
 
 Takes as input secret or shared key, a JSON object and a key. Using asymmetric public key encryption. 
 
@@ -93,7 +93,7 @@ Taken from [TweetNaCl Box example](https://github.com/dchest/tweetnacl-js/wiki/E
 
 ---
 
-#### const decrypt = (secretOrSharedKey, messageWithNonce, key) => {}
+#### decrypt = (secretOrSharedKey, messageWithNonce, key) => {}
 
 Takes secret or shared key, encrypted message, and a key. Decrypts the message. 
 
@@ -103,7 +103,7 @@ Taken from [TweetNaCl Box example](https://github.com/dchest/tweetnacl-js/wiki/E
 
 ---
 
-#### async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) 
+#### encryptDataToPublicKeyWithKeyPair ( data, dstPublicEncKey, srcAkPair ) 
 Encrypts the data, and returns and object with the cyphered data. 
 
 ``` 
@@ -118,13 +118,13 @@ encrypted = {
 
 ---
 
-#### function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
+#### decryptDataWithPublicAndPrivateKey ( payload, srcPublicEncKey, secretKey )
 
 Decrypts the data using TweetNacl box method and returns the decyphered data.
 
 ---
 
-#### const encryptDataWithSymetricKey = (data, key) => {}
+#### encryptDataWithSymetricKey = (data, key) => {}
 
 Encrypts data with symmetric key using the TweetNaCl secret box methods. 
 
@@ -132,7 +132,7 @@ Encrypts data with symmetric key using the TweetNaCl secret box methods.
 
 ---
 
-#### const decryptDataWithSymmetricKey = (messageWithNonce, key) => {}
+#### decryptDataWithSymmetricKey = (messageWithNonce, key) => {}
 
 Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box method. 
 
@@ -140,12 +140,12 @@ Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box 
 
 ---
 
-#### async function encryptFileToPublicKey(fileData, dstPublicKey) {}
+#### encryptFileToPublicKey ( fileData, dstPublicKey ) {}
 This function creates sym key. Encrypts and returns an object with the cyphered data and the information to recreate the sym key, and decrypt the message if you have the rest of the information.
 
 ---
 
-#### async function getFileUploadData(fileObj, userChainId, userChainIdPubKey)
+#### getFileUploadData ( fileObj, userChainId, userChainIdPubKey )
 Encrypts the data with **encryptFileToPublicKey** method. Returns the following object
 ```
 let fileUploadData = {
@@ -178,24 +178,22 @@ This object is then hashed with **getRequestHash**. After that the hash is being
 
 ---
 
-#### async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey)
+#### processEncryptedFileInfo ( encryptedFileInfo, devicePublicKey, browserPrivateKey )
 This function takes the file, gives it to the browser, the browser can now compose the full password and decrypt the file. 
 
 ```returns``` _An object with decrypted message_
 
 ---
 
-#### function getEndpointUrl(action, appendix)
+#### getEndpointUrl ( action, appendix )
 
 Gets the server route for the specific API call.
 
 ---
 
-#### signMessage(message, secretKey)
+#### signMessage ( message, secretKey )
 This function is to encapsulate the different ways to sing a message depending on the network. At the moment it is to sign with either Eth or AE sign. 
 
 ---
 
-#### verifyMessage(message, signature, pubKey)
-
-
+#### verifyMessage ( message, signature, pubKey )

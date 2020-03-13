@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="./img/favicon.ico">
-        <title>Recheck client-js encryption library</title>
+        <title>JS Encryption library</title>
         <link href="./css/bootstrap-custom.min.css" rel="stylesheet">
         <link href="./css/font-awesome-4.5.0.css" rel="stylesheet">
         <link href="./css/base.css" rel="stylesheet">
@@ -38,7 +38,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href=".">Recheck client-js encryption library</a>
+            <a class="navbar-brand" href=".">JS Encryption library</a>
         </div>
 
         <!-- Expanded navigation -->
@@ -109,17 +109,17 @@
 <p>We are glad to receive any feedback you want to give us. </p>
 <p>A <a href="WebSequenceDiagram/">Sequence Diagram</a></p>
 <h1 id="application-layer-high-level-code">Application layer (high-level code)</h1>
-<h3 id="function-init_baseurl-_token-_network">function init(_baseUrl, _token, _network)</h3>
+<h4 id="function-init_baseurl-_token-_network">function init(_baseUrl, _token, _network)</h4>
 <p>Initialises the token and challenge. Where token is optional. If the token is absent then by default the library is being used in the browser. </p>
 <p>The library is currently written so that it can use either Ethereum or Aethernity key pair. </p>
 <hr />
-<h3 id="async-function-loginkeypair">async function login(keyPair)</h3>
+<h4 id="async-function-loginkeypair">async function login(keyPair)</h4>
 <p>Attemps to log in with the provided key pair. The function retunrs a newly created token.</p>
 <hr />
-<h3 id="async-function-loginwithchallengechallenge-keypair">async function loginWithChallenge(challenge, keyPair)</h3>
+<h4 id="async-function-loginwithchallengechallenge-keypair">async function loginWithChallenge(challenge, keyPair)</h4>
 <p>Loggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.  </p>
 <hr />
-<h3 id="async-function-submitfilefileobj-userchainid-userchainidpubkey">async function submitFile(fileObj, userChainId, userChainIdPubKey)</h3>
+<h4 id="async-function-submitfilefileobj-userchainid-userchainidpubkey">async function submitFile(fileObj, userChainId, userChainIdPubKey)</h4>
 <p>Upon execution of the function the following things happen. The file is being encrypted on the client side prior to which uploaded to the server. The server records info on the blockchain. The server returns the status code and receipt. </p>
 <p><code>returns</code> <em>Example</em></p>
 <pre><code>
@@ -148,7 +148,7 @@
 </code></pre>
 
 <hr />
-<h3 id="async-function-decryptwithkeypairuserid-docchainid-keypair">async function decryptWithKeyPair(userId, docChainId, keyPair)</h3>
+<h4 id="async-function-decryptwithkeypairuserid-docchainid-keypair">async function decryptWithKeyPair(userId, docChainId, keyPair)</h4>
 <p>Takes as parameters: 
 - the userId
 - the chain ID of the file
@@ -156,10 +156,10 @@
 <p>Browser renders the docId as QR code and the user's device scans the QR. User device requests decryption info from server. After getting the decrypted password, it encrypts it again and sends it to the server. </p>
 <p>Returns the data for the file + encrypted password. </p>
 <hr />
-<h3 id="async-function-submitcredentialsdocchainid-userchainid">async function submitCredentials(docChainId, userChainId)</h3>
+<h4 id="async-function-submitcredentialsdocchainid-userchainid">async function submitCredentials(docChainId, userChainId)</h4>
 <p>The browser creates a temporary key pair and submits a temporary public key. This key is used to decrypt the password coming from the mobile device. It expects document ID and the user's one for which the document is available.</p>
 <hr />
-<h3 id="async-function-pollforfilecredentialsresponse-receiverpubkey">async function pollForFile(credentialsResponse, receiverPubKey)</h3>
+<h4 id="async-function-pollforfilecredentialsresponse-receiverpubkey">async function pollForFile(credentialsResponse, receiverPubKey)</h4>
 <p>Takes as parameters:</p>
 <ul>
 <li>credentialsResponce</li>
@@ -177,7 +177,7 @@
 </ul>
 <p>This function asks the server if there is a document shared with the user, so that it can fetch them. When the file becomes available (decrypted with the password provided by the mobile device) it is returned to the client as a result. </p>
 <hr />
-<h3 id="async-function-openfiledocchainid-userchainid-keypair">async function openFile(docChainId, userChainId, keyPair)</h3>
+<h4 id="async-function-openfiledocchainid-userchainid-keypair">async function openFile(docChainId, userChainId, keyPair)</h4>
 <p>Takes the user's credentials and scans for the requested file. If the user has permission (owns the file, or it has been shared to them) and the ile exists, then it is being decrypted and returned to the user. </p>
 <p><code>return</code> <em>Example</em> where the <strong>payload</strong> has the contents of the file.</p>
 <pre><code>openResult { code: 200,
@@ -200,29 +200,29 @@
 </code></pre>
 
 <hr />
-<h3 id="async-function-verifyfiledecryptionfilecontents-userid-docid">async function verifyFileDecryption(fileContents, userId, docId)</h3>
+<h4 id="async-function-verifyfiledecryptionfilecontents-userid-docid">async function verifyFileDecryption(fileContents, userId, docId)</h4>
 <p>Given the contents of the file this function checks the hashed record on the blockchain and returns the file hash, the user ID. Returns <em>STATUS ERROR</em> if the validation fails. </p>
 <hr />
-<h3 id="async-function-selectfilesselectiontype-files-recipients">async function selectFiles(selectionType, files, recipients)</h3>
+<h4 id="async-function-selectfilesselectiontype-files-recipients">async function selectFiles(selectionType, files, recipients)</h4>
 <p>This function is for the user to select several files which they want to manage (open/share) at a time. The result of this function is used in <em>getSelectedFiles</em> to retrieve the list of files and users. Files and recepients are arrays. For each file ID corresponds a recepient ID. Using these two arrays one can design relations of the type M:M. </p>
 <p><em>For example 3 files shared with 5 recepients.</em></p>
 <p><code>returns</code> <em>qrCode</em>, where <strong>qrCode</strong> is 0x.. </p>
 <hr />
-<h3 id="async-function-getselectedfilesselectionhash">async function getSelectedFiles(selectionHash)</h3>
+<h4 id="async-function-getselectedfilesselectionhash">async function getSelectedFiles(selectionHash)</h4>
 <p>Takes the selection hash and returns the list of files and recepients (userIDs).</p>
 <hr />
-<h3 id="async-function-sharefiledocid-recipientid-keypair">async function shareFile(docId, recipientId, keyPair)</h3>
+<h4 id="async-function-sharefiledocid-recipientid-keypair">async function shareFile(docId, recipientId, keyPair)</h4>
 <p>Takes a document ID, a recipient ID and the sender's key pair. Decrypts the document password and then re-encrypts it with recipient's public key, so that they can access it via their private key. </p>
 <hr />
-<h3 id="registerhashdocchainid-requesttype-targetuserid-keypair-poll-false">registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)</h3>
+<h4 id="registerhashdocchainid-requesttype-targetuserid-keypair-poll-false">registerHash(docChainId, requestType, targetUserId, keyPair, poll = false)</h4>
 <p>A function that registers the hash of a file directly on the blockchain. </p>
 <hr />
-<h3 id="verifyhashdocchainid-userid">verifyHash(docChainId, userId)</h3>
+<h4 id="verifyhashdocchainid-userid">verifyHash(docChainId, userId)</h4>
 <hr />
-<h3 id="async-function-prepareselectionselection">async function prepareSelection(selection)</h3>
+<h4 id="async-function-prepareselectionselection">async function prepareSelection(selection)</h4>
 <p>Takes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.</p>
 <hr />
-<h3 id="async-function-execselectionselection-keypair">async function execSelection(selection, keyPair)</h3>
+<h4 id="async-function-execselectionselection-keypair">async function execSelection(selection, keyPair)</h4>
 <p>On the basis of the first parameter provided it will execute <em>Open</em> or <em>Share</em> on each file that is belonging to the selection.  </p>
 <p><code>retunrs</code> <em>Example on OPEN</em></p>
 <pre><code>exec result [ 
@@ -253,7 +253,7 @@ data:
 <hr />
 <h1 id="low-level-code"><a href="LowLevelCode/">Low level code</a></h1>
 <hr />
-<h2 id="exported-functions">Exported functions :</h2>
+<h3 id="exported-functions">Exported functions :</h3>
 <ul>
 <li>
 <p>debug: debugMode,</p>
@@ -326,5 +326,5 @@ data:
 
 <!--
 MkDocs version : 0.16.3
-Build Date UTC : 2020-03-12 14:24:13
+Build Date UTC : 2020-03-12 14:59:01
 -->
