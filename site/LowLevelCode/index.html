@@ -48,6 +48,9 @@
                     <li >
                         <a href="..">Home</a>
                     </li>
+                    <li >
+                        <a href="../ApplicationLevel/">ApplicationLevel</a>
+                    </li>
                     <li class="active">
                         <a href="./">LowLevelCode</a>
                     </li>
@@ -63,7 +66,7 @@
                     </a>
                 </li>
                     <li >
-                        <a rel="next" href="..">
+                        <a rel="next" href="../ApplicationLevel/">
                             <i class="fa fa-arrow-left"></i> Previous
                         </a>
                     </li>
@@ -81,50 +84,50 @@
                 <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
         <li class="main active"><a href="#low-level-cod">Low-level codе</a></li>
-            <li><a href="#async-function-_session25519key1-key2">async function _session25519(key1, key2)</a></li>
-            <li><a href="#function-gethashstring">function getHash(string)</a></li>
-            <li><a href="#getrequesthashrequestbodyorurl">getRequestHash(requestBodyOrUrl)</a></li>
-            <li><a href="#function-encodebase58checksrc">function encodeBase58Check(src)</a></li>
-            <li><a href="#function-decodebase58checksrc">function decodeBase58Check(src)</a></li>
-            <li><a href="#function-signdata-privatekey">function sign(data, privateKey)</a></li>
-            <li><a href="#async-function-generateakkeypairpassphrase">async function generateAkKeyPair(passphrase)</a></li>
-            <li><a href="#const-akpairtoraw-akpair">const akPairToRaw = (akPair) =&gt; {}</a></li>
-            <li><a href="#const-encrypt-secretorsharedkey-json-key">const encrypt = (secretOrSharedKey, json, key) =&gt; {}</a></li>
-            <li><a href="#const-decrypt-secretorsharedkey-messagewithnonce-key">const decrypt = (secretOrSharedKey, messageWithNonce, key) =&gt; {}</a></li>
-            <li><a href="#async-function-encryptdatatopublickeywithkeypairdata-dstpublicenckey-srcakpair">async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair)</a></li>
-            <li><a href="#function-decryptdatawithpublicandprivatekeypayload-srcpublicenckey-secretkey">function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)</a></li>
-            <li><a href="#const-encryptdatawithsymetrickey-data-key">const encryptDataWithSymetricKey = (data, key) =&gt; {}</a></li>
-            <li><a href="#const-decryptdatawithsymmetrickey-messagewithnonce-key">const decryptDataWithSymmetricKey = (messageWithNonce, key) =&gt; {}</a></li>
-            <li><a href="#async-function-encryptfiletopublickeyfiledata-dstpublickey">async function encryptFileToPublicKey(fileData, dstPublicKey) {}</a></li>
-            <li><a href="#async-function-getfileuploaddatafileobj-userchainid-userchainidpubkey">async function getFileUploadData(fileObj, userChainId, userChainIdPubKey)</a></li>
-            <li><a href="#async-function-processencryptedfileinfoencryptedfileinfo-devicepublickey-browserprivatekey">async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey)</a></li>
-            <li><a href="#function-getendpointurlaction-appendix">function getEndpointUrl(action, appendix)</a></li>
-            <li><a href="#signmessagemessage-secretkey">signMessage(message, secretKey)</a></li>
-            <li><a href="#verifymessagemessage-signature-pubkey">verifyMessage(message, signature, pubKey)</a></li>
+            <li><a href="#session25519-key1-key2">session25519 ( key1, key2 )</a></li>
+            <li><a href="#gethash-string">getHash ( string )</a></li>
+            <li><a href="#getrequesthash-requestbodyorurl">getRequestHash ( requestBodyOrUrl )</a></li>
+            <li><a href="#encodebase58check-src">encodeBase58Check ( src )</a></li>
+            <li><a href="#decodebase58check-src">decodeBase58Check ( src )</a></li>
+            <li><a href="#sign-data-privatekey">sign ( data, privateKey )</a></li>
+            <li><a href="#generateakkeypair-passphrase">generateAkKeyPair ( passphrase )</a></li>
+            <li><a href="#akpairtoraw-akpair">akPairToRaw = (akPair) =&gt; {}</a></li>
+            <li><a href="#encrypt-secretorsharedkey-json-key">encrypt = (secretOrSharedKey, json, key) =&gt; {}</a></li>
+            <li><a href="#decrypt-secretorsharedkey-messagewithnonce-key">decrypt = (secretOrSharedKey, messageWithNonce, key) =&gt; {}</a></li>
+            <li><a href="#encryptdatatopublickeywithkeypair-data-dstpublicenckey-srcakpair">encryptDataToPublicKeyWithKeyPair ( data, dstPublicEncKey, srcAkPair )</a></li>
+            <li><a href="#decryptdatawithpublicandprivatekey-payload-srcpublicenckey-secretkey">decryptDataWithPublicAndPrivateKey ( payload, srcPublicEncKey, secretKey )</a></li>
+            <li><a href="#encryptdatawithsymetrickey-data-key">encryptDataWithSymetricKey = (data, key) =&gt; {}</a></li>
+            <li><a href="#decryptdatawithsymmetrickey-messagewithnonce-key">decryptDataWithSymmetricKey = (messageWithNonce, key) =&gt; {}</a></li>
+            <li><a href="#encryptfiletopublickey-filedata-dstpublickey">encryptFileToPublicKey ( fileData, dstPublicKey ) {}</a></li>
+            <li><a href="#getfileuploaddata-fileobj-userchainid-userchainidpubkey">getFileUploadData ( fileObj, userChainId, userChainIdPubKey )</a></li>
+            <li><a href="#processencryptedfileinfo-encryptedfileinfo-devicepublickey-browserprivatekey">processEncryptedFileInfo ( encryptedFileInfo, devicePublicKey, browserPrivateKey )</a></li>
+            <li><a href="#getendpointurl-action-appendix">getEndpointUrl ( action, appendix )</a></li>
+            <li><a href="#signmessage-message-secretkey">signMessage ( message, secretKey )</a></li>
+            <li><a href="#verifymessage-message-signature-pubkey">verifyMessage ( message, signature, pubKey )</a></li>
     </ul>
 </div></div>
                 <div class="col-md-9" role="main">
 
 <h1 id="low-level-cod">Low-level codе</h1>
-<h4 id="async-function-_session25519key1-key2">async function _session25519(key1, key2)</h4>
+<h4 id="session25519-key1-key2">session25519 ( key1, key2 )</h4>
 <p>Uses two strings, in our case six words per key, to create four keys for the user's key pair.</p>
 <hr />
-<h4 id="function-gethashstring">function getHash(string)</h4>
+<h4 id="gethash-string">getHash ( string )</h4>
 <p>Uses keccak256 (sha3) and returns the hash with the 0x prefix. </p>
 <hr />
-<h4 id="getrequesthashrequestbodyorurl">getRequestHash(requestBodyOrUrl)</h4>
+<h4 id="getrequesthash-requestbodyorurl">getRequestHash ( requestBodyOrUrl )</h4>
 <p>In favor of better transaction validation, we decided to hash the content of every API call. This function is going to order the fields in JSON alphabetically and then hash it. This hash then will be added to the post request for back-end verification.  </p>
 <hr />
-<h4 id="function-encodebase58checksrc">function encodeBase58Check(src)</h4>
+<h4 id="encodebase58check-src">encodeBase58Check ( src )</h4>
 <p>Encoding 32 byte[] into an address .</p>
 <hr />
-<h4 id="function-decodebase58checksrc">function decodeBase58Check(src)</h4>
+<h4 id="decodebase58check-src">decodeBase58Check ( src )</h4>
 <p>Decoding into 32 byte[].</p>
 <hr />
-<h4 id="function-signdata-privatekey">function sign(data, privateKey)</h4>
+<h4 id="sign-data-privatekey">sign ( data, privateKey )</h4>
 <p>Function to cryptogrphically sign, in our case a document, with user's private key.</p>
 <hr />
-<h4 id="async-function-generateakkeypairpassphrase">async function generateAkKeyPair(passphrase)</h4>
+<h4 id="generateakkeypair-passphrase">generateAkKeyPair ( passphrase )</h4>
 <p>Generates key pair, account, for AEternity blockchain. Takes as parameter the passphrase, which the user receives as back-up words or generates new words with the <strong>diceware</strong> method. Then uses the session25519 function with 6 words per key.</p>
 <pre><code>    key1 = words.slice(0, 6).join(' ');//0-5
     key2 = words.slice(6, 12).join(' ');//6-11
@@ -169,20 +172,20 @@ case  &quot;eth&quot;:
 
 <p><code>returns</code> <em>keyPair</em> object</p>
 <hr />
-<h4 id="const-akpairtoraw-akpair">const akPairToRaw = (akPair) =&gt; {}</h4>
+<h4 id="akpairtoraw-akpair">akPairToRaw = (akPair) =&gt; {}</h4>
 <p>Converts and returns the Encryption key pair in raw bytes.</p>
 <hr />
-<h4 id="const-encrypt-secretorsharedkey-json-key">const encrypt = (secretOrSharedKey, json, key) =&gt; {}</h4>
+<h4 id="encrypt-secretorsharedkey-json-key">encrypt = (secretOrSharedKey, json, key) =&gt; {}</h4>
 <p>Takes as input secret or shared key, a JSON object and a key. Using asymmetric public key encryption. </p>
 <p>Taken from <a href="https://github.com/dchest/tweetnacl-js/wiki/Examples">TweetNaCl Box example</a></p>
 <p><code>returns</code> <em>Base64 encoded message</em></p>
 <hr />
-<h4 id="const-decrypt-secretorsharedkey-messagewithnonce-key">const decrypt = (secretOrSharedKey, messageWithNonce, key) =&gt; {}</h4>
+<h4 id="decrypt-secretorsharedkey-messagewithnonce-key">decrypt = (secretOrSharedKey, messageWithNonce, key) =&gt; {}</h4>
 <p>Takes secret or shared key, encrypted message, and a key. Decrypts the message. </p>
 <p>Taken from <a href="https://github.com/dchest/tweetnacl-js/wiki/Examples">TweetNaCl Box example</a></p>
 <p><code>returns</code> <em>JSON.parse(Base64 decrypted message)</em> or <em>base64decryptedMessage</em> if it comes from Java. </p>
 <hr />
-<h4 id="async-function-encryptdatatopublickeywithkeypairdata-dstpublicenckey-srcakpair">async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair)</h4>
+<h4 id="encryptdatatopublickeywithkeypair-data-dstpublicenckey-srcakpair">encryptDataToPublicKeyWithKeyPair ( data, dstPublicEncKey, srcAkPair )</h4>
 <p>Encrypts the data, and returns and object with the cyphered data. </p>
 <pre><code>encrypted = {
 
@@ -194,21 +197,21 @@ case  &quot;eth&quot;:
 </code></pre>
 
 <hr />
-<h4 id="function-decryptdatawithpublicandprivatekeypayload-srcpublicenckey-secretkey">function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)</h4>
+<h4 id="decryptdatawithpublicandprivatekey-payload-srcpublicenckey-secretkey">decryptDataWithPublicAndPrivateKey ( payload, srcPublicEncKey, secretKey )</h4>
 <p>Decrypts the data using TweetNacl box method and returns the decyphered data.</p>
 <hr />
-<h4 id="const-encryptdatawithsymetrickey-data-key">const encryptDataWithSymetricKey = (data, key) =&gt; {}</h4>
+<h4 id="encryptdatawithsymetrickey-data-key">encryptDataWithSymetricKey = (data, key) =&gt; {}</h4>
 <p>Encrypts data with symmetric key using the TweetNaCl secret box methods. </p>
 <p><code>returns</code> <em>Base64 encrypted message</em></p>
 <hr />
-<h4 id="const-decryptdatawithsymmetrickey-messagewithnonce-key">const decryptDataWithSymmetricKey = (messageWithNonce, key) =&gt; {}</h4>
+<h4 id="decryptdatawithsymmetrickey-messagewithnonce-key">decryptDataWithSymmetricKey = (messageWithNonce, key) =&gt; {}</h4>
 <p>Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box method. </p>
 <p><code>returns</code> <em>UTF8 encoded decrypted message</em></p>
 <hr />
-<h4 id="async-function-encryptfiletopublickeyfiledata-dstpublickey">async function encryptFileToPublicKey(fileData, dstPublicKey) {}</h4>
+<h4 id="encryptfiletopublickey-filedata-dstpublickey">encryptFileToPublicKey ( fileData, dstPublicKey ) {}</h4>
 <p>This function creates sym key. Encrypts and returns an object with the cyphered data and the information to recreate the sym key, and decrypt the message if you have the rest of the information.</p>
 <hr />
-<h4 id="async-function-getfileuploaddatafileobj-userchainid-userchainidpubkey">async function getFileUploadData(fileObj, userChainId, userChainIdPubKey)</h4>
+<h4 id="getfileuploaddata-fileobj-userchainid-userchainidpubkey">getFileUploadData ( fileObj, userChainId, userChainIdPubKey )</h4>
 <p>Encrypts the data with <strong>encryptFileToPublicKey</strong> method. Returns the following object</p>
 <pre><code>let fileUploadData = {
         userId: userChainId,
@@ -238,17 +241,17 @@ case  &quot;eth&quot;:
 </code></pre>
 
 <hr />
-<h4 id="async-function-processencryptedfileinfoencryptedfileinfo-devicepublickey-browserprivatekey">async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey)</h4>
+<h4 id="processencryptedfileinfo-encryptedfileinfo-devicepublickey-browserprivatekey">processEncryptedFileInfo ( encryptedFileInfo, devicePublicKey, browserPrivateKey )</h4>
 <p>This function takes the file, gives it to the browser, the browser can now compose the full password and decrypt the file. </p>
 <p><code>returns</code> <em>An object with decrypted message</em></p>
 <hr />
-<h4 id="function-getendpointurlaction-appendix">function getEndpointUrl(action, appendix)</h4>
+<h4 id="getendpointurl-action-appendix">getEndpointUrl ( action, appendix )</h4>
 <p>Gets the server route for the specific API call.</p>
 <hr />
-<h4 id="signmessagemessage-secretkey">signMessage(message, secretKey)</h4>
+<h4 id="signmessage-message-secretkey">signMessage ( message, secretKey )</h4>
 <p>This function is to encapsulate the different ways to sing a message depending on the network. At the moment it is to sign with either Eth or AE sign. </p>
 <hr />
-<h4 id="verifymessagemessage-signature-pubkey">verifyMessage(message, signature, pubKey)</h4></div>
+<h4 id="verifymessage-message-signature-pubkey">verifyMessage ( message, signature, pubKey )</h4></div>
         </div>
 
         <footer class="col-md-12">

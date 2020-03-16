@@ -4,7 +4,15 @@
     
     <url>
      <loc>/</loc>
-     <lastmod>2020-03-12</lastmod>
+     <lastmod>2020-03-13</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+    
+
+    
+    <url>
+     <loc>/ApplicationLevel/</loc>
+     <lastmod>2020-03-13</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -12,7 +20,7 @@
     
     <url>
      <loc>/LowLevelCode/</loc>
-     <lastmod>2020-03-12</lastmod>
+     <lastmod>2020-03-13</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -20,7 +28,7 @@
     
     <url>
      <loc>/WebSequenceDiagram/</loc>
-     <lastmod>2020-03-12</lastmod>
+     <lastmod>2020-03-13</lastmod>
      <changefreq>daily</changefreq>
     </url>
     

@@ -6,47 +6,28 @@ const keccak256 = require('keccak256');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
-const EthCrypto = require('eth-crypto');
+const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
-
-
-const newNonce = () => randomBytes(box.nonceLength);
-
-const generateKey = () => encodeBase64(randomBytes(secretbox.keyLength));
 
 let debug = true;
 
 let baseUrl = 'http://localhost:3000';
-let token = undefined;
-let network = "eth"; //ae,eth
+let token = null;
+let network = "ae"; //ae,eth
 
 const requestId = 'ReCheck';
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 
-(function setOrigin() {
-    if (typeof window !== 'undefined'
-        && !!window
-        && !!window.location
-        && !!window.location.origin) {
-        init(window.location.origin,network);
-    }
-}());
-const debugMode = (debugFlag) => {
-    debug = debugFlag;
+const newNonce = () => randomBytes(box.nonceLength);
 
-};
-const log = (v1, v2) => {
+const generateKey = () => encodeBase64(randomBytes(secretbox.keyLength));
+
+const log = (message, params) => {
     if (debug) {
-        // console.log(`[${v1}]`, v2 ? v2 : '');
+        console.log(`[${message}]`, params ? params : '');
     }
 };
-
-async function _session25519(key1, key2) {
-    return new Promise(resolve => {
-        session25519(key1, key2, (err, result) => resolve(result));
-    })
-}
 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
@@ -90,249 +71,132 @@ function getRequestHash(requestBodyOrUrl) {
     return getHash(requestString);
 }
 
-function sign(data, privateKey) {
-    return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
+function encodeBase58Check(input) {
+    return bs58check.encode(Buffer.from(input));
 }
 
-function encodeBase58Check(src) {
-    return bs58check.encode(Buffer.from(src));
+function decodeBase58Check(input) {
+    return bs58check.decode(input);
 }
 
-function decodeBase58Check(src) {
-    return bs58check.decode(src);
-}
-
-function hexStringToByte(src) {
-    if (!src) {
-        //TODO signature mismatch / arguments type do not match parameters
+function hexStringToByte(hexString) {
+    if (isNullAny(hexString)) {
         return new Uint8Array();
     }
 
-    let a = [];
-    for (let i = 0, len = src.length; i < len; i += 2) {
-        a.push(parseInt(src.substr(i, 2), 16));
+    let result = [];
+    for (let i = 0; i < hexString.length; i += 2) {
+        result.push(parseInt(hexString.substr(i, 2), 16));
     }
 
-    return new Uint8Array(a);
-}
-
-async function generateAkKeyPair(passphrase) {
-
-    let key1 = '';
-    let key2 = '';
-
-    if (passphrase) {
-        const words = passphrase.split(' ');
-        if (words.length < 12) {
-            throw('Invalid passphrase. Must be 12 words long.');
-        }
-        key1 = words.slice(0, 6).join(' ');//0-5
-        key2 = words.slice(6, 12).join(' ');//6-11
-    } else {
-        key1 = diceware(6);
-        key2 = diceware(6);
-    }
-
-    let phrase = `${key1} ${key2}`;
-
-    let keys = await _session25519(key1, key2);
-
-    let publicEncBuffer = Buffer.from(keys.publicKey);
-    let secretEncBuffer = Buffer.from(keys.secretKey);  // 32-bytes private key
-    let secretSignBuffer;
-
-    switch (network) {
-        case"ae":
-            let publicSignBuffer = Buffer.from(keys.publicSignKey);
-            secretSignBuffer = Buffer.from(keys.secretSignKey); // 64-bytes private key
-            let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
-            return {
-                address: address,
-                publicKey: address,
-                secretKey: secretSignBuffer.toString('hex'),
-                publicEncKey: encodeBase58Check(publicEncBuffer),
-                secretEncKey: secretEncBuffer.toString('hex'),
-                phrase: phrase
-            };
-
-        case  "eth":
-            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
-            let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
-            let publicSignKey = EthCrypto.publicKeyByPrivateKey(secretSignKey);
-            let publicAddress = EthCrypto.publicKey.toAddress(publicSignKey);
-
-            return {
-                address: publicAddress,
-                publicKey: publicSignKey,
-                secretKey: secretSignKey,
-                publicEncKey: encodeBase58Check(publicEncBuffer),
-                secretEncKey: secretEncBuffer.toString('hex'),
-                phrase: phrase
-            };
-    }
+    return new Uint8Array(result);
 }
 
 async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const akPairToRaw = (akPair) => {
-    return {
-        secretEncKey: hexStringToByte(akPair.secretEncKey),
-        publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
-    }
-};
-
-const encrypt = (
-    secretOrSharedKey,
-    json,
-    key
-) => {
-    const nonce = newNonce();
-    const messageUint8 = decodeUTF8(JSON.stringify(json));
-    const encrypted = key
-        ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-        : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
-
-    const fullMessage = new Uint8Array(nonce.length + encrypted.length);
-    fullMessage.set(nonce);
-    fullMessage.set(encrypted, nonce.length);
-
-    return encodeBase64(fullMessage);//base64FullMessage
-};
-
-const decrypt = (
-    secretOrSharedKey,
-    messageWithNonce,
-    key
-) => {
-
-    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
-    const message = messageWithNonceAsUint8Array.slice(
-        box.nonceLength,
-        messageWithNonce.length
-    );
-
-    const decrypted = key
-        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
-
-    if (!decrypted) {
-        throw new Error('Decryption failed.');
-    }
-
-    const base64DecryptedMessage = encodeUTF8(decrypted);
-    try {
-        // from JS to JS 
-        return JSON.parse(base64DecryptedMessage)
-    } catch (e) {
-        // from Java to JS 
-        return base64DecryptedMessage
-    }
-};
-
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
-    if (!srcAkPair) {
-        srcAkPair = await generateAkKeyPair(null); // create random seed
+    if (isNullAny(srcAkPair)) {
+        srcAkPair = await newKeyPair(null); // create random seed
     }
 
     let destPublicEncKeyArray = new Uint8Array(decodeBase58Check(dstPublicEncKey));
     let rawSrcAkPair = akPairToRaw(srcAkPair);
     let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
-    let encryptedData = encrypt(dstBox, data);
+    let encryptedData = encryptData(dstBox, data);
+
     return {
         payload: encryptedData,
         dstPublicEncKey: dstPublicEncKey,
         srcPublicEncKey: srcAkPair.publicEncKey
     };//encrypted
+
+
+    function akPairToRaw(akPair) {
+        return {
+            secretEncKey: hexStringToByte(akPair.secretEncKey),
+            publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
+        }
+    }
+
+    function encryptData(secretOrSharedKey, json, key) {
+        const nonce = newNonce();
+        const messageUint8 = decodeUTF8(JSON.stringify(json));
+
+        const encrypted = key
+            ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+            : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
+
+        const fullMessage = new Uint8Array(nonce.length + encrypted.length);
+        fullMessage.set(nonce);
+        fullMessage.set(encrypted, nonce.length);
+
+        return encodeBase64(fullMessage);//base64FullMessage
+    }
 }
 
 function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
     let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
     let secretKeyArray = hexStringToByte(secretKey);
     let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
-    return decrypt(decryptedBox, payload);//decrypted
-}
 
-const encryptDataWithSymmetricKey = (data, key) => {
-    const keyUint8Array = decodeBase64(key);
+    return decryptData(decryptedBox, payload);//decrypted
 
-    const nonce = newNonce();
-    log('data', data);
-    const messageUint8 = decodeUTF8(data);
-    const box = secretbox(messageUint8, nonce, keyUint8Array);
 
-    const fullMessage = new Uint8Array(nonce.length + box.length);
-    fullMessage.set(nonce);
-    fullMessage.set(box, nonce.length);
+    function decryptData(secretOrSharedKey, messageWithNonce, key) {
+        const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+        const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
+        const message = messageWithNonceAsUint8Array.slice(
+            box.nonceLength,
+            messageWithNonce.length
+        );
 
-    return encodeBase64(fullMessage);//base64FullMessage
-};
+        const decrypted = key
+            ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+            : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
 
-const decryptDataWithSymmetricKey = (messageWithNonce, key) => {
-    const keyUint8Array = decodeBase64(key);
-    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-    const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
-
-    const message = messageWithNonceAsUint8Array.slice(
-        secretbox.nonceLength,
-        messageWithNonce.length
-    );
-    const decrypted = secretbox.open(message, nonce, keyUint8Array);
-
-    if (!decrypted) {
-        throw new Error("Decryption failed");
-    }
-
-    return encodeUTF8(decrypted); //base64DecryptedMessage
-};
-
-async function encryptFileToPublicKey(fileData, dstPublicKey) {
-    let fileKey = generateKey();
-    let saltKey = generateKey();
-    log('fileKey', fileKey);
-    log('saltKey', saltKey);
-    let symKey = encodeBase64(keccak256(fileKey + saltKey));
-    log('symKey', symKey);
-    log('fileData', fileData);
-    let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-    let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
-
-    return {
-        payload: encryptedFile,
-        credentials: {
-            syncPass: fileKey,
-            salt: saltKey,
-            encryptedPass: encryptedPass.payload,
-            encryptingPubKey: encryptedPass.srcPublicEncKey
+        if (isNullAny(decrypted)) {
+            throw new Error('Decryption failed.');
         }
-    };
+
+        const base64DecryptedMessage = encodeUTF8(decrypted);
+
+        return JSON.parse(base64DecryptedMessage);
+    }
 }
 
 async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     let fileContents = fileObj.payload;
     let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubKey);
-    let docOriginalHash = getHash(fileContents);
+    let dataOriginalHash = getHash(fileContents);
     let syncPassHash = getHash(encryptedFile.credentials.syncPass);
-    let docChainId = getHash(docOriginalHash);
+    let dataChainId = getHash(dataOriginalHash);
     let requestType = 'upload';
-    let trailHash = getHash(docChainId + userChainId + requestType + userChainId);
+    let dataExtraArgs = fileObj.extra;
+
+    if (isNullAny(dataExtraArgs)) {
+        dataExtraArgs = [];
+    }
+
+    //TODO add JSON.stringify(dataExtraArgs)
+    let trailHash = getHash(dataChainId + userChainId + requestType + userChainId);
 
     let fileUploadData = {
         userId: userChainId,
-        docId: docChainId,
+        dataId: dataChainId,
         requestId: requestId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
         trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-        docName: fileObj.name,
+        dataName: fileObj.dataName,
+        dataExtension: fileObj.dataExtension,
         category: fileObj.category,
         keywords: fileObj.keywords,
         payload: encryptedFile.payload,
         encryption: {
-            docHash: docOriginalHash,
+            dataOriginalHash: dataOriginalHash,
             salt: encryptedFile.credentials.salt,
             passHash: syncPassHash,
             encryptedPassA: encryptedFile.credentials.encryptedPass,
@@ -344,162 +208,375 @@ async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
     return fileUploadData;
-}
 
-async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
-    let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
-    log('Browser decrypts sym password', decryptedSymPassword);
-    let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
-    log('Browser composes full password', fullPassword);
-    let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
-    log('Browser decrypts the file with the full password', decryptedFile);
-    let resultFileInfo = encryptedFileInfo;
-    resultFileInfo.payload = decryptedFile;
-    resultFileInfo.encryption = {};
-    return resultFileInfo;
+
+    async function encryptFileToPublicKey(fileData, dstPublicKey) {
+        let fileKey = generateKey();
+        let saltKey = generateKey();
+        log('fileKey', fileKey);
+        log('saltKey', saltKey);
+
+        let symKey = encodeBase64(keccak256(fileKey + saltKey));
+        log('symKey', symKey);
+        log('fileData', fileData);
+
+        let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
+        let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
+
+        return {
+            payload: encryptedFile,
+            credentials: {
+                syncPass: fileKey,
+                salt: saltKey,
+                encryptedPass: encryptedPass.payload,
+                encryptingPubKey: encryptedPass.srcPublicEncKey
+            }
+        };
+
+
+        function encryptDataWithSymmetricKey(data, key) {
+            const keyUint8Array = decodeBase64(key);
+
+            const nonce = newNonce();
+            log('data', data);
+            const messageUint8 = decodeUTF8(data);
+            const box = secretbox(messageUint8, nonce, keyUint8Array);
+
+            const fullMessage = new Uint8Array(nonce.length + box.length);
+            fullMessage.set(nonce);
+            fullMessage.set(box, nonce.length);
+
+            return encodeBase64(fullMessage);//base64FullMessage
+        }
+    }
 }
 
 function getEndpointUrl(action, appendix) {
     let url = `${baseUrl}/${action}?noapi=1`;
-    if (token) {
+
+    if (!isNullAny(token)) {
         url = `${baseUrl}/${action}?api=1&token=${token}`;
     }
-    if (appendix) {
+
+    if (!isNullAny(appendix)) {
         url = url + appendix;
     }
+
     return url;
 }
 
+////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
+////////////////////////////////////////////////////////////
 
-function init(_baseUrl, _token, _network) {    
-    baseUrl = _baseUrl;
-    if (_token)
-        token = _token;
-    // if (_network)
-        // network = _network;
+(function setOrigin() {
+    if (typeof window !== 'undefined'
+        && window
+        && window.location
+        && window.location.origin) {
+        init(window.location.origin);
+    }
+}());
+
+const setDebugMode = (debugFlag) => {
+    debug = debugFlag;
+};
+
+function init(sourceBaseUrl, sourceToken, sourceNetwork = network) {
+    baseUrl = sourceBaseUrl;
+
+    if (!isNullAny(sourceToken)) {
+        token = sourceToken;
+    }
+
+    if (!isNullAny(sourceNetwork)) {
+        network = sourceNetwork;
+    }
 }
 
 async function login(keyPair) {
     let getChallengeUrl = getEndpointUrl('login/challenge');
-    let challengeResponse = await axios.get(getChallengeUrl);    
-    if (!challengeResponse.data.challenge) {
+
+    let challengeResponse = (await axios.get(getChallengeUrl)).data;
+
+    if (isNullAny(challengeResponse.data.challenge)) {
         throw new Error('Unable to retrieve login challenge.');
     }
+
     return await loginWithChallenge(challengeResponse.data.challenge, keyPair);
 }
 
-function signMessage(message, secretKey) {    
-    try {        
-        switch (network) {
-            
-            case "ae":
-                let signatureBytes = sign(Buffer.from(message), hexStringToByte(secretKey));
-                return encodeBase58Check(signatureBytes);// signatureB58;
-
-            case "eth":
-                const messageHash = EthCrypto.hash.keccak256(message);
-                return EthCrypto.sign(
-                    secretKey,
-                    messageHash
-                );// signature;
-        }
-    } catch (ignored) {
-        return false;
-    }
-}
-
-function verifyMessage(message, signature, pubKey) {
-    try {
-        if (pubKey) {
-            switch (network) {
-                case "ae":
-                    let verifyResult = nacl.sign.detached.verify(
-                        new Uint8Array(Buffer.from(message)),
-                        decodeBase58Check(signature),
-                        decodeBase58Check(pubKey.split('_')[1])
-                    );
-                    if (verifyResult) {
-                        return pubKey;
-                    } else {
-                        return false;
-                    }
-
-                case "eth":
-                    return EthCrypto.recover(
-                        signature,
-                        EthCrypto.hash.keccak256(message)
-                    ); //signer;
-            }
-        } else {
-            return false;
-        }
-    } catch (ignored) {
-        return false;
-    }
-}
-
 async function loginWithChallenge(challenge, keyPair) {
-    let signatureB58 = signMessage(challenge, keyPair.secretKey);
-    console.log(signatureB58);
-    
-    let pubKey = keyPair.publicKey;    
     let payload = {
         action: 'login',
-        pubKey: pubKey,
+        pubKey: keyPair.publicKey,
         pubEncKey: keyPair.publicEncKey,
-        firebaseToken: 'notoken',
+        firebase: 'notoken',
         challenge: challenge,
-        challengeSignature: signatureB58,
-        rtnToken:'notoken'
+        challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
+        rtnToken: 'notoken'
     };
-    let loginUrl = getEndpointUrl('mobilelogin');
-    let loginPostResult = await axios.post(loginUrl, payload);    
-    if (loginPostResult.data.rtnToken) {
-        token = loginPostResult.data.rtnToken;
-        return loginPostResult.data.rtnToken;
-    } else {
+
+    let loginUrl = getEndpointUrl('login/mobile');
+
+    let loginPostResult = (await axios.post(loginUrl, payload)).data;
+
+    if (isNullAny(loginPostResult.data.rtnToken)) {
         throw new Error('Unable to retrieve API token.');
+    }
+
+    token = loginPostResult.data.rtnToken;
+    return token;
+}
+
+async function newKeyPair(passPhrase) {
+
+    let key1 = '';
+    let key2 = '';
+
+    if (!isNullAny(passPhrase)) {
+        const words = passPhrase.split(' ');
+
+        if (words.length !== 12) {
+            throw('Invalid passphrase. Must be 12 words long.');
+        }
+
+        key1 = words.slice(0, 6).join(' ');//0-5
+        key2 = words.slice(6, 12).join(' ');//6-11
+    } else {
+        key1 = diceware(6);
+        key2 = diceware(6);
+    }
+
+    let phrase = `${key1} ${key2}`;
+
+    let keys = await _session25519(key1, key2);
+
+    let publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+    let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
+    let secretSignBuffer;
+    switch (network) {
+        case"ae":
+            let publicSignBuffer = Buffer.from(keys.publicSignKey);
+            secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
+            let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
+
+            return {
+                address: address,
+                publicKey: address,
+                secretKey: secretSignBuffer,
+                publicEncKey: publicEncBufferEncoded,
+                secretEncKey: secretEncBufferHex,
+                phrase: phrase
+            };
+
+        case  "eth":
+            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
+            let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
+            let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
+            let publicAddress = ethCrypto.publicKey.toAddress(publicSignKey);
+
+            return {
+                address: publicAddress,
+                publicKey: publicSignKey,
+                secretKey: secretSignKey,
+                publicEncKey: publicEncBufferEncoded,
+                secretEncKey: secretEncBufferHex,
+                phrase: phrase
+            };
+
+        default:
+            log("Current selected network: ", network);
+            throw new Error("Can not find selected network");
+    }
+
+    async function _session25519(key1, key2) {
+        return new Promise(resolve => {
+            session25519(key1, key2, (err, result) => resolve(result));
+        });
     }
 }
 
-async function submitFile(fileObj, userChainId, userChainIdPubKey) {
+async function store(fileObj, userChainId, userChainIdPubKey) {
     log('Browser encrypts to receiver', fileObj, userChainId);
+
     let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey);
     log('Browser submits encrypted data to API', fileUploadData);
-    let submitUrl = getEndpointUrl('uploadencrypted');
-    log('submitFile post', submitUrl);
-    let submitRes = await axios.post(submitUrl, fileUploadData);
+
+    let submitUrl = getEndpointUrl('data/create');
+    log('store post', submitUrl);
+
+    let submitRes = (await axios.post(submitUrl, fileUploadData)).data;
     log('Server returns result', submitRes.data);
+
+    if (submitRes.status === "ERROR") {
+        throw new Error(`Error code: ${submitRes.code}, message ${submitRes.message}`);
+    } else if (submitRes.action === 'check') {
+        if (isNullAny(submitRes.data.name)) {
+            throw new Error(`This file has been already registered by another user.`);
+        } else {
+            throw new Error(`This file already exist as '${submitRes.data.name}'.`);
+        }
+    }
+
     return submitRes.data;
 }
 
-async function decryptWithKeyPair(userId, docChainId, keyPair) {
-    log('Browser renders the docId as qr code', docChainId);
-    log('User device scans the qr', docChainId);
-    log('User device requests decryption info from server', docChainId, userId);
-    let requestType = 'download';
-    let trailHash = getHash(docChainId + userId + requestType + userId);
+async function open(dataChainId, userChainId, keyPair) {
+    let credentialsResponse = await prepare(dataChainId, userChainId);
+    let scanResult = await decrypt(userChainId, dataChainId, keyPair);
+
+    if (isNullAny(scanResult.userId)) {
+        throw new Error('Unable to decrypt file');
+    }
+
+    //polling server for pass to decrypt message
+    return poll(credentialsResponse, keyPair.publicEncKey);
+}
+
+async function validate(fileContents, userId, dataId) {
+    let requestType = 'verify';
+    let trailHash = getHash(dataId + userId + requestType + userId);
+
+    let fileHash = getHash(fileContents);
+
+    let postObj = {
+        userId: userId,
+        dataId: dataId,
+        requestId: requestId,
+        requestType: requestType,
+        requestBodyHashSignature: 'NULL',
+        trailHash: trailHash,
+        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
+        encryption: {
+            decrDataOrigHash: fileHash
+        }
+    };
+
+    //TODO signature signMessage(getRequestHash(postObj), keyPair.secretKey)
+    postObj.requestBodyHashSignature = getRequestHash(postObj);
+
+    let validateUrl = getEndpointUrl('credentials/validate');
+
+    let result = (await axios.post(validateUrl, postObj)).data;
+
+    return result.data;
+}
+
+async function share(dataId, recipientId, keyPair) {
+    let getUrl = getEndpointUrl('credentials/share', `&dataId=${dataId}&recipientId=${recipientId}`);
+    log('shareencrypted get request', getUrl);
+
+    let getShareResponse = (await axios.get(getUrl)).data;
+
+    if (getShareResponse.data.dataId !== dataId) {
+        throw new Error('Unable to create share. Data id mismatch.');
+    }
+
+    let userId = keyPair.address;
+    recipientId = getShareResponse.data.recipientId;
+    dataId = getShareResponse.data.dataId;
+    let requestType = 'share';
+
+    let trailHash = getHash(dataId + userId + requestType + recipientId);
     let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
-    let query = `&userId=${userId}&docId=${docChainId}&requestId=${requestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
-    let getUrl = getEndpointUrl('exchangecredentials', query);
+
+    let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
+    let pubKeyA = getShareResponse.data.encryption.pubKeyA;
+    let decryptedPassword = decryptDataWithPublicAndPrivateKey(encryptedPassA, pubKeyA, keyPair.secretEncKey);
+    let syncPassHash = getHash(decryptedPassword);
+
+    let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
+    let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, recipientEncrKey, keyPair);
+
+    let createShare = {
+        userId: userId,
+        dataId: dataId,
+        requestId: requestId,
+        requestType: requestType,
+        requestBodyHashSignature: 'NULL',
+        trailHash: trailHash,
+        trailHashSignatureHash: trailHashSignatureHash,
+        recipientId: recipientId,
+        encryption: {
+            senderEncrKey: keyPair.publicEncKey,
+            syncPassHash: syncPassHash,
+            encryptedPassA: reEncryptedPasswordInfo.payload
+        }
+    };
+
+    createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
+
+    let postUrl = getEndpointUrl('share/create');
+
+    let serverPostResponse = (await axios.post(postUrl, createShare)).data;
+    log('Share POST to server encryption info', createShare);
+    log('Server responds to user device POST', serverPostResponse.data);
+
+    return serverPostResponse.data;
+}
+
+async function prepare(dataChainId, userChainId) {
+    if (isNullAny(browserKeyPair)) {
+        browserKeyPair = await newKeyPair(null);
+    }
+    log('Browser generates keypairB', browserKeyPair);
+
+    let browserPubKeySubmit = {
+        dataId: dataChainId,
+        userId: userChainId,
+        encryption: {
+            pubKeyB: browserKeyPair.publicEncKey
+        }
+    };
+    log('submit pubkey payload', browserPubKeySubmit);
+
+    let browserPubKeySubmitUrl = getEndpointUrl('credentials');
+    log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
+
+    let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, browserPubKeySubmit)).data;
+    log('browser poll post result', browserPubKeySubmitRes.data);
+
+    if (browserPubKeySubmitRes.status === 'ERROR') {
+        throw new Error(`Intermediate public key B submission error. Details:${browserPubKeySubmitRes}`);
+    }
+
+    return browserPubKeySubmitRes.data;
+}
+
+async function decrypt(userId, dataChainId, keyPair) {
+    log('Browser renders the dataId as qr code', dataChainId);
+    log('User device scans the qr', dataChainId);
+    log('User device requests decryption info from server', dataChainId, userId);
+
+    let requestType = 'download';
+    let trailHash = getHash(dataChainId + userId + requestType + userId);
+    let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
+
+    let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${requestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
+    let getUrl = getEndpointUrl('credentials/exchange', query);
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
-    
-    log('decryptWithKeyPair get request', getUrl);
-    let serverEncryptionInfo = await axios.get(getUrl);
-    
-    log('Server responds to device with encryption info', serverEncryptionInfo.data);
-    if (!serverEncryptionInfo.data.encryption || !serverEncryptionInfo.data.encryption.pubKeyB) {
+    log('decrypt get request', getUrl);
+
+    let serverEncryptionInfo = (await axios.get(getUrl)).data;
+    let serverEncryptionData = serverEncryptionInfo.data;
+    log('Server responds to device with encryption info', serverEncryptionData);
+
+    let dataEncryption = serverEncryptionData.encryption;
+    if (isNullAny(dataEncryption) || isNullAny(dataEncryption.pubKeyB)) {
         throw new Error('Unable to retrieve intermediate public key B.');
     }
-    let decryptedPassword = decryptDataWithPublicAndPrivateKey(serverEncryptionInfo.data.encryption.encryptedPassA, serverEncryptionInfo.data.encryption.pubKeyA, keyPair.secretEncKey);    
 
+    let decryptedPassword = decryptDataWithPublicAndPrivateKey(dataEncryption.encryptedPassA, dataEncryption.pubKeyA, keyPair.secretEncKey);
     log('User device decrypts the sym password', decryptedPassword);
+
     let syncPassHash = getHash(decryptedPassword);
-    let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, serverEncryptionInfo.data.encryption.pubKeyB, keyPair);
+
+    let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, dataEncryption.pubKeyB, keyPair);
     log('User device reencrypts password for browser', reEncryptedPasswordInfo);
+
     let devicePost = {
-        docId: docChainId,
+        dataId: dataChainId,
         userId: keyPair.address,
         encryption: {
             syncPassHash: syncPassHash,
@@ -507,179 +584,314 @@ async function decryptWithKeyPair(userId, docChainId, keyPair) {
         }
     };
     log('devicePost', devicePost);
-    let postUrl = getEndpointUrl('exchangecredentials');
-    log('decryptWithKeyPair post', postUrl);
-    let serverPostResponse = await axios.post(postUrl, devicePost);
+
+    let postUrl = getEndpointUrl('credentials/exchange');
+    log('decrypt post', postUrl);
+
+    let serverPostResponse = (await axios.post(postUrl, devicePost)).data;
     log('User device POST to server encryption info', devicePost);
     log('Server responds to user device POST', serverPostResponse.data);
+
     return serverPostResponse.data;
 }
 
-async function submitCredentials(docChainId, userChainId) {
-    if (!browserKeyPair) {
-        browserKeyPair = await generateAkKeyPair(null);
-    }
-    log('Browser generates keypairB', browserKeyPair);
-    let browserPubKeySubmit = {
-        docId: docChainId,
-        userId: userChainId,
-        encryption: {
-            pubKeyB: browserKeyPair.publicEncKey
-        }
-    };
-    log('submit pubkey payload', browserPubKeySubmit);
-    let browserPubKeySubmitUrl = getEndpointUrl('browsercredentials');
-    log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
-    let browserPubKeySubmitRes = await axios.post(browserPubKeySubmitUrl, browserPubKeySubmit);
-    log('browser poll post result', browserPubKeySubmitRes.data);
-    return browserPubKeySubmitRes.data;
-}
-
-async function pollForFile(credentialsResponse, receiverPubKey) {
-    if (credentialsResponse.userId) {
-        let pollUrl = getEndpointUrl('docencrypted', `&userId=${credentialsResponse.userId}&docId=${credentialsResponse.docId}`);
-        for (let i = 0; i < 50; i++) {
-            let pollRes = await axios.get(pollUrl);
-            // log('browser poll result', pollRes.data)
-            if (pollRes.data.encryption) {
-                log('Server responds to polling with', pollRes.data);
-                let decryptedFile = await processEncryptedFileInfo(pollRes.data, receiverPubKey, browserKeyPair.secretEncKey);
-                let validationResult = await verifyFileDecryption(decryptedFile.payload, decryptedFile.userId, decryptedFile.docId);
-                if (validationResult.status === 'ERROR') {
-                    return validationResult;
-                }
-                return decryptedFile;
-            } else {
-                // log('waiting a bit')
-                await sleep(1000);
-            }
-        }
-        throw new Error('Polling timeout.');
-    } else if (credentialsResponse.status === 'ERROR') {
-        throw new Error(`Intermediate public key B submission error. Details:${credentialsResponse}`);
-    } else {
+async function poll(credentialsResponse, receiverPubKey) {
+    if (isNullAny(credentialsResponse.userId)) {
         throw new Error(`Server did not return userId. Details:${credentialsResponse}`);
     }
-}
 
-async function openFile(docChainId, userChainId, keyPair) {
-    let credentialsResponse = await submitCredentials(docChainId, userChainId);
-    let scanResult = await decryptWithKeyPair(userChainId, docChainId, keyPair);
-    if (scanResult.userId) {
-        //polling server for pass to decrypt message
-        return pollForFile(credentialsResponse, keyPair.publicEncKey);
-    } else {
-        throw new Error('Unable to decrypt file');
-    }
-}
+    let pollUrl = getEndpointUrl('data/info', `&userId=${credentialsResponse.userId}&dataId=${credentialsResponse.dataId}`);
 
-async function verifyFileDecryption(fileContents, userId, docId) {
-    let fileHash = getHash(fileContents);
-    let validateUrl = getEndpointUrl('verify');
+    for (let i = 0; i < 50; i++) {
+        let pollRes = (await axios.get(pollUrl)).data;
 
-    let requestType = 'verify';
-    let trailHash = getHash(docId + userId + requestType + userId);
-
-    let postObj = {
-        userId: userId,
-        docId: docId,
-        requestId: requestId,
-        requestType: requestType,
-        requestBodyHashSignature: 'NULL',
-        trailHash: trailHash,
-        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-        encryption: {
-            decryptedDocHash: fileHash
+        if (isNullAny(pollRes.data.encryption)) {
+            // log('waiting a bit')
+            await sleep(1000);
+            continue;
         }
-    };
 
-    //TODO signature signMessage(getRequestHash(postObj), keyPair.secretKey)
-    postObj.requestBodyHashSignature = getRequestHash(postObj);
+        log('Server responds to polling with', pollRes.data);
 
-    let result = await axios.post(validateUrl, postObj);
-    if (result.data.status === 'ERROR') {
-        log('Unable to verify file.');
-    } else {
-        log('File contents validated.');
+        let decryptedFile = await processEncryptedFileInfo(pollRes.data, receiverPubKey, browserKeyPair.secretEncKey);
+
+        let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId);
+
+        if (isNullAny(validationResult)) {
+            return validationResult;
+        } else {
+            return decryptedFile;
+        }
     }
-    return result.data;
+
+    throw new Error('Polling timeout.');
+
+
+    async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
+        let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
+        log('Browser decrypts sym password', decryptedSymPassword);
+
+        let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
+        log('Browser composes full password', fullPassword);
+
+        let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
+        log('Browser decrypts the file with the full password', decryptedFile);
+
+        let resultFileInfo = encryptedFileInfo;
+        resultFileInfo.payload = decryptedFile;
+        delete resultFileInfo.encryption;
+
+        return resultFileInfo;
+
+
+        function decryptDataWithSymmetricKey(messageWithNonce, key) {
+            const keyUint8Array = decodeBase64(key);
+            const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+            const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
+
+            const message = messageWithNonceAsUint8Array.slice(
+                secretbox.nonceLength,
+                messageWithNonce.length
+            );
+
+            const decrypted = secretbox.open(message, nonce, keyUint8Array);
+
+            if (isNullAny(decrypted)) {
+                throw new Error("Decryption failed");
+            }
+
+            return encodeUTF8(decrypted); //base64DecryptedMessage
+        }
+    }
 }
 
-async function selectFiles(files, recipients) {
-    let validateUrl = getEndpointUrl('selection');
-    let result = await axios.post(validateUrl, {
-        docsIds: files,
+async function select(files, recipients) {
+    let validateUrl = getEndpointUrl('selection/create');
+
+    let result = (await axios.post(validateUrl, {
+        dataIds: files,
         usersIds: recipients
-    });
-    if (result.data.status === 'ERROR') {
+    })).data;
+
+    if (result.status === 'ERROR') {
         log('Unable to set selection.');
     } else {
         log('Selection set successfully.');
     }
+
     return result.data.selectionHash;
 }
 
-async function getSelectedFiles(selectionHash) {
+async function getSelected(selectionHash) {
     let getUrl = getEndpointUrl('selection', `&selectionHash=${selectionHash}`);
-    log('getSelectedFiles get request', getUrl);
-    let selectionResponse = await axios.get(getUrl);
+    log('getSelected get request', getUrl);
+
+    let selectionResponse = (await axios.get(getUrl)).data;
+
     return selectionResponse.data;
 }
 
-async function shareFile(docId, recipientId, keyPair) {
-    let getUrl = getEndpointUrl('shareencrypted', `&docId=${docId}&recipientId=${recipientId}`);
-    log('shareencrypted get request', getUrl);
-    let getShareResponse = await axios.get(getUrl);
-    if (getShareResponse.data.docId === docId) {
-        let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
-        let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
-        let pubKeyA = getShareResponse.data.encryption.pubKeyA;
-        let decryptedPassword = decryptDataWithPublicAndPrivateKey(encryptedPassA, pubKeyA, keyPair.secretEncKey);
-        let syncPassHash = getHash(decryptedPassword);
-        let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, recipientEncrKey, keyPair);
-        let userId = keyPair.address;
-        let recipientId = getShareResponse.data.recipientId;
-        let docId = getShareResponse.data.docId;
-        let requestType = 'share';
-        let trailHash = getHash(docId + userId + requestType + recipientId);
-        let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
-
-        let createShare = {
-            userId: userId,
-            docId: docId,
-            requestId: requestId,
-            requestType: requestType,
-            requestBodyHashSignature: 'NULL',
-            trailHash: trailHash,
-            trailHashSignatureHash: trailHashSignatureHash,
-            recipientId: recipientId,
-            encryption: {
-                senderEncrKey: keyPair.publicEncKey,
-                syncPassHash: syncPassHash,
-                encryptedPassA: reEncryptedPasswordInfo.payload
-            }
-        };
-
-        createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
-
-        let postUrl = getEndpointUrl('shareencrypted');
-        let serverPostResponse = await axios.post(postUrl, createShare);
-        log('Share POST to server encryption info', createShare);
-        log('Server responds to user device POST', serverPostResponse.data);
-        return serverPostResponse.data;
+async function prepareSelection(selection, keyPair) {
+    if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
+        throw new Error('Missing selection operation code.');
     }
-    throw new Error('Unable to create share. Doc id mismatch.');
+
+    let actionSelectionHash = selection.split(':');
+    let action = actionSelectionHash[0];
+    let selectionHash = actionSelectionHash[1];
+
+    if (action !== 'o') {
+        throw new Error('Unsupported selection operation code.');
+    }
+
+    let selectionResult = await getSelected(selectionHash);
+    log('selection result', selectionResult);
+
+    if (isNullAny(selectionResult.selectionHash)) {
+        return [];
+    }
+
+    let recipients = selectionResult.usersIds;
+    let files = selectionResult.dataIds;
+    if (recipients.length !== files.length) {    // the array sizes must be equal
+        throw new Error('Invalid selection format.');
+    }
+
+    let result = [];
+    for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
+        if (keyPair.address !== recipients[i]) {
+            log('selection entry omitted', `${recipients[i]}:${files[i]}`);
+            continue;                           // skip entries that are not for that keypair
+        }
+
+        let credentialsResponse = await prepare(files[i], recipients[i]);
+
+        result.push({dataId: files[i], data: credentialsResponse});
+    }
+
+    return result;
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+async function execSelection(selection, keyPair) {
+    if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
+        throw new Error('Missing selection operation code.');
+    }
+
+    let actionSelectionHash = selection.split(':');
+    let action = actionSelectionHash[0];
+    let selectionHash = actionSelectionHash[1];
+
+    let selectionResult = await getSelected(selectionHash);
+    log('selection result', selectionResult);
+
+    if (isNullAny(selectionResult.selectionHash)) {
+        return [];
+    }
+
+    let recipients = selectionResult.usersIds;
+    let files = selectionResult.dataIds;
+
+    if (recipients.length !== files.length) {   // the array sizes must be equal
+        throw new Error('Invalid selection format.');
+    }
+
+    let result = [];
+    for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
+        switch (action) {
+            case 'o':
+                if (keyPair.address !== recipients[i]) {
+                    log('selection entry omitted', `${recipients[i]}:${files[i]}`);
+                    continue;                             // skip entries that are not for that keypair
+                }
+
+                if (!isNullAny(keyPair.secretEncKey)) {
+                    log('selection entry added', `${recipients[i]}:${files[i]}`);
+
+                    let fileContent = await open(files[i], keyPair.address, keyPair);
+
+                    let fileObj = {
+                        dataId: files[i],
+                        data: fileContent
+                    };
+
+                    result.push(fileObj);
+                } else {
+                    let credentialsResponse = {
+                        dataId: files[i],
+                        userId: recipients[i]
+                    };
+
+                    let fileContent = await poll(credentialsResponse, keyPair.publicEncKey);
+
+                    let fileObj = {
+                        dataId: files[i],
+                        data: fileContent//returns empty if error
+                    };
+
+                    result.push(fileObj);
+                }
+                break;
+
+            case's':
+                let shareResult = await share(files[i], recipients[i], keyPair);
+
+                let shareObj = {
+                    dataId: files[i],
+                    data: shareResult
+                };
+
+                result.push(shareObj);
+                break;
+
+            case 'mo':
+                if (keyPair.address !== recipients[i]) {
+                    log('selection entry omitted', `${recipients[i]}:${files[i]}`);
+                    continue;                      // skip entries that are not for that keypair
+                }
+
+                log('selection entry added', `${recipients[i]}:${files[i]}`);
+
+                let scanResult = await decrypt(recipients[i], files[i], keyPair);
+
+                let scanObj = {
+                    dataId: files[i],
+                    data: scanResult
+                };
+
+                result.push(scanObj);
+                break;
+
+            default :
+                throw new Error('Unsupported selection operation code.');
+        }
+    }
+
+    return result;
 }
 
-async function registerHash(docChainId, requestType, targetUserId, keyPair, poll = false) {
-    let trailHash = getHash(docChainId + keyPair.address + requestType + targetUserId);
+function signMessage(message, secretKey) {
+    try {
+        switch (network) {
+            case "ae":
+                let signatureBytes = sign(Buffer.from(message), hexStringToByte(secretKey));
+
+                return encodeBase58Check(signatureBytes);// signatureB58;
+
+            case "eth":
+                const messageHash = ethCrypto.hash.keccak256(message);
+
+                return ethCrypto.sign(
+                    secretKey,
+                    messageHash
+                );// signature;
+        }
+    } catch (ignored) {
+        return false;
+    }
+
+    function sign(data, privateKey) {
+        return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
+    }
+}
+
+function verifyMessage(message, signature, pubKey) {
+    try {
+        if (isNullAny(pubKey)) {
+            return false;
+        }
+
+        switch (network) {
+            case "ae":
+                let verifyResult = nacl.sign.detached.verify(
+                    new Uint8Array(Buffer.from(message)),
+                    decodeBase58Check(signature),
+                    decodeBase58Check(pubKey.split('_')[1])
+                );
+
+                if (isNullAny(verifyResult)) {
+                    return false;
+                }
+
+                return pubKey;
+
+            case "eth":
+                return ethCrypto.recover(
+                    signature,
+                    ethCrypto.hash.keccak256(message)
+                ); //signer;
+        }
+    } catch (ignored) {
+        return false;
+    }
+}
+
+async function registerHash(dataChainId, requestType, targetUserId, keyPair, poll = false) {
+    let trailHash = getHash(dataChainId + keyPair.address + requestType + targetUserId);
+
     let requestId = trailHash;
+
     let body = {
-        docId: docChainId,
+        dataId: dataChainId,
         userId: keyPair.address,
         requestId: trailHash,
         recipientId: targetUserId,
@@ -688,166 +900,68 @@ async function registerHash(docChainId, requestType, targetUserId, keyPair, poll
         trailHash: trailHash,
         trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
     };
-    let postUrl = getEndpointUrl('chainregister');
+
+    let postUrl = getEndpointUrl('tx/create');
     log('registerHash, ', body);
-    let serverPostResponse = await axios.post(postUrl, body);
+
+    let serverPostResponse = (await axios.post(postUrl, body)).data;
     log('Server responds to registerHash POST', serverPostResponse.data);
+
+    if (!poll) {
+        return serverPostResponse.data;
+    }
+
     let timeStep = 1000;
     let currentTime = 0;
     let maxTime = 20000;
-    if (poll) {
-        while (currentTime < maxTime) {
-            await sleep(timeStep);
-            let txList = (await verifyHash(docChainId, keyPair.address)).data;
-            if (Array.isArray(txList)) {
-                for (let i = 0; i < txList.length; i++) {
-                    // console.log(txList[i].txStatus);
-                    if (txList[i].requestId === requestId) {
-                        if (txList[i].txStatus === 'complete') {
-                            return txList[i].txReceipt;
-                        } else if (txList[i].txStatus.includes('error')) {
-                            return 'Receipt Unavailable. Transaction processing failed.';
-                        }
+
+    while (currentTime < maxTime) {
+        await sleep(timeStep);
+
+        let txList = (await verifyHash(dataChainId, keyPair.address)).data;
+
+        if (Array.isArray(txList)) {
+            for (let i = 0; i < txList.length; i++) {
+                log(txList[i].txStatus);
+
+                if (txList[i].requestId === requestId) {
+                    if (txList[i].txStatus === 'complete') {
+                        return txList[i].txReceipt;
+                    } else if (txList[i].txStatus.includes('error')) {
+                        return 'Receipt Unavailable. Transaction processing failed.';
                     }
                 }
             }
-            currentTime += timeStep;
         }
-        return false;
-    } else {
-        return serverPostResponse.data;
+
+        currentTime += timeStep;
     }
+
+    return false;
 }
 
-async function verifyHash(docChainId, userId, requestId) {
-    let query = `&userId=${userId}&docId=${docChainId}`;
-    if (!!requestId) {
+async function verifyHash(dataChainId, userId, requestId) {
+    let query = `&userId=${userId}&dataId=${dataChainId}`;
+
+    if (!isNullAny(requestId)) {
         query += `&requestId=${requestId}`;
     }
-    let getUrl = getEndpointUrl('chaincheck', query);
+
+    let getUrl = getEndpointUrl('tx/check', query);
     log('query URL', getUrl);
-    let serverResponse = await axios.get(getUrl);
+
+    let serverResponse = (await axios.get(getUrl)).data;
     log('Server responds to verifyHash GET', serverResponse.data);
+
     return serverResponse.data;
-}
-
-async function prepareSelection(selection, keyPair) {
-    let result = [];
-    if (selection.indexOf(':') > 0) {               // check if we have a selection or an id
-        let actionSelectionHash = selection.split(':');
-        let action = actionSelectionHash[0];
-        let selectionHash = actionSelectionHash[1];
-        let selectionResult = await getSelectedFiles(selectionHash);
-        log('selection result', selectionResult);
-        if (selectionResult.selectionHash) {
-            let recipients = selectionResult.usersIds;
-            let files = selectionResult.docsIds;
-            if (recipients.length !== files.length) {    // the array sizes must be equal
-                throw new Error('Invalid selection format.');
-            }
-            for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
-                if (action === 'o') {
-                    //TODO keyPair is not defined?
-                    if (keyPair.address !== recipients[i]) {
-                        log('selection entry omitted', `${recipients[i]}:${files[i]}`);
-                        continue;                           // skip entries that are not for that keypair
-                    }
-                    let credentialsResponse = await submitCredentials(files[i], recipients[i]);
-                    result.push({docId: files[i], data: credentialsResponse});
-                } else {
-                    throw new Error('Unsupported selection operation code.');
-                }
-            }
-        }
-    } else {
-        throw new Error('Missing selection operation code.');
-    }
-    return result;
-}
-
-async function execSelection(selection, keyPair) {
-    let result = [];
-    if (selection.indexOf(':') > 0) {               // check if we have a selection or an id
-        let actionSelectionHash = selection.split(':');
-        let action = actionSelectionHash[0];
-        let selectionHash = actionSelectionHash[1];
-        let selectionResult = await getSelectedFiles(selectionHash);
-        log('selection result', selectionResult);
-        if (selectionResult.selectionHash) {
-            let recipients = selectionResult.usersIds;
-            let files = selectionResult.docsIds;
-            if (recipients.length !== files.length) {   // the array sizes must be equal
-                throw new Error('Invalid selection format.');
-            }
-            for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
-
-                switch (action) {
-                    case 'o':
-                        if (keyPair.address !== recipients[i]) {
-                            log('selection entry omitted', `${recipients[i]}:${files[i]}`);
-                            continue;                             // skip entries that are not for that keypair
-                        }
-                        if (keyPair.secretEncKey) {
-                            log('selection entry added', `${recipients[i]}:${files[i]}`);
-                            let fileContent = await openFile(files[i], keyPair.address, keyPair);
-                            let fileObj = {
-                                docId: files[i],
-                                data: fileContent
-                            };
-                            result.push(fileObj);
-                        } else {
-                            let fileContent = await pollForFile({
-                                docId: files[i],
-                                userId: recipients[i]
-                            }, keyPair.publicEncKey);
-                            let fileObj = {
-                                docId: files[i],
-                                data: fileContent
-                            };
-                            result.push(fileObj);
-                        }
-                        break;
-
-                    case's':
-                        let shareResult = await shareFile(files[i], recipients[i], keyPair);
-                        let shareObj = {
-                            docId: files[i],
-                            data: shareResult
-                        };
-                        result.push(shareObj);
-                        break;
-
-                    case 'mo':
-                        if (keyPair.address !== recipients[i]) {
-                            log('selection entry omitted', `${recipients[i]}:${files[i]}`);
-                            continue;                      // skip entries that are not for that keypair
-                        }
-                        log('selection entry added', `${recipients[i]}:${files[i]}`);
-                        let scanResult = await decryptWithKeyPair(recipients[i], files[i], keyPair);
-                        let scanObj = {
-                            docId: files[i],
-                            data: scanResult
-                        };
-                        result.push(scanObj);
-                        break;
-
-                    default :
-                        throw new Error('Unsupported selection operation code.');
-                }
-            }
-        }
-    } else {
-        throw new Error('Missing selection operation code.');
-    }
-    return result;
 }
 
 
 module.exports = {
 
-    debug: debugMode,
-
+    debug: setDebugMode,
     /* Specify API token and API host */
+
     init: init,
 
     // login i login with challenge
@@ -857,41 +971,35 @@ module.exports = {
     loginWithChallenge: loginWithChallenge,
 
     /* Create a keypair and recovery phrase */
-    newKeyPair: generateAkKeyPair,
+    newKeyPair: newKeyPair,
 
     /* Encrypt, upload and register a file or any data */
     //upload new file
-    store: submitFile,
-
-    /* Retrieve file - used in case of browser interaction */
-    // submit credentials of the decrypting browser
-    prepare: submitCredentials,
-    // decrypt password and re-encrypt for decrypting browser
-    decrypt: decryptWithKeyPair,
-    // polling on the side of decrypting browser for encrypted file
-    poll: pollForFile,
-
+    store: store,
     /* Retrieve fle - used in case of client interaction */
-    // node hammer open 0x...(docID) 0 (this account, different number = different account)
-    // node hammer open 0x..(docId) 1 (user's credentials) 1 (user's credentials API)
+    // node hammer open 0x...(dataId) 0 (this account, different number = different account)
+    // node hammer open 0x..(dataId) 1 (user's credentials) 1 (user's credentials API)
     // hammer -i <acc.json> store <filename.txt>
     // hammer -i <acc.json> share <fileID> <recipientID>
     // hammer -i <acc.json> open <fileID>
-    open: openFile,
-
+    open: open,
     // verify file contents against a hash and its owner/recipient
-    validate: verifyFileDecryption,
+    validate: validate,
+    // node hammer share 0x..(dataId) 1(user sender) 0(user receiver)
+    share: share,
+
+    /* Retrieve file - used in case of browser interaction */
+    // submit credentials of the decrypting browser
+    prepare: prepare,
+    // decrypt password and re-encrypt for decrypting browser
+    decrypt: decrypt,
+    // polling on the side of decrypting browser for encrypted file
+    poll: poll,
 
     // node hammer select-share 0x...(fileID) 2k_...(recipient) 0(sender) returns "s:qrCode"
-    select: selectFiles,
-
-    selection: getSelectedFiles,
-
-    // node hammer share 0x..(docId) 1(user sender) 0(user receiver)
-    share: shareFile,
-
+    select: select,
+    selection: getSelected,
     prepareSelection: prepareSelection,
-
     // node hammer exec o:0x...(selection hash)
     execSelection: execSelection,
 
