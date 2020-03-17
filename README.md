@@ -1,52 +1,10 @@
 # Client Encryption API documentation
+[![Website recheck.io](https://img.shields.io/badge/Website-recheck.io-brightgreen.svg)](https://recheck.io/)
+
 This is an encryption library created by ReCheck devs team. 
 
 We are glad to receive any feedback you want to give us. 
 
-A [Sequence Diagram](WebSequenceDiagram.md)
+You can find the **documentation [here](https://recheck-io.github.io/recheck-clientjs-library/)**.
 
-### Exported functions : 
-
-#### debug: debugMode,
-  
-#### init: init
-Specify API token, host and blockchain network
-  
-#### login: login,
-  
-#### loginWithChallenge: loginWithChallenge,
-
-#### newKeyPair: generateAkKeyPair 
-Creates a key pairs and recovery phrase 
-
-#### store: submitFile
-Encrypt, upload and register a file or any data 
-  
-#### prepare: submitCredentials,
-
-#### decrypt: decryptWithKeyPair,
-
-#### poll: pollForFile,
-
-#### open: openFile,
-
-#### validate: validateFile,
-
-#### select: selectFiles,
-
-#### selection: getSelectedFiles,
-
-#### share: shareFile,
-
-#### prepareSelection: prepareSelection,
-
-#### execSelection: execSelection
-
----
-### [Application layer](ApplicationLevel.md)  
-
----
-
-### [Low level code](LowLevelCode.md)
- 
-
+You can find the **npm package [here](https://www.npmjs.com/package/recheck-clientjs-library)**.

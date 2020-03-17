@@ -7,38 +7,41 @@ A [Sequence Diagram](WebSequenceDiagram.md)
 
 ### Exported functions : 
 
-#### debug: debugMode,
+#### debug: setDebugMode,
+Setting the debug either true or false. 
   
 #### init: init
 Specify API token, host and blockchain network
   
 #### login: login,
-  
-#### loginWithChallenge: loginWithChallenge,
+Returns a token that the user need in order to communicate with the server. 
 
-#### newKeyPair: generateAkKeyPair 
+#### loginWithChallenge: loginWithChallenge,
+Returns a token that the user need in order to communicate with the server. Has a parameter _challenge_. When the user is using our service, upon login into the system there is going to be a QR code that you have to scan. That will create a link between the server and the GUI and you will be prompted to the GUI file manager. 
+
+#### newKeyPair: newKeyPair 
 Creates a key pairs and recovery phrase 
 
-#### store: submitFile
+#### store: store
 Encrypt, upload and register a file or any data 
-  
-#### prepare: submitCredentials,
 
-#### decrypt: decryptWithKeyPair,
+#### open: open
 
-#### poll: pollForFile,
+#### share: share
 
-#### open: openFile,
+#### validate: validate
 
-#### validate: validateFile,
+#### prepare: prepare
 
-#### select: selectFiles,
+#### decrypt: decrypt
 
-#### selection: getSelectedFiles,
+#### poll: poll
 
-#### share: shareFile,
+#### select: select
 
-#### prepareSelection: prepareSelection,
+#### selection: getSelected
+
+#### prepareSelection: prepareSelection
 
 #### execSelection: execSelection
 

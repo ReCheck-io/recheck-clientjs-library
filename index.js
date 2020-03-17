@@ -105,35 +105,39 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
     let rawSrcAkPair = akPairToRaw(srcAkPair);
     let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
     let encryptedData = encryptData(dstBox, data);
-
     return {
         payload: encryptedData,
         dstPublicEncKey: dstPublicEncKey,
         srcPublicEncKey: srcAkPair.publicEncKey
     };//encrypted
+}
 
+async function _session25519(key1, key2) {
+    return new Promise(resolve => {
+        session25519(key1, key2, (err, result) => resolve(result));
+    });
+}
 
-    function akPairToRaw(akPair) {
-        return {
-            secretEncKey: hexStringToByte(akPair.secretEncKey),
-            publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
-        }
+function akPairToRaw(akPair) {
+    return {
+        secretEncKey: hexStringToByte(akPair.secretEncKey),
+        publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
     }
+}
 
-    function encryptData(secretOrSharedKey, json, key) {
-        const nonce = newNonce();
-        const messageUint8 = decodeUTF8(JSON.stringify(json));
+function encryptData(secretOrSharedKey, json, key) {
+    const nonce = newNonce();
+    const messageUint8 = decodeUTF8(JSON.stringify(json));
 
-        const encrypted = key
-            ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-            : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
+    const encrypted = key
+        ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+        : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
 
-        const fullMessage = new Uint8Array(nonce.length + encrypted.length);
-        fullMessage.set(nonce);
-        fullMessage.set(encrypted, nonce.length);
+    const fullMessage = new Uint8Array(nonce.length + encrypted.length);
+    fullMessage.set(nonce);
+    fullMessage.set(encrypted, nonce.length);
 
-        return encodeBase64(fullMessage);//base64FullMessage
-    }
+    return encodeBase64(fullMessage);//base64FullMessage
 }
 
 function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
@@ -142,28 +146,27 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
     let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
 
     return decryptData(decryptedBox, payload);//decrypted
+}
 
+function decryptData(secretOrSharedKey, messageWithNonce, key) {
+    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
+    const message = messageWithNonceAsUint8Array.slice(
+        box.nonceLength,
+        messageWithNonce.length
+    );
 
-    function decryptData(secretOrSharedKey, messageWithNonce, key) {
-        const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-        const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
-        const message = messageWithNonceAsUint8Array.slice(
-            box.nonceLength,
-            messageWithNonce.length
-        );
+    const decrypted = key
+        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
 
-        const decrypted = key
-            ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-            : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
-
-        if (isNullAny(decrypted)) {
-            throw new Error('Decryption failed.');
-        }
-
-        const base64DecryptedMessage = encodeUTF8(decrypted);
-
-        return JSON.parse(base64DecryptedMessage);
+    if (isNullAny(decrypted)) {
+        throw new Error('Decryption failed.');
     }
+
+    const base64DecryptedMessage = encodeUTF8(decrypted);
+
+    return JSON.parse(base64DecryptedMessage);
 }
 
 async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
@@ -208,47 +211,48 @@ async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
     return fileUploadData;
+}
 
 
-    async function encryptFileToPublicKey(fileData, dstPublicKey) {
-        let fileKey = generateKey();
-        let saltKey = generateKey();
-        log('fileKey', fileKey);
-        log('saltKey', saltKey);
+function encryptDataWithSymmetricKey(data, key) {
+    const keyUint8Array = decodeBase64(key);
 
-        let symKey = encodeBase64(keccak256(fileKey + saltKey));
-        log('symKey', symKey);
-        log('fileData', fileData);
+    const nonce = newNonce();
+    log('data', data);
+    const messageUint8 = decodeUTF8(data);
+    const box = secretbox(messageUint8, nonce, keyUint8Array);
 
-        let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-        let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
+    const fullMessage = new Uint8Array(nonce.length + box.length);
+    fullMessage.set(nonce);
+    fullMessage.set(box, nonce.length);
 
-        return {
-            payload: encryptedFile,
-            credentials: {
-                syncPass: fileKey,
-                salt: saltKey,
-                encryptedPass: encryptedPass.payload,
-                encryptingPubKey: encryptedPass.srcPublicEncKey
-            }
-        };
+    return encodeBase64(fullMessage);//base64FullMessage
+}
 
 
-        function encryptDataWithSymmetricKey(data, key) {
-            const keyUint8Array = decodeBase64(key);
+async function encryptFileToPublicKey(fileData, dstPublicKey) {
+    let fileKey = generateKey();
+    let saltKey = generateKey();
+    log('fileKey', fileKey);
+    log('saltKey', saltKey);
 
-            const nonce = newNonce();
-            log('data', data);
-            const messageUint8 = decodeUTF8(data);
-            const box = secretbox(messageUint8, nonce, keyUint8Array);
+    let symKey = encodeBase64(keccak256(fileKey + saltKey));
+    log('symKey', symKey);
+    log('fileData', fileData);
 
-            const fullMessage = new Uint8Array(nonce.length + box.length);
-            fullMessage.set(nonce);
-            fullMessage.set(box, nonce.length);
+    let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
+    let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
 
-            return encodeBase64(fullMessage);//base64FullMessage
+    return {
+        payload: encryptedFile,
+        credentials: {
+            syncPass: fileKey,
+            salt: saltKey,
+            encryptedPass: encryptedPass.payload,
+            encryptingPubKey: encryptedPass.srcPublicEncKey
         }
-    }
+    };
+
 }
 
 function getEndpointUrl(action, appendix) {
@@ -388,12 +392,6 @@ async function newKeyPair(passPhrase) {
         default:
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
-    }
-
-    async function _session25519(key1, key2) {
-        return new Promise(resolve => {
-            session25519(key1, key2, (err, result) => resolve(result));
-        });
     }
 }
 
@@ -849,11 +847,12 @@ function signMessage(message, secretKey) {
         return false;
     }
 
-    function sign(data, privateKey) {
-        return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
-    }
+
 }
 
+function sign(data, privateKey) {
+    return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
+}
 function verifyMessage(message, signature, pubKey) {
     try {
         if (isNullAny(pubKey)) {

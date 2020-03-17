@@ -14,13 +14,18 @@ In favor of better transaction validation, we decided to hash the content of eve
 
 ---
 
-#### encodeBase58Check ( src )
+#### encodeBase58Check ( input )
 Encoding 32 byte[] into an address .
 
 ---
 
-#### decodeBase58Check ( src )
+#### decodeBase58Check ( input )
 Decoding into 32 byte[].
+
+---
+
+#### hexStringToByte ( hexString )
+A string representation of encrypted data into hex code is being converted into byte array. All hashes (keccak256/sha3) are such. 
 
 ---
 
@@ -29,7 +34,7 @@ Function to cryptogrphically sign, in our case a document, with user's private k
 
 ---
 
-#### generateAkKeyPair ( passphrase )
+#### newKeyPair ( passPhrase )
 Generates key pair, account, for AEternity blockchain. Takes as parameter the passphrase, which the user receives as back-up words or generates new words with the **diceware** method. Then uses the session25519 function with 6 words per key.
 ```
     key1 = words.slice(0, 6).join(' ');//0-5
@@ -46,29 +51,30 @@ Generates key pair, account, for AEternity blockchain. Takes as parameter the pa
 ```
  case"ae":
     let publicSignBuffer = Buffer.from(keys.publicSignKey);
-    secretSignBuffer = Buffer.from(keys.secretSignKey); // 64-bytes private key
+    secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
     let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
+
     return {
         address: address,
         publicKey: address,
-        secretKey: secretSignBuffer.toString('hex'),
-        publicEncKey: encodeBase58Check(publicEncBuffer),
-        secretEncKey: secretEncBuffer.toString('hex'),
+        secretKey: secretSignBuffer,
+        publicEncKey: publicEncBufferEncoded,
+        secretEncKey: secretEncBufferHex,
         phrase: phrase
     };
 
-case  "eth":
+ case  "eth":
     secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
     let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
-    let publicSignKey = EthCrypto.publicKeyByPrivateKey(secretSignKey);
-    let publicAddress = EthCrypto.publicKey.toAddress(publicSignKey);
+    let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
+    let publicAddress = ethCrypto.publicKey.toAddress(publicSignKey);
 
     return {
         address: publicAddress,
         publicKey: publicSignKey,
         secretKey: secretSignKey,
-        publicEncKey: encodeBase58Check(publicEncBuffer),
-        secretEncKey: secretEncBuffer.toString('hex'),
+        publicEncKey: publicEncBufferEncoded,
+        secretEncKey: secretEncBufferHex,
         phrase: phrase
     };
 ```
@@ -77,13 +83,19 @@ case  "eth":
 
 ---
 
-#### akPairToRaw = (akPair) => {}
+#### akPairToRaw ( akPair )
 
 Converts and returns the Encryption key pair in raw bytes.
+```
+return {
+    secretEncKey: hexStringToByte(akPair.secretEncKey),
+    publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey))
+}
+```
 
 ---
 
-#### encrypt = (secretOrSharedKey, json, key) => {} 
+#### encryptData ( secretOrSharedKey, json, key ) 
 
 Takes as input secret or shared key, a JSON object and a key. Using asymmetric public key encryption. 
 
@@ -93,13 +105,13 @@ Taken from [TweetNaCl Box example](https://github.com/dchest/tweetnacl-js/wiki/E
 
 ---
 
-#### decrypt = (secretOrSharedKey, messageWithNonce, key) => {}
+#### decryptData ( secretOrSharedKey, messageWithNonce, key )
 
 Takes secret or shared key, encrypted message, and a key. Decrypts the message. 
 
 Taken from [TweetNaCl Box example](https://github.com/dchest/tweetnacl-js/wiki/Examples)
 
-```returns``` _JSON.parse(Base64 decrypted message)_ or _base64decryptedMessage_ if it comes from Java. 
+```returns``` _JSON.parse(Base64 decrypted message)_ or when it comes from Java it shouldn't be parsed.  
 
 ---
 
@@ -124,7 +136,7 @@ Decrypts the data using TweetNacl box method and returns the decyphered data.
 
 ---
 
-#### encryptDataWithSymetricKey = (data, key) => {}
+#### encryptDataWithSymmetricKey ( data, key )
 
 Encrypts data with symmetric key using the TweetNaCl secret box methods. 
 
@@ -132,7 +144,7 @@ Encrypts data with symmetric key using the TweetNaCl secret box methods.
 
 ---
 
-#### decryptDataWithSymmetricKey = (messageWithNonce, key) => {}
+#### decryptDataWithSymmetricKey ( messageWithNonce, key )
 
 Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box method. 
 
@@ -140,8 +152,8 @@ Decrypts the messageWithNonce with symmetric key using the TweetNacl secret box 
 
 ---
 
-#### encryptFileToPublicKey ( fileData, dstPublicKey ) {}
-This function creates sym key. Encrypts and returns an object with the cyphered data and the information to recreate the sym key, and decrypt the message if you have the rest of the information.
+#### encryptFileToPublicKey ( fileData, dstPublicKey ) 
+This function creates symmetric key. Encrypts with it and returns an object with the cyphered data and the information to recreate the sym key. Afterwards decrypt the message if you have the rest of the information.
 
 ---
 
@@ -150,18 +162,19 @@ Encrypts the data with **encryptFileToPublicKey** method. Returns the following 
 ```
 let fileUploadData = {
         userId: userChainId,
-        docId: docChainId,
+        dataId: dataChainId,
         requestId: requestId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-        docName: fileObj.name,
+        trailHashSignatureHash: getHash(trailHash),
+        dataName: fileObj.dataName,
+        dataExtension: fileObj.dataExtension,
         category: fileObj.category,
         keywords: fileObj.keywords,
         payload: encryptedFile.payload,
         encryption: {
-            docHash: docOriginalHash,
+            dataOriginalHash: dataOriginalHash,
             salt: encryptedFile.credentials.salt,
             passHash: syncPassHash,
             encryptedPassA: encryptedFile.credentials.encryptedPass,
@@ -197,3 +210,4 @@ This function is to encapsulate the different ways to sing a message depending o
 ---
 
 #### verifyMessage ( message, signature, pubKey )
+
