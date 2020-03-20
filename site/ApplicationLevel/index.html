@@ -99,6 +99,7 @@
             <li><a href="#registerhash-datachainid-requesttype-targetuserid-keypair-poll-false">registerHash ( dataChainId, requestType, targetUserId, keyPair, poll = false )</a></li>
             <li><a href="#verifyhash-docchainid-userid">verifyHash ( docChainId, userId )</a></li>
             <li><a href="#prepareselection-selection-keypair">prepareSelection ( selection, keyPair )</a></li>
+            <li><a href="#sign-dataid-recipientid-keypair">sign ( dataId, recipientId, keyPair )</a></li>
             <li><a href="#execselection-selection-keypair">execSelection ( selection, keyPair )</a></li>
     </ul>
 </div></div>
@@ -155,8 +156,11 @@
 <h4 id="prepareselection-selection-keypair">prepareSelection ( selection, keyPair )</h4>
 <p>Takes the selection hash, retrieves the list of files and users and submits for each file the public key used for the exchange of password.</p>
 <hr />
+<h4 id="sign-dataid-recipientid-keypair">sign ( dataId, recipientId, keyPair )</h4>
+<p>Takes the dataID of the file and put a stamp (including timestamp) on it. By doing this the signer validates the presented information. </p>
+<hr />
 <h4 id="execselection-selection-keypair">execSelection ( selection, keyPair )</h4>
-<p>On the basis of the first parameter provided it will execute <em>'o:' Open</em>, <em>'s:' Share</em> or <em>'mo:' Mobile Open</em> on each file that is belonging to the selection.</p></div>
+<p>On the basis of the first parameter provided it will execute <em>'bo:' Browser Open</em>, <em>'mo:' Mobile Open</em> <em>'sh:' Share</em> or <em>'sg:' Sign</em> on each file that is belonging to the selection.</p></div>
         </div>
 
         <footer class="col-md-12">
