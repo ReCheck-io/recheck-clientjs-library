@@ -53,7 +53,7 @@ function getRequestHash(requestBodyOrUrl) {
     let requestString = '';
 
     if (typeof requestBodyOrUrl === "object") {
-        let resultObj = Object.assign({}, requestBodyOrUrl);
+        let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
 
         if (!isNullAny(resultObj.payload)) {
             resultObj.payload = '';
@@ -105,39 +105,35 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
     let rawSrcAkPair = akPairToRaw(srcAkPair);
     let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
     let encryptedData = encryptData(dstBox, data);
+
     return {
         payload: encryptedData,
         dstPublicEncKey: dstPublicEncKey,
         srcPublicEncKey: srcAkPair.publicEncKey
     };//encrypted
-}
 
-async function _session25519(key1, key2) {
-    return new Promise(resolve => {
-        session25519(key1, key2, (err, result) => resolve(result));
-    });
-}
 
-function akPairToRaw(akPair) {
-    return {
-        secretEncKey: hexStringToByte(akPair.secretEncKey),
-        publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
+    function akPairToRaw(akPair) {
+        return {
+            secretEncKey: hexStringToByte(akPair.secretEncKey),
+            publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
+        }
     }
-}
 
-function encryptData(secretOrSharedKey, json, key) {
-    const nonce = newNonce();
-    const messageUint8 = decodeUTF8(JSON.stringify(json));
+    function encryptData(secretOrSharedKey, json, key) {
+        const nonce = newNonce();
+        const messageUint8 = decodeUTF8(JSON.stringify(json));
 
-    const encrypted = key
-        ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-        : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
+        const encrypted = key
+            ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+            : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
 
-    const fullMessage = new Uint8Array(nonce.length + encrypted.length);
-    fullMessage.set(nonce);
-    fullMessage.set(encrypted, nonce.length);
+        const fullMessage = new Uint8Array(nonce.length + encrypted.length);
+        fullMessage.set(nonce);
+        fullMessage.set(encrypted, nonce.length);
 
-    return encodeBase64(fullMessage);//base64FullMessage
+        return encodeBase64(fullMessage);//base64FullMessage
+    }
 }
 
 function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
@@ -146,27 +142,28 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
     let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
 
     return decryptData(decryptedBox, payload);//decrypted
-}
 
-function decryptData(secretOrSharedKey, messageWithNonce, key) {
-    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
-    const message = messageWithNonceAsUint8Array.slice(
-        box.nonceLength,
-        messageWithNonce.length
-    );
 
-    const decrypted = key
-        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
+    function decryptData(secretOrSharedKey, messageWithNonce, key) {
+        const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+        const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
+        const message = messageWithNonceAsUint8Array.slice(
+            box.nonceLength,
+            messageWithNonce.length
+        );
 
-    if (isNullAny(decrypted)) {
-        throw new Error('Decryption failed.');
+        const decrypted = key
+            ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+            : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
+
+        if (isNullAny(decrypted)) {
+            throw new Error('Decryption failed.');
+        }
+
+        const base64DecryptedMessage = encodeUTF8(decrypted);
+
+        return JSON.parse(base64DecryptedMessage);
     }
-
-    const base64DecryptedMessage = encodeUTF8(decrypted);
-
-    return JSON.parse(base64DecryptedMessage);
 }
 
 async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
@@ -211,48 +208,47 @@ async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
     return fileUploadData;
-}
 
 
-function encryptDataWithSymmetricKey(data, key) {
-    const keyUint8Array = decodeBase64(key);
+    async function encryptFileToPublicKey(fileData, dstPublicKey) {
+        let fileKey = generateKey();
+        let saltKey = generateKey();
+        log('fileKey', fileKey);
+        log('saltKey', saltKey);
 
-    const nonce = newNonce();
-    log('data', data);
-    const messageUint8 = decodeUTF8(data);
-    const box = secretbox(messageUint8, nonce, keyUint8Array);
+        let symKey = encodeBase64(keccak256(fileKey + saltKey));
+        log('symKey', symKey);
+        log('fileData', fileData);
 
-    const fullMessage = new Uint8Array(nonce.length + box.length);
-    fullMessage.set(nonce);
-    fullMessage.set(box, nonce.length);
+        let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
+        let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
 
-    return encodeBase64(fullMessage);//base64FullMessage
-}
+        return {
+            payload: encryptedFile,
+            credentials: {
+                syncPass: fileKey,
+                salt: saltKey,
+                encryptedPass: encryptedPass.payload,
+                encryptingPubKey: encryptedPass.srcPublicEncKey
+            }
+        };
 
 
-async function encryptFileToPublicKey(fileData, dstPublicKey) {
-    let fileKey = generateKey();
-    let saltKey = generateKey();
-    log('fileKey', fileKey);
-    log('saltKey', saltKey);
+        function encryptDataWithSymmetricKey(data, key) {
+            const keyUint8Array = decodeBase64(key);
 
-    let symKey = encodeBase64(keccak256(fileKey + saltKey));
-    log('symKey', symKey);
-    log('fileData', fileData);
+            const nonce = newNonce();
+            log('data', data);
+            const messageUint8 = decodeUTF8(data);
+            const box = secretbox(messageUint8, nonce, keyUint8Array);
 
-    let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-    let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
+            const fullMessage = new Uint8Array(nonce.length + box.length);
+            fullMessage.set(nonce);
+            fullMessage.set(box, nonce.length);
 
-    return {
-        payload: encryptedFile,
-        credentials: {
-            syncPass: fileKey,
-            salt: saltKey,
-            encryptedPass: encryptedPass.payload,
-            encryptingPubKey: encryptedPass.srcPublicEncKey
+            return encodeBase64(fullMessage);//base64FullMessage
         }
-    };
-
+    }
 }
 
 function getEndpointUrl(action, appendix) {
@@ -393,6 +389,12 @@ async function newKeyPair(passPhrase) {
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
     }
+
+    async function _session25519(key1, key2) {
+        return new Promise(resolve => {
+            session25519(key1, key2, (err, result) => resolve(result));
+        });
+    }
 }
 
 async function store(fileObj, userChainId, userChainIdPubKey) {
@@ -477,7 +479,6 @@ async function share(dataId, recipientId, keyPair) {
     let requestType = 'share';
 
     let trailHash = getHash(dataId + userId + requestType + recipientId);
-    let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
     let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
     let pubKeyA = getShareResponse.data.encryption.pubKeyA;
@@ -494,7 +495,7 @@ async function share(dataId, recipientId, keyPair) {
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: trailHashSignatureHash,
+        trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
         recipientId: recipientId,
         encryption: {
             senderEncrKey: keyPair.publicEncKey,
@@ -512,6 +513,70 @@ async function share(dataId, recipientId, keyPair) {
     log('Server responds to user device POST', serverPostResponse.data);
 
     return serverPostResponse.data;
+}
+
+async function sign(dataId, recipientId, keyPair, poll = false) {
+    let userId = keyPair.address;
+    let requestType = 'sign';
+    let trailHash = getHash(dataId + userId + requestType + recipientId);
+
+    let userSecretKey = keyPair.secretKey;
+
+    let signObj = {
+        dataId: dataId,
+        userId: keyPair.address,
+        requestId: requestId,
+        recipientId: recipientId,
+        requestType: requestType,
+        requestBodyHashSignature: 'NULL',
+        trailHash: trailHash,
+        trailHashSignatureHash: getHash(signMessage(trailHash, userSecretKey)),
+    };
+
+    signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj, userSecretKey));
+
+    let postUrl = getEndpointUrl('data/sign');
+    log('dataSign, ', signObj);
+
+    let serverPostResponse = (await axios.post(postUrl, signObj)).data;
+    log('Server responds to data sign POST', serverPostResponse.data);
+
+    if (!poll) {
+        return serverPostResponse.data;
+    }
+
+    let timeStep = 1000;
+    let currentTime = 0;
+    let maxTime = 20000;
+
+    while (currentTime < maxTime) {
+        await sleep(timeStep);
+
+        let txList = (await verifyHash(dataId, userId)).data;
+
+        if (Array.isArray(txList)) {
+            for (let i = 0; i < txList.length; i++) {
+                log(txList[i].txStatus);
+
+                if (txList[i].requestType !== 'sign') {
+                    continue;
+                }
+
+                let currentTxStatus = txList[i].txStatus;
+                if (currentTxStatus === 'complete') {
+                    return txList[i].txReceipt;
+                }
+
+                if (currentTxStatus.includes('error')) {
+                    return 'Receipt Unavailable. Transaction processing failed.';
+                }
+            }
+        }
+
+        currentTime += timeStep;
+    }
+
+    return false;
 }
 
 async function prepare(dataChainId, userChainId) {
@@ -756,7 +821,7 @@ async function execSelection(selection, keyPair) {
     let result = [];
     for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
         switch (action) {
-            case 'o':
+            case 'bo':
                 if (keyPair.address !== recipients[i]) {
                     log('selection entry omitted', `${recipients[i]}:${files[i]}`);
                     continue;                             // skip entries that are not for that keypair
@@ -790,17 +855,6 @@ async function execSelection(selection, keyPair) {
                 }
                 break;
 
-            case's':
-                let shareResult = await share(files[i], recipients[i], keyPair);
-
-                let shareObj = {
-                    dataId: files[i],
-                    data: shareResult
-                };
-
-                result.push(shareObj);
-                break;
-
             case 'mo':
                 if (keyPair.address !== recipients[i]) {
                     log('selection entry omitted', `${recipients[i]}:${files[i]}`);
@@ -819,6 +873,28 @@ async function execSelection(selection, keyPair) {
                 result.push(scanObj);
                 break;
 
+            case'sh':
+                let shareResult = await share(files[i], recipients[i], keyPair);
+
+                let shareObj = {
+                    dataId: files[i],
+                    data: shareResult
+                };
+
+                result.push(shareObj);
+                break;
+
+            case'sg':
+                let signResult = await sign(files[i], recipients[i], keyPair);
+
+                let signObj = {
+                    dataId: files[i],
+                    data: signResult
+                };
+
+                result.push(signObj);
+                break;
+
             default :
                 throw new Error('Unsupported selection operation code.');
         }
@@ -831,7 +907,7 @@ function signMessage(message, secretKey) {
     try {
         switch (network) {
             case "ae":
-                let signatureBytes = sign(Buffer.from(message), hexStringToByte(secretKey));
+                let signatureBytes = naclSign(Buffer.from(message), hexStringToByte(secretKey));
 
                 return encodeBase58Check(signatureBytes);// signatureB58;
 
@@ -848,11 +924,11 @@ function signMessage(message, secretKey) {
     }
 
 
+    function naclSign(data, privateKey) {
+        return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
+    }
 }
 
-function sign(data, privateKey) {
-    return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
-}
 function verifyMessage(message, signature, pubKey) {
     try {
         if (isNullAny(pubKey)) {
@@ -923,12 +999,16 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, pol
             for (let i = 0; i < txList.length; i++) {
                 log(txList[i].txStatus);
 
-                if (txList[i].requestId === requestId) {
-                    if (txList[i].txStatus === 'complete') {
-                        return txList[i].txReceipt;
-                    } else if (txList[i].txStatus.includes('error')) {
-                        return 'Receipt Unavailable. Transaction processing failed.';
-                    }
+                if (txList[i].requestId !== requestId) {
+                    continue;
+                }
+
+                if (txList[i].txStatus === 'complete') {
+                    return txList[i].txReceipt;
+                }
+
+                if (txList[i].txStatus.includes('error')) {
+                    return 'Receipt Unavailable. Transaction processing failed.';
                 }
             }
         }
@@ -986,6 +1066,7 @@ module.exports = {
     validate: validate,
     // node hammer share 0x..(dataId) 1(user sender) 0(user receiver)
     share: share,
+    sign: sign,
 
     /* Retrieve file - used in case of browser interaction */
     // submit credentials of the decrypting browser

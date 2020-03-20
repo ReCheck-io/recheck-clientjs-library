@@ -96,24 +96,27 @@
 <p>We are glad to receive any feedback you want to give us. </p>
 <p>A <a href="WebSequenceDiagram/">Sequence Diagram</a></p>
 <h3 id="exported-functions">Exported functions :</h3>
-<h4 id="debug-debugmode">debug: debugMode,</h4>
+<h4 id="debug-setdebugmode">debug: setDebugMode,</h4>
+<p>Setting the debug either true or false. </p>
 <h4 id="init-init">init: init</h4>
 <p>Specify API token, host and blockchain network</p>
 <h4 id="login-login">login: login,</h4>
+<p>Returns a token that the user need in order to communicate with the server. </p>
 <h4 id="loginwithchallenge-loginwithchallenge">loginWithChallenge: loginWithChallenge,</h4>
-<h4 id="newkeypair-generateakkeypair">newKeyPair: generateAkKeyPair</h4>
+<p>Returns a token that the user need in order to communicate with the server. Has a parameter <em>challenge</em>. When the user is using our service, upon login into the system there is going to be a QR code that you have to scan. That will create a link between the server and the GUI and you will be prompted to the GUI file manager. </p>
+<h4 id="newkeypair-newkeypair">newKeyPair: newKeyPair</h4>
 <p>Creates a key pairs and recovery phrase </p>
-<h4 id="store-submitfile">store: submitFile</h4>
+<h4 id="store-store">store: store</h4>
 <p>Encrypt, upload and register a file or any data </p>
-<h4 id="prepare-submitcredentials">prepare: submitCredentials,</h4>
-<h4 id="decrypt-decryptwithkeypair">decrypt: decryptWithKeyPair,</h4>
-<h4 id="poll-pollforfile">poll: pollForFile,</h4>
-<h4 id="open-openfile">open: openFile,</h4>
-<h4 id="validate-validatefile">validate: validateFile,</h4>
-<h4 id="select-selectfiles">select: selectFiles,</h4>
-<h4 id="selection-getselectedfiles">selection: getSelectedFiles,</h4>
-<h4 id="share-sharefile">share: shareFile,</h4>
-<h4 id="prepareselection-prepareselection">prepareSelection: prepareSelection,</h4>
+<h4 id="open-open">open: open</h4>
+<h4 id="share-share">share: share</h4>
+<h4 id="validate-validate">validate: validate</h4>
+<h4 id="prepare-prepare">prepare: prepare</h4>
+<h4 id="decrypt-decrypt">decrypt: decrypt</h4>
+<h4 id="poll-poll">poll: poll</h4>
+<h4 id="select-select">select: select</h4>
+<h4 id="selection-getselected">selection: getSelected</h4>
+<h4 id="prepareselection-prepareselection">prepareSelection: prepareSelection</h4>
 <h4 id="execselection-execselection">execSelection: execSelection</h4>
 <hr />
 <h3 id="application-layer"><a href="ApplicationLevel/">Application layer</a></h3>
@@ -157,5 +160,5 @@
 
 <!--
 MkDocs version : 0.16.3
-Build Date UTC : 2020-03-13 08:36:16
+Build Date UTC : 2020-03-17 10:08:50
 -->

@@ -95,7 +95,13 @@ Takes the selection hash, retrieves the list of files and users and submits for 
 
 ---
 
+#### sign ( dataId, recipientId, keyPair )
+Takes the dataID of the file and put a stamp (including timestamp) on it. By doing this the signer validates the presented information. 
+
+---
+
 #### execSelection ( selection, keyPair )
 
-On the basis of the first parameter provided it will execute _'o:' Open_, _'s:' Share_ or _'mo:' Mobile Open_ on each file that is belonging to the selection.
+On the basis of the first parameter provided it will execute _'bo:' Browser Open_, _'mo:' Mobile Open_ _'sh:' Share_ or _'sg:' Sign_ on each file that is belonging to the selection.
+
 
