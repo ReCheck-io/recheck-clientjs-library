@@ -402,14 +402,12 @@ async function store(fileObj, userChainId, userChainIdPubKey) {
 
     let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey);
     log('Browser submits encrypted data to API', fileUploadData);
-    console.log(fileUploadData);
-    
+
     let submitUrl = getEndpointUrl('data/create');
     log('store post', submitUrl);
 
     let submitRes = (await axios.post(submitUrl, fileUploadData)).data;
     log('Server returns result', submitRes.data);
-    
 
     if (submitRes.status === "ERROR") {
         throw new Error(`Error code: ${submitRes.code}, message ${submitRes.message}`);
@@ -536,7 +534,7 @@ async function sign(dataId, recipientId, keyPair, poll = false) {
         trailHashSignatureHash: getHash(signMessage(trailHash, userSecretKey)),
     };
 
-    signObj.requestBodyHashSignature = signMessage(getRequestHash("signObj"), userSecretKey);
+    signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj), userSecretKey);
 
     let postUrl = getEndpointUrl('data/sign');
     log('dataSign, ', signObj);
