@@ -45,10 +45,6 @@ function isNullAny(...args) {
     return false;
 }
 
-function getHash(string) {
-    return `0x${keccak256(string).toString('hex')}`;
-}
-
 function getRequestHash(requestBodyOrUrl) {
     let requestString = '';
 
@@ -278,6 +274,10 @@ function getEndpointUrl(action, appendix) {
     }
 }());
 
+function getHash(string) {
+    return `0x${keccak256(string).toString('hex')}`;
+}
+
 const setDebugMode = (debugFlag) => {
     debug = debugFlag;
 };
@@ -402,12 +402,14 @@ async function store(fileObj, userChainId, userChainIdPubKey) {
 
     let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey);
     log('Browser submits encrypted data to API', fileUploadData);
-
+    console.log(fileUploadData);
+    
     let submitUrl = getEndpointUrl('data/create');
     log('store post', submitUrl);
 
     let submitRes = (await axios.post(submitUrl, fileUploadData)).data;
     log('Server returns result', submitRes.data);
+    
 
     if (submitRes.status === "ERROR") {
         throw new Error(`Error code: ${submitRes.code}, message ${submitRes.message}`);
@@ -517,6 +519,7 @@ async function share(dataId, recipientId, keyPair) {
 
 async function sign(dataId, recipientId, keyPair, poll = false) {
     let userId = keyPair.address;
+
     let requestType = 'sign';
     let trailHash = getHash(dataId + userId + requestType + recipientId);
 
@@ -533,7 +536,7 @@ async function sign(dataId, recipientId, keyPair, poll = false) {
         trailHashSignatureHash: getHash(signMessage(trailHash, userSecretKey)),
     };
 
-    signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj, userSecretKey));
+    signObj.requestBodyHashSignature = signMessage(getRequestHash("signObj"), userSecretKey);
 
     let postUrl = getEndpointUrl('data/sign');
     log('dataSign, ', signObj);
@@ -763,7 +766,7 @@ async function prepareSelection(selection, keyPair) {
     let action = actionSelectionHash[0];
     let selectionHash = actionSelectionHash[1];
 
-    if (action !== 'o') {
+    if (action !== 'bo') {
         throw new Error('Unsupported selection operation code.');
     }
 
@@ -930,11 +933,11 @@ function signMessage(message, secretKey) {
 }
 
 function verifyMessage(message, signature, pubKey) {
-    try {
-        if (isNullAny(pubKey)) {
-            return false;
-        }
+    if (isNullAny(pubKey)) {
+        return false;
+    }
 
+    try {
         switch (network) {
             case "ae":
                 let verifyResult = nacl.sign.detached.verify(
@@ -943,11 +946,11 @@ function verifyMessage(message, signature, pubKey) {
                     decodeBase58Check(pubKey.split('_')[1])
                 );
 
-                if (isNullAny(verifyResult)) {
-                    return false;
+                if (verifyResult) {
+                    return pubKey;
                 }
 
-                return pubKey;
+                return false;
 
             case "eth":
                 return ethCrypto.recover(
@@ -1037,6 +1040,7 @@ async function verifyHash(dataChainId, userId, requestId) {
 
 
 module.exports = {
+    getHash: getHash,
 
     debug: setDebugMode,
     /* Specify API token and API host */
