@@ -2,13 +2,33 @@
     "docs": [
         {
             "location": "/",
-            "text": "Client Encryption API documentation\n\n\nThis is an encryption library created by ReCheck devs team. \n\n\nWe are glad to receive any feedback you want to give us. \n\n\nA \nSequence Diagram\n\n\nExported functions :\n\n\ndebug: setDebugMode,\n\n\nSetting the debug either true or false. \n\n\ninit: init\n\n\nSpecify API token, host and blockchain network\n\n\nlogin: login,\n\n\nReturns a token that the user need in order to communicate with the server. \n\n\nloginWithChallenge: loginWithChallenge,\n\n\nReturns a token that the user need in order to communicate with the server. Has a parameter \nchallenge\n. When the user is using our service, upon login into the system there is going to be a QR code that you have to scan. That will create a link between the server and the GUI and you will be prompted to the GUI file manager. \n\n\nnewKeyPair: newKeyPair\n\n\nCreates a key pairs and recovery phrase \n\n\nstore: store\n\n\nEncrypt, upload and register a file or any data \n\n\nopen: open\n\n\nshare: share\n\n\nvalidate: validate\n\n\nprepare: prepare\n\n\ndecrypt: decrypt\n\n\npoll: poll\n\n\nselect: select\n\n\nselection: getSelected\n\n\nprepareSelection: prepareSelection\n\n\nexecSelection: execSelection\n\n\n\n\nApplication layer\n\n\n\n\nLow level code",
+            "text": "Client Encryption API documentation\n\n\nThis is an encryption library created by ReCheck devs team. \n\n\nWe are glad to receive any feedback you want to give us. \n\n\nYou can find the \ndocs website \nhere\n.\n\n\nTable of Contents\n\n\n\n\nOverview\n\n\nRequirements\n \n\n\nGetting started\n\n\nExported functions\n\n\nApplication layer\n\n\nLow level layer\n\n\n\n\n\n\n\n\nOverview\n\n\nThis is a reference implementation of a protocol for end-to-end encryption with the Recheck services platform. It implements data storage, fetching and validation with a set of keypairs that support ethereum and aeterntiy digital signatures. \n\n\nA \nSequence Diagram\n\n\nRequirements\n\n\n\n\n\n\nnpm version 8.15 or above\n\n\n\n\n\n\nYou will need to download the library from the \nnode repository\n.\n\n\n\n\n\n\nnpm i recheck-clientjs-library\n\n\n\n\n\n\nGetting started\n\n\nExported functions :\n\n\ndebug: setDebugMode,\n\n\nSetting the debug either true or false. \n\n\ninit: init\n\n\nSpecify API token, host and blockchain network\n\n\nlogin: login,\n\n\nReturns a token that the user need in order to communicate with the server. \n\n\nloginWithChallenge: loginWithChallenge,\n\n\nReturns a token that the user need in order to communicate with the server. Has a parameter \nchallenge\n. When the user is using our service, upon login into the system there is going to be a QR code that you have to scan. That will create a link between the server and the GUI and you will be prompted to the GUI file manager. \n\n\nnewKeyPair: newKeyPair\n\n\nCreates a key pairs and recovery phrase \n\n\nstore: store\n\n\nEncrypt, upload and register a file or any data \n\n\nopen: open\n\n\nshare: share\n\n\nvalidate: validate\n\n\nprepare: prepare\n\n\ndecrypt: decrypt\n\n\npoll: poll\n\n\nselect: select\n\n\nselection: getSelected\n\n\nprepareSelection: prepareSelection\n\n\nexecSelection: execSelection\n\n\n\n\nApplication layer\n\n\nThe exported functions in better detail.\n\n\nOver here\n \n\n\n\n\nLow level layer\n\n\nThe base functions in better detail. \n\n\nOver here",
             "title": "Home"
         },
         {
             "location": "/#client-encryption-api-documentation",
-            "text": "This is an encryption library created by ReCheck devs team.   We are glad to receive any feedback you want to give us.   A  Sequence Diagram",
+            "text": "This is an encryption library created by ReCheck devs team.   We are glad to receive any feedback you want to give us.   You can find the  docs website  here .",
             "title": "Client Encryption API documentation"
+        },
+        {
+            "location": "/#table-of-contents",
+            "text": "Overview  Requirements    Getting started  Exported functions  Application layer  Low level layer",
+            "title": "Table of Contents"
+        },
+        {
+            "location": "/#overview",
+            "text": "This is a reference implementation of a protocol for end-to-end encryption with the Recheck services platform. It implements data storage, fetching and validation with a set of keypairs that support ethereum and aeterntiy digital signatures.   A  Sequence Diagram",
+            "title": "Overview"
+        },
+        {
+            "location": "/#requirements",
+            "text": "npm version 8.15 or above    You will need to download the library from the  node repository .    npm i recheck-clientjs-library",
+            "title": "Requirements"
+        },
+        {
+            "location": "/#getting-started",
+            "text": "",
+            "title": "Getting started"
         },
         {
             "location": "/#exported-functions",
@@ -97,13 +117,13 @@
         },
         {
             "location": "/#application-layer",
-            "text": "",
+            "text": "The exported functions in better detail.  Over here",
             "title": "Application layer"
         },
         {
-            "location": "/#low-level-code",
-            "text": "",
-            "title": "Low level code"
+            "location": "/#low-level-layer",
+            "text": "The base functions in better detail.   Over here",
+            "title": "Low level layer"
         },
         {
             "location": "/ApplicationLevel/",
