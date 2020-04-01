@@ -3,7 +3,31 @@ This is an encryption library created by ReCheck devs team.
 
 We are glad to receive any feedback you want to give us. 
 
+You can find the **docs website [here](https://recheck-io.github.io/recheck-clientjs-library/)**.
+
+## Table of Contents 
+ - [Overview](#overview)
+ - [Requirements](#requirements) 
+ - [Getting started](#getting-started)
+    - [Exported functions](#exported-functions)
+    - [Application layer](#application-layer)
+    - [Low level layer](#low-level-layer)
+## Overview
+
+This is a reference implementation of a protocol for end-to-end encryption with the Recheck services platform. It implements data storage, fetching and validation with a set of keypairs that support ethereum and aeterntiy digital signatures. 
+
 A [Sequence Diagram](WebSequenceDiagram.md)
+
+## Requirements
+
+- npm version 8.15 or above
+
+- You will need to download the library from the [node repository](https://www.npmjs.com/package/recheck-clientjs-library).
+
+- ```npm i recheck-clientjs-library```
+
+## Getting started
+
 
 ### Exported functions : 
 
@@ -46,10 +70,17 @@ Encrypt, upload and register a file or any data
 #### execSelection: execSelection
 
 ---
-### [Application layer](ApplicationLevel.md)  
+### Application layer  
+
+The exported functions in better detail.
+
+[Over here](ApplicationLevel.md) 
 
 ---
 
-### [Low level code](LowLevelCode.md)
- 
+### Low level layer
+
+The base functions in better detail. 
+
+[Over here](LowLevelCode.md)
 

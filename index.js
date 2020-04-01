@@ -29,22 +29,6 @@ const log = (message, params) => {
     }
 };
 
-function isNullAny(...args) {
-    for (let i = 0; i < args.length; i++) {
-        let current = args[i];
-
-        if (current == null //element == null covers element === undefined
-            || (current.hasOwnProperty('length') && current.length === 0) // has length and it's zero
-            || (current.constructor === Object && Object.keys(current).length === 0) // is an Object and has no keys
-            || current.toString().toLowerCase() === 'null'
-            || current.toString().toLowerCase() === 'undefined') {
-
-            return true;
-        }
-    }
-    return false;
-}
-
 function getRequestHash(requestBodyOrUrl) {
     let requestString = '';
 
@@ -165,17 +149,17 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
 async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     let fileContents = fileObj.payload;
     let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubKey);
-    let dataOriginalHash = getHash(fileContents);
     let syncPassHash = getHash(encryptedFile.credentials.syncPass);
+    let dataOriginalHash = getHash(fileContents);
     let dataChainId = getHash(dataOriginalHash);
     let requestType = 'upload';
-    let dataExtraArgs = fileObj.extra;
 
+    let dataExtraArgs = fileObj.extra;
     if (isNullAny(dataExtraArgs)) {
         dataExtraArgs = [];
     }
 
-    //TODO add JSON.stringify(dataExtraArgs)
+    //TODO add JSON.stringify(dataExtraArgs) and export to function getTrailHash
     let trailHash = getHash(dataChainId + userChainId + requestType + userChainId);
 
     let fileUploadData = {
@@ -261,6 +245,27 @@ function getEndpointUrl(action, appendix) {
     return url;
 }
 
+async function processExternalId(dataIdInput, userId, isExternal) {
+    if (!isExternal) {
+        return dataIdInput;
+    }
+
+    let isArray = Array.isArray(dataIdInput);
+    if (!isArray) {
+        dataIdInput = [dataIdInput];
+    }
+
+    for (let i = 0; i < dataIdInput.length; i++) {
+        dataIdInput[i] = await processExternalId(dataIdInput[i], userId, isExternal);
+    }
+
+    if (isArray) {
+        return dataIdInput;
+    } else {
+        return dataIdInput[0];
+    }
+}
+
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
@@ -276,6 +281,23 @@ function getEndpointUrl(action, appendix) {
 
 function getHash(string) {
     return `0x${keccak256(string).toString('hex')}`;
+}
+
+function isNullAny(...args) {
+    for (let i = 0; i < args.length; i++) {
+        let current = args[i];
+
+        if (current == null //element == null covers element === undefined
+            || (current.hasOwnProperty('length') && current.length === 0) // has length and it's zero
+            || (current.constructor === Object && Object.keys(current).length === 0) // is an Object and has no keys
+            || current.toString().toLowerCase() === 'null'
+            || current.toString().toLowerCase() === 'undefined'
+            || current.toString().trim() === "") {
+
+            return true;
+        }
+    }
+    return false;
 }
 
 const setDebugMode = (debugFlag) => {
@@ -397,11 +419,16 @@ async function newKeyPair(passPhrase) {
     }
 }
 
-async function store(fileObj, userChainId, userChainIdPubKey) {
+async function store(fileObj, userChainId, userChainIdPubKey, externalId = null) {
+
     log('Browser encrypts to receiver', fileObj, userChainId);
 
     let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey);
     log('Browser submits encrypted data to API', fileUploadData);
+
+    if (!isNullAny(externalId)) {
+        await saveExternalId(externalId, userChainId, fileUploadData.encryption.dataOriginalHash);
+    }
 
     let submitUrl = getEndpointUrl('data/create');
     log('store post', submitUrl);
@@ -422,7 +449,10 @@ async function store(fileObj, userChainId, userChainIdPubKey) {
     return submitRes.data;
 }
 
-async function open(dataChainId, userChainId, keyPair) {
+async function open(dataChainId, userChainId, keyPair, isExternal = false) {
+
+    dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
+
     let credentialsResponse = await prepare(dataChainId, userChainId);
     let scanResult = await decrypt(userChainId, dataChainId, keyPair);
 
@@ -434,7 +464,10 @@ async function open(dataChainId, userChainId, keyPair) {
     return poll(credentialsResponse, keyPair.publicEncKey);
 }
 
-async function validate(fileContents, userId, dataId) {
+async function validate(fileContents, userId, dataId, isExternal = false) {
+
+    dataId = await processExternalId(dataId, userId, isExternal);
+
     let requestType = 'verify';
     let trailHash = getHash(dataId + userId + requestType + userId);
 
@@ -463,7 +496,12 @@ async function validate(fileContents, userId, dataId) {
     return result.data;
 }
 
-async function share(dataId, recipientId, keyPair) {
+async function share(dataId, recipientId, keyPair, isExternal = false) {
+
+    let userId = keyPair.address;
+
+    dataId = await processExternalId(dataId, userId, isExternal);
+
     let getUrl = getEndpointUrl('credentials/share', `&dataId=${dataId}&recipientId=${recipientId}`);
     log('shareencrypted get request', getUrl);
 
@@ -473,7 +511,6 @@ async function share(dataId, recipientId, keyPair) {
         throw new Error('Unable to create share. Data id mismatch.');
     }
 
-    let userId = keyPair.address;
     recipientId = getShareResponse.data.recipientId;
     dataId = getShareResponse.data.dataId;
     let requestType = 'share';
@@ -515,8 +552,10 @@ async function share(dataId, recipientId, keyPair) {
     return serverPostResponse.data;
 }
 
-async function sign(dataId, recipientId, keyPair, poll = false) {
+async function sign(dataId, recipientId, keyPair, poll = false, isExternal = false) {
     let userId = keyPair.address;
+
+    dataId = await processExternalId(dataId, userId, isExternal);
 
     let requestType = 'sign';
     let trailHash = getHash(dataId + userId + requestType + recipientId);
@@ -580,7 +619,10 @@ async function sign(dataId, recipientId, keyPair, poll = false) {
     return false;
 }
 
-async function prepare(dataChainId, userChainId) {
+async function prepare(dataChainId, userChainId, isExternal = false) {
+
+    dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
+
     if (isNullAny(browserKeyPair)) {
         browserKeyPair = await newKeyPair(null);
     }
@@ -608,7 +650,10 @@ async function prepare(dataChainId, userChainId) {
     return browserPubKeySubmitRes.data;
 }
 
-async function decrypt(userId, dataChainId, keyPair) {
+async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
+
+    dataChainId = await processExternalId(dataChainId, userId, isExternal);
+
     log('Browser renders the dataId as qr code', dataChainId);
     log('User device scans the qr', dataChainId);
     log('User device requests decryption info from server', dataChainId, userId);
@@ -659,12 +704,17 @@ async function decrypt(userId, dataChainId, keyPair) {
     return serverPostResponse.data;
 }
 
-async function poll(credentialsResponse, receiverPubKey) {
-    if (isNullAny(credentialsResponse.userId)) {
-        throw new Error(`Server did not return userId. Details:${credentialsResponse}`);
+async function poll(credentialsResponse, receiverPubKey, isExternal = false) {
+    let userId = credentialsResponse.userId;
+    let dataId = credentialsResponse.dataId;
+
+    if (isNullAny(userId, dataId)) {
+        throw new Error(`Server did not return userId or dataId/externalId. Details:${credentialsResponse}`);
     }
 
-    let pollUrl = getEndpointUrl('data/info', `&userId=${credentialsResponse.userId}&dataId=${credentialsResponse.dataId}`);
+    dataId = await processExternalId(dataId, userId, isExternal);
+
+    let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}`);
 
     for (let i = 0; i < 50; i++) {
         let pollRes = (await axios.get(pollUrl)).data;
@@ -729,7 +779,10 @@ async function poll(credentialsResponse, receiverPubKey) {
     }
 }
 
-async function select(files, recipients) {
+async function select(files, recipients, isExternal = false) {
+
+    files = await processExternalId(files, null, isExternal);
+
     let validateUrl = getEndpointUrl('selection/create');
 
     let result = (await axios.post(validateUrl, {
@@ -961,20 +1014,22 @@ function verifyMessage(message, signature, pubKey) {
     }
 }
 
-async function registerHash(dataChainId, requestType, targetUserId, keyPair, poll = false) {
-    let trailHash = getHash(dataChainId + keyPair.address + requestType + targetUserId);
+async function registerHash(dataChainId, requestType, targetUserId, keyPair, extraTrailHashes = [], poll = false) {
+    let userId = keyPair.address;
+    let trailHash = getHash(dataChainId + userId + requestType + targetUserId);
 
     let requestId = trailHash;
 
     let body = {
         dataId: dataChainId,
-        userId: keyPair.address,
+        userId: userId,
         requestId: trailHash,
         recipientId: targetUserId,
         requestType: requestType,
         requestBodyHashSignature: trailHash,
         trailHash: trailHash,
         trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
+        extraTrailHashes: extraTrailHashes
     };
 
     let postUrl = getEndpointUrl('tx/create');
@@ -982,6 +1037,10 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, pol
 
     let serverPostResponse = (await axios.post(postUrl, body)).data;
     log('Server responds to registerHash POST', serverPostResponse.data);
+
+    if (serverPostResponse.status === "ERROR") {
+        throw new Error(`Error code: ${serverPostResponse.code}, message ${serverPostResponse.message}`);
+    }
 
     if (!poll) {
         return serverPostResponse.data;
@@ -1020,7 +1079,10 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, pol
     return false;
 }
 
-async function verifyHash(dataChainId, userId, requestId) {
+async function verifyHash(dataChainId, userId, requestId, isExternal = false) {
+
+    dataChainId = await processExternalId(dataChainId, userId, isExternal);
+
     let query = `&userId=${userId}&dataId=${dataChainId}`;
 
     if (!isNullAny(requestId)) {
@@ -1036,8 +1098,46 @@ async function verifyHash(dataChainId, userId, requestId) {
     return serverResponse.data;
 }
 
+async function saveExternalId(externalId, userChainId, dataOriginalHash = null) {
+
+    let body = {
+        externalId: externalId,
+        userId: userChainId,
+        dataOriginalHash: dataOriginalHash,
+    };
+
+    let postUrl = getEndpointUrl('data/id');
+    log('saveExternalId, ', body);
+
+    let serverPostResponse = (await axios.post(postUrl, body)).data;
+    log('Server responds to saveExternalId POST', serverPostResponse.data);
+
+    if (serverPostResponse.status === "ERROR") {
+        throw new Error(`Error code: ${serverPostResponse.code}, message ${serverPostResponse.message}`);
+    }
+
+    return serverPostResponse.data;
+}
+
+async function convertExternalId(externalId, userId) {
+    let query = `&userId=${userId}&externalId=${externalId}`;
+
+    let getUrl = getEndpointUrl('data/id', query);
+    log('query URL', getUrl);
+
+    let serverResponse = (await axios.get(getUrl)).data;
+    log('Server responds to convertExternalId GET', serverResponse.data);
+
+    if (serverResponse.status === "ERROR") {
+        throw new Error(`Error code: ${serverResponse.code}, message ${serverResponse.message}`);
+    }
+
+    return serverResponse.data;
+}
+
 
 module.exports = {
+    isNullAny: isNullAny,
     getHash: getHash,
 
     debug: setDebugMode,
@@ -1089,5 +1189,8 @@ module.exports = {
     verifyMessage: verifyMessage,
 
     registerHash: registerHash,
-    verifyHash: verifyHash
+    verifyHash: verifyHash,
+
+    saveExternalId: saveExternalId,
+    convertExternalId: convertExternalId,
 };
