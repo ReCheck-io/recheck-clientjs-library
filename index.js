@@ -256,7 +256,7 @@ async function processExternalId(dataIdInput, userId, isExternal) {
     }
 
     for (let i = 0; i < dataIdInput.length; i++) {
-        dataIdInput[i] = await processExternalId(dataIdInput[i], userId, isExternal);
+        dataIdInput[i] = await convertExternalId(dataIdInput[i], userId);
     }
 
     if (isArray) {
@@ -264,6 +264,42 @@ async function processExternalId(dataIdInput, userId, isExternal) {
     } else {
         return dataIdInput[0];
     }
+}
+
+async function processTxPolling(dataId, userId, matchTxPropName, matchTxPropValue) {
+
+    let timeStep = 1000;
+    let currentTime = 0;
+    let maxTime = 20000;
+
+    while (currentTime < maxTime) {
+        await sleep(timeStep);
+
+        let txList = (await verifyHash(dataId, userId)).data;
+
+        if (Array.isArray(txList)) {
+            for (let i = 0; i < txList.length; i++) {
+                log(txList[i].txStatus);
+
+                if (txList[i][matchTxPropName] !== matchTxPropValue) {
+                    continue;
+                }
+
+                let currentTxStatus = txList[i].txStatus;
+                if (currentTxStatus === 'complete') {
+                    return txList[i].txReceipt;
+                }
+
+                if (currentTxStatus.includes('error')) {
+                    return 'Receipt Unavailable. Transaction processing failed.';
+                }
+            }
+        }
+
+        currentTime += timeStep;
+    }
+
+    return false;
 }
 
 ////////////////////////////////////////////////////////////
@@ -419,7 +455,7 @@ async function newKeyPair(passPhrase) {
     }
 }
 
-async function store(fileObj, userChainId, userChainIdPubKey, externalId = null) {
+async function store(fileObj, userChainId, userChainIdPubKey, externalId = null, txPolling = false) {
 
     log('Browser encrypts to receiver', fileObj, userChainId);
 
@@ -446,10 +482,14 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null)
         }
     }
 
-    return submitRes.data;
+    if (!txPolling) {
+        return submitRes.data;
+    }
+
+    return await processTxPolling(getHash(fileObj.payload), userChainId, 'requestType', 'upload');
 }
 
-async function open(dataChainId, userChainId, keyPair, isExternal = false) {
+async function open(dataChainId, userChainId, keyPair, isExternal = false, txPolling = false) {
 
     dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
 
@@ -461,10 +501,10 @@ async function open(dataChainId, userChainId, keyPair, isExternal = false) {
     }
 
     //polling server for pass to decrypt message
-    return poll(credentialsResponse, keyPair.publicEncKey);
+    return pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling);
 }
 
-async function validate(fileContents, userId, dataId, isExternal = false) {
+async function validate(fileContents, userId, dataId, isExternal = false, txPolling = false) {
 
     dataId = await processExternalId(dataId, userId, isExternal);
 
@@ -493,10 +533,14 @@ async function validate(fileContents, userId, dataId, isExternal = false) {
 
     let result = (await axios.post(validateUrl, postObj)).data;
 
-    return result.data;
+    if (!txPolling) {
+        return result.data;
+    }
+
+    return await processTxPolling(dataId, userId, 'requestType', 'verify');
 }
 
-async function share(dataId, recipientId, keyPair, isExternal = false) {
+async function share(dataId, recipientId, keyPair, isExternal = false, txPolling = false) {
 
     let userId = keyPair.address;
 
@@ -549,10 +593,15 @@ async function share(dataId, recipientId, keyPair, isExternal = false) {
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
 
-    return serverPostResponse.data;
+    if (!txPolling) {
+        return serverPostResponse.data;
+    }
+
+    return await processTxPolling(dataId, userId, 'requestType', 'share');
+
 }
 
-async function sign(dataId, recipientId, keyPair, poll = false, isExternal = false) {
+async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false) {
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
@@ -581,42 +630,11 @@ async function sign(dataId, recipientId, keyPair, poll = false, isExternal = fal
     let serverPostResponse = (await axios.post(postUrl, signObj)).data;
     log('Server responds to data sign POST', serverPostResponse.data);
 
-    if (!poll) {
+    if (!txPolling) {
         return serverPostResponse.data;
     }
 
-    let timeStep = 1000;
-    let currentTime = 0;
-    let maxTime = 20000;
-
-    while (currentTime < maxTime) {
-        await sleep(timeStep);
-
-        let txList = (await verifyHash(dataId, userId)).data;
-
-        if (Array.isArray(txList)) {
-            for (let i = 0; i < txList.length; i++) {
-                log(txList[i].txStatus);
-
-                if (txList[i].requestType !== 'sign') {
-                    continue;
-                }
-
-                let currentTxStatus = txList[i].txStatus;
-                if (currentTxStatus === 'complete') {
-                    return txList[i].txReceipt;
-                }
-
-                if (currentTxStatus.includes('error')) {
-                    return 'Receipt Unavailable. Transaction processing failed.';
-                }
-            }
-        }
-
-        currentTime += timeStep;
-    }
-
-    return false;
+    return await processTxPolling(dataId, userId, 'requestType', 'sign');
 }
 
 async function prepare(dataChainId, userChainId, isExternal = false) {
@@ -704,7 +722,7 @@ async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
     return serverPostResponse.data;
 }
 
-async function poll(credentialsResponse, receiverPubKey, isExternal = false) {
+async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false) {
     let userId = credentialsResponse.userId;
     let dataId = credentialsResponse.dataId;
 
@@ -729,9 +747,9 @@ async function poll(credentialsResponse, receiverPubKey, isExternal = false) {
 
         let decryptedFile = await processEncryptedFileInfo(pollRes.data, receiverPubKey, browserKeyPair.secretEncKey);
 
-        let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId);
+        let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId, txPolling);
 
-        if (isNullAny(validationResult)) {
+        if (isNullAny(validationResult) || txPolling) {
             return validationResult;
         } else {
             return decryptedFile;
@@ -779,6 +797,43 @@ async function poll(credentialsResponse, receiverPubKey, isExternal = false) {
     }
 }
 
+async function pollShare(dataIds, userId, isExternal = false) {
+    if (!Array.isArray(dataIds)) {
+        dataIds = [dataIds];
+    }
+
+    dataIds = await processExternalId(dataIds, userId, isExternal);
+
+    for (let i = 0; i < 50; i++) {
+        for (let j = 0; j < dataIds.length; j++) {
+            let pollUrl = getEndpointUrl('share/info', `&userId=${userId}&dataId=${dataIds[j]}`);
+
+            let pollRes = (await axios.get(pollUrl)).data;
+
+            if (pollRes.status === 'ERROR') {
+                throw new Error(`Error code: ${pollRes.code}, message ${pollRes.message}`);
+            }
+
+            let sharesRows = pollRes.data;
+            if (isNullAny(sharesRows)) {
+                await sleep(1000);
+                break;
+            }
+
+            if (sharesRows.some(r => r.senderId === userId)) {
+                dataIds.splice(j, 1);
+                j--;
+            }
+        }
+
+        if (dataIds.length === 0) {
+            return true;
+        }
+    }
+
+    throw new Error('Share polling timeout.');
+}
+
 async function select(files, recipients, isExternal = false) {
 
     files = await processExternalId(files, null, isExternal);
@@ -817,7 +872,7 @@ async function prepareSelection(selection, keyPair) {
     let action = actionSelectionHash[0];
     let selectionHash = actionSelectionHash[1];
 
-    if (action !== 'bo') {
+    if (action !== 'op') {
         throw new Error('Unsupported selection operation code.');
     }
 
@@ -849,7 +904,7 @@ async function prepareSelection(selection, keyPair) {
     return result;
 }
 
-async function execSelection(selection, keyPair) {
+async function execSelection(selection, keyPair, txPolling = false) {
     if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
         throw new Error('Missing selection operation code.');
     }
@@ -875,7 +930,7 @@ async function execSelection(selection, keyPair) {
     let result = [];
     for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
         switch (action) {
-            case 'bo':
+            case 'op':
                 if (keyPair.address !== recipients[i]) {
                     log('selection entry omitted', `${recipients[i]}:${files[i]}`);
                     continue;                             // skip entries that are not for that keypair
@@ -884,7 +939,7 @@ async function execSelection(selection, keyPair) {
                 if (!isNullAny(keyPair.secretEncKey)) {
                     log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                    let fileContent = await open(files[i], keyPair.address, keyPair);
+                    let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling);
 
                     let fileObj = {
                         dataId: files[i],
@@ -898,7 +953,7 @@ async function execSelection(selection, keyPair) {
                         userId: recipients[i]
                     };
 
-                    let fileContent = await poll(credentialsResponse, keyPair.publicEncKey);
+                    let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling);
 
                     let fileObj = {
                         dataId: files[i],
@@ -909,7 +964,7 @@ async function execSelection(selection, keyPair) {
                 }
                 break;
 
-            case 'mo':
+            case 're':
                 if (keyPair.address !== recipients[i]) {
                     log('selection entry omitted', `${recipients[i]}:${files[i]}`);
                     continue;                      // skip entries that are not for that keypair
@@ -928,7 +983,7 @@ async function execSelection(selection, keyPair) {
                 break;
 
             case'sh':
-                let shareResult = await share(files[i], recipients[i], keyPair);
+                let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling);
 
                 let shareObj = {
                     dataId: files[i],
@@ -939,7 +994,7 @@ async function execSelection(selection, keyPair) {
                 break;
 
             case'sg':
-                let signResult = await sign(files[i], recipients[i], keyPair);
+                let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling);
 
                 let signObj = {
                     dataId: files[i],
@@ -1014,11 +1069,9 @@ function verifyMessage(message, signature, pubKey) {
     }
 }
 
-async function registerHash(dataChainId, requestType, targetUserId, keyPair, extraTrailHashes = [], poll = false) {
+async function registerHash(dataChainId, requestType, targetUserId, keyPair, extraTrailHashes = [], txPolling = false) {
     let userId = keyPair.address;
     let trailHash = getHash(dataChainId + userId + requestType + targetUserId);
-
-    let requestId = trailHash;
 
     let body = {
         dataId: dataChainId,
@@ -1042,41 +1095,11 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, ext
         throw new Error(`Error code: ${serverPostResponse.code}, message ${serverPostResponse.message}`);
     }
 
-    if (!poll) {
+    if (!txPolling) {
         return serverPostResponse.data;
     }
 
-    let timeStep = 1000;
-    let currentTime = 0;
-    let maxTime = 20000;
-
-    while (currentTime < maxTime) {
-        await sleep(timeStep);
-
-        let txList = (await verifyHash(dataChainId, keyPair.address)).data;
-
-        if (Array.isArray(txList)) {
-            for (let i = 0; i < txList.length; i++) {
-                log(txList[i].txStatus);
-
-                if (txList[i].requestId !== requestId) {
-                    continue;
-                }
-
-                if (txList[i].txStatus === 'complete') {
-                    return txList[i].txReceipt;
-                }
-
-                if (txList[i].txStatus.includes('error')) {
-                    return 'Receipt Unavailable. Transaction processing failed.';
-                }
-            }
-        }
-
-        currentTime += timeStep;
-    }
-
-    return false;
+    return await processTxPolling(dataChainId, userId, 'requestId', trailHash);
 }
 
 async function verifyHash(dataChainId, userId, requestId, isExternal = false) {
@@ -1167,7 +1190,11 @@ module.exports = {
     // verify file contents against a hash and its owner/recipient
     validate: validate,
     // node hammer share 0x..(dataId) 1(user sender) 0(user receiver)
+
     share: share,
+    // browser poll for sharing
+    pollShare: pollShare,
+
     sign: sign,
 
     /* Retrieve file - used in case of browser interaction */
@@ -1176,7 +1203,7 @@ module.exports = {
     // decrypt password and re-encrypt for decrypting browser
     decrypt: decrypt,
     // polling on the side of decrypting browser for encrypted file
-    poll: poll,
+    pollOpen: pollOpen,
 
     // node hammer select-share 0x...(fileID) 2k_...(recipient) 0(sender) returns "s:qrCode"
     select: select,
