@@ -839,6 +839,41 @@ async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
     throw new Error('Share polling timeout.');
 }
 
+async function pollSign(dataIds, userId, isExternal = false) {
+    if (!Array.isArray(dataIds)) {
+        dataIds = [dataIds];
+    }
+
+    dataIds = await processExternalId(dataIds, userId, isExternal);
+
+    for (let i = 0; i < 50; i++) {
+        for (let j = 0; j < dataIds.length; j++) {
+            let pollUrl = getEndpointUrl('signature/info', `&userId=${userId}&dataId=${dataIds[j]}`);
+
+            let pollRes = (await axios.get(pollUrl)).data;
+
+            if (pollRes.status === 'ERROR') {
+                throw new Error(`Error code: ${pollRes.code}, message ${pollRes.message}`);
+            }
+
+            let signRow = pollRes.data;
+            if (isNullAny(signRow)) {
+                await sleep(1000);
+                break;
+            } else {
+                dataIds.splice(j, 1);
+                j--;
+            }
+        }
+
+        if (dataIds.length === 0) {
+            return true;
+        }
+    }
+
+    throw new Error('Signature polling timeout.');
+}
+
 async function select(files, recipients, isExternal = false) {
 
     files = await processExternalId(files, null, isExternal);
@@ -1075,6 +1110,14 @@ function verifyMessage(message, signature, pubKey) {
 }
 
 async function registerHash(dataChainId, requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false) {
+    if (isNullAny(requestId)) {
+        requestId = defaultRequestId;
+    }
+
+    if (isNullAny(requestType)) {
+        requestType = 'register';
+    }
+
     let userId = keyPair.address;
     let trailHash = getHash(dataChainId + userId + requestType + targetUserId);
 
@@ -1090,8 +1133,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
         extraTrailHashes: extraTrailHashes
     };
 
-    //TODO signature signMessage(getRequestHash(body), keyPair.secretKey)
-    body.requestBodyHashSignature = getRequestHash(body);
+    body.requestBodyHashSignature = signMessage(getRequestHash(body), keyPair.secretKey);
 
     let postUrl = getEndpointUrl('tx/create');
     log('registerHash, ', body);
@@ -1204,6 +1246,8 @@ module.exports = {
     pollShare: pollShare,
 
     sign: sign,
+    // browser poll for signing
+    pollSign: pollSign,
 
     /* Retrieve file - used in case of browser interaction */
     // submit credentials of the decrypting browser
