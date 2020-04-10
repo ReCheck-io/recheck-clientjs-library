@@ -15,7 +15,7 @@ let baseUrl = 'http://localhost:3000';
 let token = null;
 let network = "ae"; //ae,eth
 
-const requestId = 'ReCheck';
+const defaultRequestId = 'ReCheck';
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 
@@ -165,7 +165,7 @@ async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
     let fileUploadData = {
         userId: userChainId,
         dataId: dataChainId,
-        requestId: requestId,
+        requestId: defaultRequestId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
@@ -340,7 +340,7 @@ const setDebugMode = (debugFlag) => {
     debug = debugFlag;
 };
 
-function init(sourceBaseUrl, sourceToken, sourceNetwork = network) {
+function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
     baseUrl = sourceBaseUrl;
 
     if (!isNullAny(sourceToken)) {
@@ -516,7 +516,7 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
     let postObj = {
         userId: userId,
         dataId: dataId,
-        requestId: requestId,
+        requestId: defaultRequestId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
@@ -572,7 +572,7 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     let createShare = {
         userId: userId,
         dataId: dataId,
-        requestId: requestId,
+        requestId: defaultRequestId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
@@ -614,7 +614,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
     let signObj = {
         dataId: dataId,
         userId: keyPair.address,
-        requestId: requestId,
+        requestId: defaultRequestId,
         recipientId: recipientId,
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
@@ -624,7 +624,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
 
     signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj), userSecretKey);
 
-    let postUrl = getEndpointUrl('data/sign');
+    let postUrl = getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
 
     let serverPostResponse = (await axios.post(postUrl, signObj)).data;
@@ -680,7 +680,7 @@ async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
     let trailHash = getHash(dataChainId + userId + requestType + userId);
     let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
-    let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${requestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
+    let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
     let getUrl = getEndpointUrl('credentials/exchange', query);
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
@@ -797,9 +797,14 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
     }
 }
 
-async function pollShare(dataIds, userId, isExternal = false) {
+async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
     if (!Array.isArray(dataIds)) {
         dataIds = [dataIds];
+        recipientIds = [recipientIds];
+    }
+
+    if (dataIds.length !== recipientIds.length) {
+        throw new Error(`Data count and recipient count mismatch.`);
     }
 
     dataIds = await processExternalId(dataIds, userId, isExternal);
@@ -815,13 +820,13 @@ async function pollShare(dataIds, userId, isExternal = false) {
             }
 
             let sharesRows = pollRes.data;
-            if (isNullAny(sharesRows)) {
+            if (isNullAny(sharesRows)
+                || !sharesRows.some(r => r.senderId === userId && r.recipientId === recipientIds[j])) {
                 await sleep(1000);
                 break;
-            }
-
-            if (sharesRows.some(r => r.senderId === userId)) {
+            } else {
                 dataIds.splice(j, 1);
+                recipientIds.splice(j, 1);
                 j--;
             }
         }
@@ -1069,21 +1074,24 @@ function verifyMessage(message, signature, pubKey) {
     }
 }
 
-async function registerHash(dataChainId, requestType, targetUserId, keyPair, extraTrailHashes = [], txPolling = false) {
+async function registerHash(dataChainId, requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false) {
     let userId = keyPair.address;
     let trailHash = getHash(dataChainId + userId + requestType + targetUserId);
 
     let body = {
         dataId: dataChainId,
         userId: userId,
-        requestId: trailHash,
+        requestId: requestId,
         recipientId: targetUserId,
         requestType: requestType,
-        requestBodyHashSignature: trailHash,
+        requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
         trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
         extraTrailHashes: extraTrailHashes
     };
+
+    //TODO signature signMessage(getRequestHash(body), keyPair.secretKey)
+    body.requestBodyHashSignature = getRequestHash(body);
 
     let postUrl = getEndpointUrl('tx/create');
     log('registerHash, ', body);
@@ -1102,7 +1110,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, ext
     return await processTxPolling(dataChainId, userId, 'requestId', trailHash);
 }
 
-async function verifyHash(dataChainId, userId, requestId, isExternal = false) {
+async function verifyHash(dataChainId, userId, requestId = null, isExternal = false) {
 
     dataChainId = await processExternalId(dataChainId, userId, isExternal);
 
