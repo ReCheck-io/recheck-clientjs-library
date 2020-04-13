@@ -146,91 +146,6 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
     }
 }
 
-async function getFileUploadData(fileObj, userChainId, userChainIdPubKey) {
-    let fileContents = fileObj.payload;
-    let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubKey);
-    let syncPassHash = getHash(encryptedFile.credentials.syncPass);
-    let dataOriginalHash = getHash(fileContents);
-    let dataChainId = getHash(dataOriginalHash);
-    let requestType = 'upload';
-
-    let dataExtraArgs = fileObj.extra;
-    if (isNullAny(dataExtraArgs)) {
-        dataExtraArgs = [];
-    }
-
-    //TODO add JSON.stringify(dataExtraArgs) and export to function getTrailHash
-    let trailHash = getHash(dataChainId + userChainId + requestType + userChainId);
-
-    let fileUploadData = {
-        userId: userChainId,
-        dataId: dataChainId,
-        requestId: defaultRequestId,
-        requestType: requestType,
-        requestBodyHashSignature: 'NULL',
-        trailHash: trailHash,
-        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-        dataName: fileObj.dataName,
-        dataExtension: fileObj.dataExtension,
-        category: fileObj.category,
-        keywords: fileObj.keywords,
-        payload: encryptedFile.payload,
-        encryption: {
-            dataOriginalHash: dataOriginalHash,
-            salt: encryptedFile.credentials.salt,
-            passHash: syncPassHash,
-            encryptedPassA: encryptedFile.credentials.encryptedPass,
-            pubKeyA: encryptedFile.credentials.encryptingPubKey
-        }
-    };
-
-    //TODO signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
-    fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
-
-    return fileUploadData;
-
-
-    async function encryptFileToPublicKey(fileData, dstPublicKey) {
-        let fileKey = generateKey();
-        let saltKey = generateKey();
-        log('fileKey', fileKey);
-        log('saltKey', saltKey);
-
-        let symKey = encodeBase64(keccak256(fileKey + saltKey));
-        log('symKey', symKey);
-        log('fileData', fileData);
-
-        let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-        let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
-
-        return {
-            payload: encryptedFile,
-            credentials: {
-                syncPass: fileKey,
-                salt: saltKey,
-                encryptedPass: encryptedPass.payload,
-                encryptingPubKey: encryptedPass.srcPublicEncKey
-            }
-        };
-
-
-        function encryptDataWithSymmetricKey(data, key) {
-            const keyUint8Array = decodeBase64(key);
-
-            const nonce = newNonce();
-            log('data', data);
-            const messageUint8 = decodeUTF8(data);
-            const box = secretbox(messageUint8, nonce, keyUint8Array);
-
-            const fullMessage = new Uint8Array(nonce.length + box.length);
-            fullMessage.set(nonce);
-            fullMessage.set(box, nonce.length);
-
-            return encodeBase64(fullMessage);//base64FullMessage
-        }
-    }
-}
-
 function getEndpointUrl(action, appendix) {
     let url = `${baseUrl}/${action}?noapi=1`;
 
@@ -275,7 +190,7 @@ async function processTxPolling(dataId, userId, matchTxPropName, matchTxPropValu
     while (currentTime < maxTime) {
         await sleep(timeStep);
 
-        let txList = (await verifyHash(dataId, userId)).data;
+        let txList = (await checkHash(dataId, userId)).data;
 
         if (Array.isArray(txList)) {
             for (let i = 0; i < txList.length; i++) {
@@ -300,6 +215,16 @@ async function processTxPolling(dataId, userId, matchTxPropName, matchTxPropValu
     }
 
     return false;
+}
+
+function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId = senderChainId, trailExtraArgs = null) {
+    if (isNullAny(trailExtraArgs)) {
+        trailExtraArgs = "";
+    } else {
+        trailExtraArgs = JSON.stringify(trailExtraArgs);
+    }
+
+    return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
 }
 
 ////////////////////////////////////////////////////////////
@@ -455,11 +380,11 @@ async function newKeyPair(passPhrase) {
     }
 }
 
-async function store(fileObj, userChainId, userChainIdPubKey, externalId = null, txPolling = false) {
+async function store(fileObj, userChainId, userChainIdPubKey, externalId = null, txPolling = false, trailExtraArgs = null) {
 
     log('Browser encrypts to receiver', fileObj, userChainId);
 
-    let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey);
+    let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey, trailExtraArgs);
     log('Browser submits encrypted data to API', fileUploadData);
 
     if (!isNullAny(externalId)) {
@@ -475,6 +400,7 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
     if (submitRes.status === "ERROR") {
         throw new Error(`Error code: ${submitRes.code}, message ${submitRes.message}`);
     } else if (submitRes.action === 'check') {
+        //TODO dataName dataExtension
         if (isNullAny(submitRes.data.name)) {
             throw new Error(`This file has been already registered by another user.`);
         } else {
@@ -487,29 +413,109 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
     }
 
     return await processTxPolling(getHash(fileObj.payload), userChainId, 'requestType', 'upload');
+
+    async function getFileUploadData(fileObj, userChainId, userChainIdPubKey, trailExtraArgs = null) {
+        let fileContents = fileObj.payload;
+        let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubKey);
+        let syncPassHash = getHash(encryptedFile.credentials.syncPass);
+        let dataOriginalHash = getHash(fileContents);
+        let dataChainId = getHash(dataOriginalHash);
+        let requestType = 'upload';
+
+        let trailHash = getTrailHash(dataChainId, userChainId, requestType, userChainId, trailExtraArgs);
+
+        let fileUploadData = {
+            userId: userChainId,
+            dataId: dataChainId,
+            requestId: defaultRequestId,
+            requestType: requestType,
+            requestBodyHashSignature: 'NULL',
+            trailHash: trailHash,
+            trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
+            dataName: fileObj.dataName,
+            dataExtension: fileObj.dataExtension,
+            category: fileObj.category,
+            keywords: fileObj.keywords,
+            payload: encryptedFile.payload,
+            encryption: {
+                dataOriginalHash: dataOriginalHash,
+                salt: encryptedFile.credentials.salt,
+                passHash: syncPassHash,
+                encryptedPassA: encryptedFile.credentials.encryptedPass,
+                pubKeyA: encryptedFile.credentials.encryptingPubKey
+            }
+        };
+
+        //TODO signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
+        fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
+
+        return fileUploadData;
+
+
+        async function encryptFileToPublicKey(fileData, dstPublicKey) {
+            let fileKey = generateKey();
+            let saltKey = generateKey();
+            log('fileKey', fileKey);
+            log('saltKey', saltKey);
+
+            let symKey = encodeBase64(keccak256(fileKey + saltKey));
+            log('symKey', symKey);
+            log('fileData', fileData);
+
+            let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
+            let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
+
+            return {
+                payload: encryptedFile,
+                credentials: {
+                    syncPass: fileKey,
+                    salt: saltKey,
+                    encryptedPass: encryptedPass.payload,
+                    encryptingPubKey: encryptedPass.srcPublicEncKey
+                }
+            };
+
+
+            function encryptDataWithSymmetricKey(data, key) {
+                const keyUint8Array = decodeBase64(key);
+
+                const nonce = newNonce();
+                log('data', data);
+                const messageUint8 = decodeUTF8(data);
+                const box = secretbox(messageUint8, nonce, keyUint8Array);
+
+                const fullMessage = new Uint8Array(nonce.length + box.length);
+                fullMessage.set(nonce);
+                fullMessage.set(box, nonce.length);
+
+                return encodeBase64(fullMessage);//base64FullMessage
+            }
+        }
+    }
 }
 
-async function open(dataChainId, userChainId, keyPair, isExternal = false, txPolling = false) {
+async function open(dataChainId, userChainId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
 
     dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
 
     let credentialsResponse = await prepare(dataChainId, userChainId);
-    let scanResult = await decrypt(userChainId, dataChainId, keyPair);
+    let scanResult = await reEncrypt(userChainId, dataChainId, keyPair, trailExtraArgs);
 
     if (isNullAny(scanResult.userId)) {
         throw new Error('Unable to decrypt file');
     }
 
     //polling server for pass to decrypt message
-    return pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling);
+    return pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
 }
 
-async function validate(fileContents, userId, dataId, isExternal = false, txPolling = false) {
+async function validate(fileContents, userId, dataId, isExternal = false, txPolling = false, trailExtraArgs = null) {
 
     dataId = await processExternalId(dataId, userId, isExternal);
 
     let requestType = 'verify';
-    let trailHash = getHash(dataId + userId + requestType + userId);
+
+    let trailHash = getTrailHash(dataId, userId, requestType, userId, trailExtraArgs);
 
     let fileHash = getHash(fileContents);
 
@@ -540,7 +546,7 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
     return await processTxPolling(dataId, userId, 'requestType', 'verify');
 }
 
-async function share(dataId, recipientId, keyPair, isExternal = false, txPolling = false) {
+async function share(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
 
     let userId = keyPair.address;
 
@@ -559,7 +565,7 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     dataId = getShareResponse.data.dataId;
     let requestType = 'share';
 
-    let trailHash = getHash(dataId + userId + requestType + recipientId);
+    let trailHash = getTrailHash(dataId, userId, requestType, recipientId, trailExtraArgs);
 
     let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
     let pubKeyA = getShareResponse.data.encryption.pubKeyA;
@@ -601,13 +607,14 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
 
 }
 
-async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false) {
+async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
 
     let requestType = 'sign';
-    let trailHash = getHash(dataId + userId + requestType + recipientId);
+
+    let trailHash = getTrailHash(dataId, userId, requestType, recipientId, trailExtraArgs);
 
     let userSecretKey = keyPair.secretKey;
 
@@ -668,7 +675,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     return browserPubKeySubmitRes.data;
 }
 
-async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
+async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trailExtraArgs = null) {
 
     dataChainId = await processExternalId(dataChainId, userId, isExternal);
 
@@ -677,7 +684,8 @@ async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
     log('User device requests decryption info from server', dataChainId, userId);
 
     let requestType = 'download';
-    let trailHash = getHash(dataChainId + userId + requestType + userId);
+    let trailHash = getTrailHash(dataChainId, userId, requestType, userId, trailExtraArgs);
+
     let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
     let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
@@ -722,7 +730,7 @@ async function decrypt(userId, dataChainId, keyPair, isExternal = false) {
     return serverPostResponse.data;
 }
 
-async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false) {
+async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false, trailExtraArgs = null) {
     let userId = credentialsResponse.userId;
     let dataId = credentialsResponse.dataId;
 
@@ -747,7 +755,7 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 
         let decryptedFile = await processEncryptedFileInfo(pollRes.data, receiverPubKey, browserKeyPair.secretEncKey);
 
-        let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId, txPolling);
+        let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId, txPolling, trailExtraArgs);
 
         if (isNullAny(validationResult) || txPolling) {
             return validationResult;
@@ -944,7 +952,7 @@ async function prepareSelection(selection, keyPair) {
     return result;
 }
 
-async function execSelection(selection, keyPair, txPolling = false) {
+async function execSelection(selection, keyPair, txPolling = false, trailExtraArgs = null) {
     if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
         throw new Error('Missing selection operation code.');
     }
@@ -979,7 +987,7 @@ async function execSelection(selection, keyPair, txPolling = false) {
                 if (!isNullAny(keyPair.secretEncKey)) {
                     log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                    let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling);
+                    let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling, trailExtraArgs);
 
                     let fileObj = {
                         dataId: files[i],
@@ -993,7 +1001,7 @@ async function execSelection(selection, keyPair, txPolling = false) {
                         userId: recipients[i]
                     };
 
-                    let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling);
+                    let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
 
                     let fileObj = {
                         dataId: files[i],
@@ -1012,7 +1020,7 @@ async function execSelection(selection, keyPair, txPolling = false) {
 
                 log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                let scanResult = await decrypt(recipients[i], files[i], keyPair);
+                let scanResult = await reEncrypt(recipients[i], files[i], keyPair, trailExtraArgs);
 
                 let scanObj = {
                     dataId: files[i],
@@ -1023,7 +1031,7 @@ async function execSelection(selection, keyPair, txPolling = false) {
                 break;
 
             case'sh':
-                let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling);
+                let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
 
                 let shareObj = {
                     dataId: files[i],
@@ -1034,7 +1042,7 @@ async function execSelection(selection, keyPair, txPolling = false) {
                 break;
 
             case'sg':
-                let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling);
+                let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
 
                 let signObj = {
                     dataId: files[i],
@@ -1109,7 +1117,7 @@ function verifyMessage(message, signature, pubKey) {
     }
 }
 
-async function registerHash(dataChainId, requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false) {
+async function registerHash(dataChainId, requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false, trailExtraArgs = null) {
     if (isNullAny(requestId)) {
         requestId = defaultRequestId;
     }
@@ -1118,8 +1126,12 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
         requestType = 'register';
     }
 
+    if (!['upload', 'register', 'ipo_filing', 'bmd_register'].includes(requestType)) {
+        throw new Error("Unsupported request type.");
+    }
+
     let userId = keyPair.address;
-    let trailHash = getHash(dataChainId + userId + requestType + targetUserId);
+    let trailHash = getTrailHash(dataChainId, userId, requestType, targetUserId, trailExtraArgs);
 
     let body = {
         dataId: dataChainId,
@@ -1152,7 +1164,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
     return await processTxPolling(dataChainId, userId, 'requestId', trailHash);
 }
 
-async function verifyHash(dataChainId, userId, requestId = null, isExternal = false) {
+async function checkHash(dataChainId, userId, requestId = null, isExternal = false) {
 
     dataChainId = await processExternalId(dataChainId, userId, isExternal);
 
@@ -1166,7 +1178,7 @@ async function verifyHash(dataChainId, userId, requestId = null, isExternal = fa
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
-    log('Server responds to verifyHash GET', serverResponse.data);
+    log('Server responds to checkHash GET', serverResponse.data);
 
     return serverResponse.data;
 }
@@ -1253,7 +1265,7 @@ module.exports = {
     // submit credentials of the decrypting browser
     prepare: prepare,
     // decrypt password and re-encrypt for decrypting browser
-    decrypt: decrypt,
+    reEncrypt: reEncrypt,
     // polling on the side of decrypting browser for encrypted file
     pollOpen: pollOpen,
 
@@ -1268,7 +1280,7 @@ module.exports = {
     verifyMessage: verifyMessage,
 
     registerHash: registerHash,
-    verifyHash: verifyHash,
+    checkHash: checkHash,
 
     saveExternalId: saveExternalId,
     convertExternalId: convertExternalId,
