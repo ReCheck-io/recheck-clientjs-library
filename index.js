@@ -1161,7 +1161,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
         return serverPostResponse.data;
     }
 
-    return await processTxPolling(dataChainId, userId, 'requestId', trailHash);
+    return await processTxPolling(dataChainId, userId, 'requestId', requestId);
 }
 
 async function checkHash(dataChainId, userId, requestId = null, isExternal = false) {
