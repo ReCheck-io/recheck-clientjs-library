@@ -190,7 +190,7 @@ async function processTxPolling(dataId, userId, matchTxPropName, matchTxPropValu
     while (currentTime < maxTime) {
         await sleep(timeStep);
 
-        let txList = (await checkHash(dataId, userId)).data;
+        let txList = await checkHash(dataId, userId);
 
         if (Array.isArray(txList)) {
             for (let i = 0; i < txList.length; i++) {
