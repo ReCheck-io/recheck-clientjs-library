@@ -18,13 +18,13 @@ This is a reference implementation of a protocol for end-to-end encryption with 
 
 ## How it works
 
-The protocol consists of a client - sending browser, server, receiving browser and authenticating device (which is supposed to be your mobile phone ). Between those four entities two sets of PKI key pairs are taking part into sending the data across them. 
+The protocol consists of a client - sending device, server, receiving device and identity device (which is supposed to be your mobile phone ). Between those four entities two sets of PKI key pairs are taking part into sending the data across them. 
 
 The first set is that of the user. It is being created(or more precisely revealed) with the creation of the user's account/wallet. With it, the user can operate with the service we provide. Moreover, upon uploading, the client is using this set to encrypt the file that is being uploaded on ReCheck servers. __By doing this we enforce the good practices of privacy by design and cannot read or in fact know anything about your file.__
 
 The browser through which a user is acting with the data is treated like an additional user with its own keypair, thus providing extra layer of interactive authentication while every operation is still under the control of the user with his own keypair.
 
-This way the private key of the user never leaves his/her mobile (authentication) device, yet it manages the authentication in the browser.
+This way the private key of the user never leaves his/her identity device, yet it manages the authentication in the browser.
 
 The full protocol is illustrated in the diagram below, you can have a better look at each step in [here](docs/WebSequenceDiagram.md).
 
