@@ -100,9 +100,13 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
         }
     }
 
-    function encryptData(secretOrSharedKey, json, key) {
+    function encryptData(secretOrSharedKey, message, key) {
+        if (typeof message !== "string") {
+            throw new Error("only string allowed for message for encryption");
+        }
+
         const nonce = newNonce();
-        const messageUint8 = decodeUTF8(JSON.stringify(json));
+        const messageUint8 = decodeUTF8(message);
 
         const encrypted = key
             ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
@@ -142,7 +146,12 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
 
         const base64DecryptedMessage = encodeUTF8(decrypted);
 
-        return JSON.parse(base64DecryptedMessage);
+        //TODO remove try-catch after beta reset
+        try {
+            return JSON.parse(base64DecryptedMessage);
+        } catch (ignored) {
+            return base64DecryptedMessage;
+        }
     }
 }
 
@@ -275,6 +284,22 @@ function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
     if (!isNullAny(sourceNetwork)) {
         network = sourceNetwork;
     }
+}
+
+async function getServerInfo() {
+    let getUrl = getEndpointUrl('login/check');
+
+    let serverResponse = (await axios.get(getUrl)).data;
+
+    if (isNullAny(serverResponse)) {
+        throw new Error('Unable to connect to server.');
+    }
+
+    return {
+        apiVersion: serverResponse.apiVersion,
+        blockchain: serverResponse.blockchain,
+        contractAddress: serverResponse.contractAddress
+    };
 }
 
 async function login(keyPair) {
@@ -1229,7 +1254,8 @@ module.exports = {
     /* Specify API token and API host */
 
     init: init,
-
+    //get server info - api version/current blockchain type
+    getServerInfo: getServerInfo,
     // login i login with challenge
     // login hammer 0(account) 0x.. (challenge code)
     // node hammer login 1 (second user's login)
