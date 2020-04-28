@@ -18,6 +18,26 @@ function getEndpointUrl(action, appendix) {
 
 ?noapi=1 -
 oken=${token}`
+## Table of contents 
+- [GET](#api/get)
+  - [credentials/info](#credentials/info)
+  - [data/info](#data/info)
+  - [login/check](#login/check)
+  - [login/challenge](#login/challenge)
+  - [share/credentials](#share/credentials)
+  - [share/info](#share/info)
+  - [signature/info](#signature/info)
+  - [tx/check](#tx/check)
+- [POST](#api/post) 
+  - [credentials/create/passb](#credentials/create/passb)
+  - [credentials/create/pubkeyb](#credentials/create/pubkeyb)
+  - [credentials/validate](#credentials/validate)
+  - [data/create](#data/create)
+  - [login/mobile](#login/mobile)
+  - [selection/create](#selection/create)
+  - [share/create](#share/create)
+  - [signature/create](#signature/create)
+  - [tx/create](#tx/create)
 ## API/GET 
 
 ### **login/check** 
@@ -32,7 +52,7 @@ This request is called when asking for info about the blockchain and version of 
 ```
 ### **login/challenge**
 
-This request is called for server connection to then pass it to a post request - mobile/login - to get a token. Which is needed for more complicated APIs. Called in _login(keyPair)_
+This request is called in _login(keyPair)_ for server connection to then pass it to a post request - mobile/login - to get a token. Which is needed for the other APIs. 
 
 - usage http://localhost:3000/login/challenge?noapi=1
 - response - gives information about the status of the call, the network, api, contract address and is about to pass the challenge field to the "login/mobile" POST request. 
@@ -55,7 +75,7 @@ This request is called for server connection to then pass it to a post request -
 This request is called in _share()_. The server responds with recipient and data about decryption for the recipient.
 
 - usage 
-    - getEndpointUrl('share/credentials', `&dataId=${dataId}&recipientId=${recipientId}`)
+    - getEndpointUrl('share/credentials', &dataId=${dataId}&recipientId=${recipientId})
     - http://localhost:3000/share/credentials?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&recipientId=ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W
 
 - returns 
@@ -117,12 +137,12 @@ This request is called in _reEncrypt()_ it asks for the browser's credentials. I
 - usage 
 - returns
 
-### selection
+### selection/info
 This request is called in _getSelected_ in order to get the selection hash of the selected files.
 
 - usage
-  - getEndpointUrl('selection', `&selectionHash=${selectionHash}`)
-  - http://localhost:3000/selection?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8&selectionHash=0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633
+  - getEndpointUrl('selection/info', `&selectionHash=${selectionHash}`)
+  - http://localhost:3000/selection/info?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8&selectionHash=0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633
 - returns 
 ```
 { 
@@ -133,9 +153,8 @@ This request is called in _getSelected_ in order to get the selection hash of th
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { selectionHash: '0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633',
-     dataIds: 
-      [ '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819' ],
-     usersIds: [ 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' ] 
+     dataIds: [ '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819', '..' ],
+     usersIds: [ 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5', '..' ] 
     } 
 }
 ```
@@ -164,7 +183,7 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
        recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
        requestId: 'ReCheck',
        requestType: 'register',
-       requestBody: [Object],
+       requestBody: {Object},
        requestBodyHashSignature: 'QWTfZbiaF4uL8RxoMnrzsCtonPbbVGQEb24FYcxT5h6gTNEMk7SmHbJcN5pXmFYbGhzryFnpXvgEGz3ivGsWRh7L5whwS',
        trailHash: '0x0e8b0e38684020111e1f10ce179058fb69e48addb94173e1520404c1d2798788',
        trailHashSignatureHash: '0x09eb43432605bb66ecb84bc4829e7a24a76dc1b1379e6be719cb8f40318cdaf1',
@@ -172,22 +191,19 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
        executorId: 'ak_mEMRng9eTTwqkwJGnrDm79pnoi559YPBv3eXX1iphT6hxNemf',
        contractId: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
        txHash: 'th_Aesk4ssdwJ4bkh7GQRf8qLDL36X4znMKtuw1vb6AdiybSK119',
-       txReceipt: [Object],
+       txReceipt: {Object},
        txReceiptTimestamp: '2020-04-28T11:46:27.000Z',
        txAttempts: 1,
        txAttemptTimestamp: '2020-04-28T11:46:27.000Z',
        txStatus: 'complete',
        dateCreated: '2020-04-28T11:46:17.000Z',
        dateUpdated: '2020-04-28T11:46:27.000Z' 
-      } 
+      },
+      {..},
     ]
 }
 ```
 
-### data/id
-
-- usage
-- returns
 ------------------
 ## API/POST 
 
@@ -239,7 +255,7 @@ http://localhost:3000/tx/create?api=1&token=5bd361f0-8945-11ea-aee2-33022313c596
   requestBodyHashSignature: '4qGkoR3HhoS1bDbFjqN7xsugeWpy5UQbUBvdvn34PDRtuU22nA6icaKwGgAN9CuKSu4KqK4vWPLrmpLSy5k6XTvAAxczb',
   trailHash: '0xce6266a996b7c2e132cd6460f95c9fc4bec07e1f370f220068da3e48dde94258',
   trailHashSignatureHash: '0xd51329fac25d9ca419462a6519ef3aaf7317e53a8412ab84b1a44ddcb170979a',
-  extraTrailHashes: [] 
+ (optional)  extraTrailHashes: [] 
 }
 ```
 - returns
