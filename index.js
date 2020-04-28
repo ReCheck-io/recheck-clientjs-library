@@ -288,9 +288,8 @@ function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
 
 async function getServerInfo() {
     let getUrl = getEndpointUrl('login/check');
-
     let serverResponse = (await axios.get(getUrl)).data;
-
+    
     if (isNullAny(serverResponse)) {
         throw new Error('Unable to connect to server.');
     }
