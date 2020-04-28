@@ -22,8 +22,9 @@ oken=${token}`
 - [GET](#api/get)
   - [credentials/info](#credentials/info)
   - [data/info](#data/info)
-  - [login/check](#login/check)
   - [login/challenge](#login/challenge)
+  - [login/check](#login/check)
+  - [selection/info](#selection/info)
   - [share/credentials](#share/credentials)
   - [share/info](#share/info)
   - [signature/info](#signature/info)
@@ -40,16 +41,42 @@ oken=${token}`
   - [tx/create](#tx/create)
 ## API/GET 
 
-### **login/check** 
-This request is called when asking for info about the blockchain and version of the service
+### credentials/info
+This request is called in _reEncrypt()_ it asks for the browser's credentials. It is the one from you are opening/downloading the file.
 
-- usage - http://localhost:3000/login/check?noapi=1
-- returns 
+- usage 
+    - let query = &userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash};
+    
+      let getUrl = getEndpointUrl('credentials/info', query);
+    -  http://localhost:3000/credentials/info?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
+- response 
 ```
-{ apiVersion: '1',
+{ 
+  status: 'OK',
+  code: 200,
+  apiVersion: '1',
   blockchain: 'ae',
-  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK' }
+  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
+  data: 
+   {
+     dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
+     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+     encryption: 
+      {
+        encryptedPassA: 'y0pjZx3r/zk9f6CcQmIvKwWHsAm1DTZc7n0Vl0NaNcMZM1wEZKg9s9U352IuK2Bi4fVnYsNCpH6wYjy7K13ntdKsrDPEkdJTA27wG6O4mOvXeJr2',
+        pubKeyA: '2bp7KqG2hjdPyWnKuAaBA89H1YNpN5SRkE3jxkU8oj8Ck2nHNN',
+        pubKeyB: '2XtBHxmnh3fjNuWgU4jQXNh7v3oB5CtYPoYtDCr8JpdQNiNBk8' 
+      } 
+   } 
+}
 ```
+
+
+### data/info
+
+- usage
+- returns
+
 ### **login/challenge**
 
 This request is called in _login(keyPair)_ for server connection to then pass it to a post request - mobile/login - to get a token. Which is needed for the other APIs. 
@@ -57,16 +84,53 @@ This request is called in _login(keyPair)_ for server connection to then pass it
 - usage http://localhost:3000/login/challenge?noapi=1
 - response - gives information about the status of the call, the network, api, contract address and is about to pass the challenge field to the "login/mobile" POST request. 
 ``` 
-{ status: 'OK',
+{ 
+  status: 'OK',
   code: 200,
   apiVersion: '1',
   blockchain: 'ae',
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
-   { challenge: '0x2eb05eb811421dd56557833144ec1e96577566d85196f7ce6f5442af2fd4697e',
+   {
+     challenge: '0x2eb05eb811421dd56557833144ec1e96577566d85196f7ce6f5442af2fd4697e',
      uuid: '61342ef0-8881-11ea-8313-2b73e6c31f3b',
      startTimestamp: '2020-04-27T12:19:45.120Z',
      endTimestamp: '2020-04-27T12:34:45.120Z' 
+    } 
+}
+```
+
+### **login/check** 
+This request is called when asking for info about the blockchain and version of the service
+
+- usage - http://localhost:3000/login/check?noapi=1
+- returns 
+```
+{ 
+  apiVersion: '1',
+  blockchain: 'ae',
+  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK' 
+}
+```
+
+### selection/info
+This request is called in _getSelected_ in order to get the selection hash of the selected files.
+
+- usage
+  - getEndpointUrl('selection/info', &selectionHash=${selectionHash})
+  - http://localhost:3000/selection/info?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8&selectionHash=0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633
+- returns 
+```
+{ 
+  status: 'OK',
+  code: 200,
+  apiVersion: '1',
+  blockchain: 'ae',
+  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
+  data: 
+   { selectionHash: '0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633',
+     dataIds: [ '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819', '..' ],
+     usersIds: [ 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5', '..' ] 
     } 
 }
 ```
@@ -100,64 +164,12 @@ This request is called in _share()_. The server responds with recipient and data
 }
 ```
 
-### credentials/info
-This request is called in _reEncrypt()_ it asks for the browser's credentials. It is the one from you are opening/downloading the file.
-
-- usage 
-    - let query = &userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash};
-    
-      let getUrl = getEndpointUrl('credentials/info', query);
-    -  http://localhost:3000/credentials/info?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
-- response 
-```
-{ status: 'OK',
-  code: 200,
-  apiVersion: '1',
-  blockchain: 'ae',
-  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
-  data: 
-   { dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-     encryption: 
-      { encryptedPassA: 'y0pjZx3r/zk9f6CcQmIvKwWHsAm1DTZc7n0Vl0NaNcMZM1wEZKg9s9U352IuK2Bi4fVnYsNCpH6wYjy7K13ntdKsrDPEkdJTA27wG6O4mOvXeJr2',
-        pubKeyA: '2bp7KqG2hjdPyWnKuAaBA89H1YNpN5SRkE3jxkU8oj8Ck2nHNN',
-        pubKeyB: '2XtBHxmnh3fjNuWgU4jQXNh7v3oB5CtYPoYtDCr8JpdQNiNBk8' 
-        } 
-    } 
-}
-```
-
-### data/info
-
-- usage
-- returns
-
 ### share/info
 
 - usage 
 - returns
 
-### selection/info
-This request is called in _getSelected_ in order to get the selection hash of the selected files.
 
-- usage
-  - getEndpointUrl('selection/info', `&selectionHash=${selectionHash}`)
-  - http://localhost:3000/selection/info?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8&selectionHash=0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633
-- returns 
-```
-{ 
-  status: 'OK',
-  code: 200,
-  apiVersion: '1',
-  blockchain: 'ae',
-  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
-  data: 
-   { selectionHash: '0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633',
-     dataIds: [ '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819', '..' ],
-     usersIds: [ 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5', '..' ] 
-    } 
-}
-```
 ### signature/info
 
 - usage
@@ -171,13 +183,15 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
 - returns 
 
 ```
-{ status: 'OK',
+{ 
+  status: 'OK',
   code: 200,
   apiVersion: '1',
   blockchain: 'ae',
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
-   [ { txRowId: 18,
+   [ {
+       txRowId: 18,
        dataId: '0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537',
        userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
        recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
@@ -207,76 +221,40 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
 ------------------
 ## API/POST 
 
-### login/mobile
+### credentials/create/passb
+This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for the selected user 
 
-This request is called in _loginWithChallenge_ to get the token. 
-
-- usage http://localhost:3000/login/mobile?noapi=1
+- usage - http://localhost:3000/credentials/create/passb?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b
 - body 
 ```
 { 
-  action: 'login',
-  pubKey: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  pubEncKey: '2pYnhELKZnC4Ykg8YwE9zKRTnzcN2dbkNzFQhn6qR7fcmkoSZ5',
-  firebase: 'notoken',
-  challenge: '0xba739785f23fe4f450a42b7c88910bf294bfdac8e6af4d17b79cbb50ffd1fa74',
-  challengeSignature: 'Bo8uMnbNyxgEo2NB7KVqzCvftgwudpquc6XXd63G3XsnLLYr9H3eNHGpmMedCd3mDMit2bLLYkd4YdJcVyWtHUUD9KgcK',
-  rtnToken: 'notoken' 
-}
-```
-- returns info about the network along with the rtnToken needed for the more complex calls 
-```
-{ status: 'OK',
-  code: 200,
-  apiVersion: '1',
-  blockchain: 'ae',
-  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
-  data: 
-   { 
-    rtnToken: '1c9e8480-8885-11ea-8313-2b73e6c31f3b',
-     rtnTokenHash: '0x5c86a6a658c25fea85d3ad246b8b5da10a7ae87f8702b8e81720793484b47684'  
-   }
-}
-     
-```
-
-### tx/create
-Used in _registerHash()_.
-
-- usage
-http://localhost:3000/tx/create?api=1&token=5bd361f0-8945-11ea-aee2-33022313c596
-- body 
-```
-{ dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
+  dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
   userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  requestId: 'ReCheck',
-  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  requestType: 'register',
-  requestBodyHashSignature: '4qGkoR3HhoS1bDbFjqN7xsugeWpy5UQbUBvdvn34PDRtuU22nA6icaKwGgAN9CuKSu4KqK4vWPLrmpLSy5k6XTvAAxczb',
-  trailHash: '0xce6266a996b7c2e132cd6460f95c9fc4bec07e1f370f220068da3e48dde94258',
-  trailHashSignatureHash: '0xd51329fac25d9ca419462a6519ef3aaf7317e53a8412ab84b1a44ddcb170979a',
- (optional)  extraTrailHashes: [] 
+  encryption: 
+   { 
+     syncPassHash: '0xa6a4f9cca18efbe3eb4909eeda8c62967dd20fc0ee4e4c5b9835bb2f7d37c68f',
+     encryptedPassB: 'MRlc8BfgXaqwpaQaDiGdsqWkmUfDm2MD7dtCvmKwGBT7kK+CsepkAsZcIUZxRviYlDmDCL0iEJbeaPVOR0jIBZRqxw9uiPtSeelJy0kHNgFnCJmD' 
+    }
 }
 ```
-- returns
+
+-returns
+
 ```
-{ status: 'OK',
+{ 
+  status: 'OK',
   code: 200,
   apiVersion: '1',
   blockchain: 'ae',
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
-   { dataId: '0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537',
+   {
+     dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
      userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
-    } 
+    }
 }
 ```
-### selection/create
-Used in _select_
 
-- usage
-- body 
-- returns
 
 ### credentials/create/pubkeyb
 This request is called in _prepare()_ to give half of the password to the browser, which it then to pass to the recipient.
@@ -285,42 +263,15 @@ This request is called in _prepare()_ to give half of the password to the browse
 http://localhost:3000/credentials/create/pubkeyb?api=1&token=a89a6d30-893b-11ea-aee2-33022313c596
 - body
 ```
- { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
+ {
+  dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
   userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   encryption: 
-   { pubKeyB: '2kQ4bUJ4c1D75tJayYHnk5nzLbdZtUk1ZuL6bgLVZD8s7VCcZR' } }
-```
-- returns
-```
-{ status: 'OK',
-  code: 200,
-  apiVersion: '1',
-  blockchain: 'ae',
-  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
-  data: 
-   { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
-    } 
+   { 
+     pubKeyB: '2kQ4bUJ4c1D75tJayYHnk5nzLbdZtUk1ZuL6bgLVZD8s7VCcZR'
+    }
 }
 ```
-### signature/create
-This request is called in _sign()_. Takes a file and puts a "signature" on it. 
-
-- usage
-http://localhost:3000/signature/create?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8
-- body
-```
-{ dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  requestId: 'ReCheck',
-  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  requestType: 'sign',
-  requestBodyHashSignature: '2sGAFRavHeAfpjfECNRu1cxyKskhvNgWfx94zgzHYFxkHBPNyxKaL6crV1cX8ZPnqP746fA8WjbjSEykaVKynA29SZihL',
-  trailHash: '0x26f4cbc7d79a784441a5b471644149ffa62e4eb9b6915ec3a344df915c983e16',
-  trailHashSignatureHash: '0xcc1368f076a5e63012074ca2d5497e8898ab56acaced47927f27a88fb8230887' 
-  }
-```
-
 - returns
 ```
 { 
@@ -335,6 +286,7 @@ http://localhost:3000/signature/create?api=1&token=25a47120-8934-11ea-8721-bf123
     } 
 }
 ```
+
 ### credentials/validate
 This request is called in _validate()_
 
@@ -350,7 +302,10 @@ This request is called in _validate()_
   trailHash: '0x2d51da7f5861decb9869e3d5fc387149966e5073218849067cca352d1cfb5fcc',
   trailHashSignatureHash: '0x662f4ef2000a0ee651a352dfbb77ebbe55afc2fd90ab79f3dab726460f95c6fc',
   encryption: 
-   { decrDataOrigHash: '0xa67f0c7a5f4c955ebcb9a4c110ec557b2324bb3c28ccfdc52ff8adb229d0daa6' } }
+   { 
+     decrDataOrigHash: '0xa67f0c7a5f4c955ebcb9a4c110ec557b2324bb3c28ccfdc52ff8adb229d0daa6' 
+    }
+}
 ```
 - returns 
 ```
@@ -394,7 +349,8 @@ http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64
    } 
 }
 ```
-- return
+- returns
+```
   { status: 'OK',
   code: 200,
   apiVersion: '1',
@@ -405,22 +361,27 @@ http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64
      userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
    }
 }
+```
 
-### credentials/create/passb
-This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for the selected user 
 
-- usage - http://localhost:3000/credentials/create/passb?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b
+### login/mobile
+
+This request is called in _loginWithChallenge_ to get the token. 
+
+- usage http://localhost:3000/login/mobile?noapi=1
 - body 
 ```
-{ dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-  encryption: 
-   { syncPassHash: '0xa6a4f9cca18efbe3eb4909eeda8c62967dd20fc0ee4e4c5b9835bb2f7d37c68f',
-     encryptedPassB: 'MRlc8BfgXaqwpaQaDiGdsqWkmUfDm2MD7dtCvmKwGBT7kK+CsepkAsZcIUZxRviYlDmDCL0iEJbeaPVOR0jIBZRqxw9uiPtSeelJy0kHNgFnCJmD' } }
+{ 
+  action: 'login',
+  pubKey: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  pubEncKey: '2pYnhELKZnC4Ykg8YwE9zKRTnzcN2dbkNzFQhn6qR7fcmkoSZ5',
+  firebase: 'notoken',
+  challenge: '0xba739785f23fe4f450a42b7c88910bf294bfdac8e6af4d17b79cbb50ffd1fa74',
+  challengeSignature: 'Bo8uMnbNyxgEo2NB7KVqzCvftgwudpquc6XXd63G3XsnLLYr9H3eNHGpmMedCd3mDMit2bLLYkd4YdJcVyWtHUUD9KgcK',
+  rtnToken: 'notoken' 
+}
 ```
-
--responce 
-
+- returns info about the network along with the rtnToken needed for the more complex calls 
 ```
 { status: 'OK',
   code: 200,
@@ -428,9 +389,20 @@ This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for t
   blockchain: 'ae',
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
-   { dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' } }
+   { 
+    rtnToken: '1c9e8480-8885-11ea-8313-2b73e6c31f3b',
+     rtnTokenHash: '0x5c86a6a658c25fea85d3ad246b8b5da10a7ae87f8702b8e81720793484b47684'  
+   }
+}
+     
 ```
+
+### selection/create
+Used in _select_
+
+- usage
+- body 
+- returns
 
 ### share/create
 This request is called in _share()_. Posts to the server the specific data you want to share with the specific parties. 
@@ -455,7 +427,7 @@ This request is called in _share()_. Posts to the server the specific data you w
     } 
 }
 ```
-- response
+- returns
 ```
 { 
   status: 'OK',
@@ -472,3 +444,67 @@ This request is called in _share()_. Posts to the server the specific data you w
 }
 ```
 
+### signature/create
+This request is called in _sign()_. Takes a file and puts a "signature" on it. 
+
+- usage
+http://localhost:3000/signature/create?api=1&token=25a47120-8934-11ea-8721-bf12354c64b8
+- body
+```
+{ dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
+  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  requestId: 'ReCheck',
+  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  requestType: 'sign',
+  requestBodyHashSignature: '2sGAFRavHeAfpjfECNRu1cxyKskhvNgWfx94zgzHYFxkHBPNyxKaL6crV1cX8ZPnqP746fA8WjbjSEykaVKynA29SZihL',
+  trailHash: '0x26f4cbc7d79a784441a5b471644149ffa62e4eb9b6915ec3a344df915c983e16',
+  trailHashSignatureHash: '0xcc1368f076a5e63012074ca2d5497e8898ab56acaced47927f27a88fb8230887' 
+  }
+```
+
+- returns
+```
+{ 
+  status: 'OK',
+  code: 200,
+  apiVersion: '1',
+  blockchain: 'ae',
+  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
+  data: 
+   { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
+     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+    } 
+}
+```
+
+### tx/create
+Used in _registerHash()_.
+
+- usage
+http://localhost:3000/tx/create?api=1&token=5bd361f0-8945-11ea-aee2-33022313c596
+- body 
+```
+{ dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
+  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  requestId: 'ReCheck',
+  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  requestType: 'register',
+  requestBodyHashSignature: '4qGkoR3HhoS1bDbFjqN7xsugeWpy5UQbUBvdvn34PDRtuU22nA6icaKwGgAN9CuKSu4KqK4vWPLrmpLSy5k6XTvAAxczb',
+  trailHash: '0xce6266a996b7c2e132cd6460f95c9fc4bec07e1f370f220068da3e48dde94258',
+  trailHashSignatureHash: '0xd51329fac25d9ca419462a6519ef3aaf7317e53a8412ab84b1a44ddcb170979a',
+ (optional)  extraTrailHashes: [] 
+}
+```
+- returns
+```
+{ status: 'OK',
+  code: 200,
+  apiVersion: '1',
+  blockchain: 'ae',
+  contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
+  data: 
+   { dataId: '0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537',
+     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+    } 
+}
+```
