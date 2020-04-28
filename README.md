@@ -8,7 +8,10 @@ You can find the **documentation [here](docs/index.md)**.
 
 You can find the **npm package [here](https://www.npmjs.com/package/recheck-clientjs-library)**.
 
+You can find the **API requests [here](docs/API.md)** 
+
 To connect to our environment you can use __https://beta.recheck.io__ .
+
 
 To tryout some of the possibilities of the library you can use our __CLI tool [hammer](https://github.com/ReCheck-io/hammerJS)__.
 
