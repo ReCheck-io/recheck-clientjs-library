@@ -16,6 +16,8 @@ function getEndpointUrl(action, appendix) {
 }
 ```
 
+?noapi=1 -
+oken=${token}`
 ## API/GET 
 
 ### **login/check** 
@@ -49,12 +51,12 @@ This request is called for server connection to then pass it to a post request -
 }
 ```
 
-### credentials/share
+### share/credentials
 This request is called in _share()_. The server responds with recipient and data about decryption for the recipient.
 
 - usage 
-    - getEndpointUrl('credentials/share', `&dataId=${dataId}&recipientId=${recipientId}`)
-    - http://localhost:3000/credentials/share?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&recipientId=ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W
+    - getEndpointUrl('share/credentials', `&dataId=${dataId}&recipientId=${recipientId}`)
+    - http://localhost:3000/share/credentials?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&recipientId=ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W
 
 - returns 
 ```
@@ -78,14 +80,14 @@ This request is called in _share()_. The server responds with recipient and data
 }
 ```
 
-### credentials/exchange
+### credentials/info
 This request is called in _reEncrypt()_ it asks for the browser's credentials. It is the one from you are opening/downloading the file.
 
 - usage 
-    - 
-    let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
-    let getUrl = getEndpointUrl('credentials/exchange', query);
-    -  http://localhost:3000/credentials/exchange?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
+    - let query = &userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash};
+    
+      let getUrl = getEndpointUrl('credentials/info', query);
+    -  http://localhost:3000/credentials/info?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
 - response 
 ```
 { status: 'OK',
@@ -260,11 +262,11 @@ Used in _select_
 - body 
 - returns
 
-### credentials
+### credentials/create/pubkeyb
 This request is called in _prepare()_ to give half of the password to the browser, which it then to pass to the recipient.
 
 - usage
-http://localhost:3000/credentials?api=1&token=a89a6d30-893b-11ea-aee2-33022313c596
+http://localhost:3000/credentials/create/pubkeyb?api=1&token=a89a6d30-893b-11ea-aee2-33022313c596
 - body
 ```
  { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
@@ -388,10 +390,10 @@ http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64
    }
 }
 
-### credentials/exchange
+### credentials/create/passb
 This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for the selected user 
 
-- usage - http://localhost:3000/credentials/exchange?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b
+- usage - http://localhost:3000/credentials/create/passb?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b
 - body 
 ```
 { dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
