@@ -288,8 +288,9 @@ function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
 
 async function getServerInfo() {
     let getUrl = getEndpointUrl('login/check');
+
     let serverResponse = (await axios.get(getUrl)).data;
-    
+
     if (isNullAny(serverResponse)) {
         throw new Error('Unable to connect to server.');
     }
@@ -575,12 +576,11 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
-
-    let getUrl = getEndpointUrl('credentials/share', `&dataId=${dataId}&recipientId=${recipientId}`);
+    let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&recipientId=${recipientId}`);
     log('shareencrypted get request', getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
-
+    //TODO when recipient wants to share with sender. check if recipient has the data and return for client
     if (getShareResponse.data.dataId !== dataId) {
         throw new Error('Unable to create share. Data id mismatch.');
     }
@@ -622,7 +622,7 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     let serverPostResponse = (await axios.post(postUrl, createShare)).data;
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
-
+    //TODO when recipient wants to share with sender. check if recipient has the data and return for client
     if (!txPolling) {
         return serverPostResponse.data;
     }
@@ -686,7 +686,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     };
     log('submit pubkey payload', browserPubKeySubmit);
 
-    let browserPubKeySubmitUrl = getEndpointUrl('credentials');
+    let browserPubKeySubmitUrl = getEndpointUrl('credentials/create/pubkeyb');
     log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
 
     let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, browserPubKeySubmit)).data;
@@ -713,7 +713,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
     let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
-    let getUrl = getEndpointUrl('credentials/exchange', query);
+    let getUrl = getEndpointUrl('credentials/info', query);
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
 
@@ -744,7 +744,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     };
     log('devicePost', devicePost);
 
-    let postUrl = getEndpointUrl('credentials/exchange');
+    let postUrl = getEndpointUrl('credentials/create/passb');
     log('decrypt post', postUrl);
 
     let serverPostResponse = (await axios.post(postUrl, devicePost)).data;
@@ -927,7 +927,7 @@ async function select(files, recipients, isExternal = false) {
 }
 
 async function getSelected(selectionHash) {
-    let getUrl = getEndpointUrl('selection', `&selectionHash=${selectionHash}`);
+    let getUrl = getEndpointUrl('selection/info', `&selectionHash=${selectionHash}`);
     log('getSelected get request', getUrl);
 
     let selectionResponse = (await axios.get(getUrl)).data;
@@ -1215,7 +1215,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
         dataOriginalHash: dataOriginalHash,
     };
 
-    let postUrl = getEndpointUrl('data/id');
+    let postUrl = getEndpointUrl('data/id/create');
     log('saveExternalId, ', body);
 
     let serverPostResponse = (await axios.post(postUrl, body)).data;
@@ -1231,7 +1231,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
 async function convertExternalId(externalId, userId) {
     let query = `&userId=${userId}&externalId=${externalId}`;
 
-    let getUrl = getEndpointUrl('data/id', query);
+    let getUrl = getEndpointUrl('data/id/info', query);
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
