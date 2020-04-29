@@ -46,6 +46,7 @@ function getRequestHash(requestBodyOrUrl) {
         requestString = stringify(resultObj).replace(/\s/g, "");
     } else {
         requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
+        requestString = new URL(requestString).pathname;
     }
 
     return getHash(requestString);
