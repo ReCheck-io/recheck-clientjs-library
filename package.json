@@ -1,6 +1,6 @@
 {
   "name": "recheck-clientjs-library",
-  "version": "1.0.15",
+  "version": "1.0.15-beta.0",
   "description": "Encryption library that uses two PKI key pairs. ",
   "main": "index.js",
   "repository": {
