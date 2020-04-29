@@ -46,10 +46,22 @@ function getRequestHash(requestBodyOrUrl) {
         requestString = stringify(resultObj).replace(/\s/g, "");
     } else {
         requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
-        requestString = new URL(requestString).pathname;
+        requestString = getUrlPathname(requestString);
     }
 
     return getHash(requestString);
+
+    function getUrlPathname(url) {
+        let urlSplit = url.split('/');
+
+        if (urlSplit.length < 4) {
+            throw new Error(`Can not get url pathname from ${url}`);
+        }
+
+        let host = `${urlSplit[0]}//${urlSplit[2]}`;
+
+        return url.replace(host, '');
+    }
 }
 
 function encodeBase58Check(input) {
