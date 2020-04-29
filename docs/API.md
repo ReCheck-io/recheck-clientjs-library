@@ -16,8 +16,9 @@ function getEndpointUrl(action, appendix) {
 }
 ```
 
-?noapi=1 -
-oken=${token}`
+?noapi=1 
+
+token=${token}`
 ## Table of contents 
 - [GET](#api/get)
   - [credentials/info](#credentials/info)
@@ -42,6 +43,9 @@ oken=${token}`
 ## API/GET 
 
 ### credentials/info
+
+**At the moment _credentials/exchange_ is being used it will change in the next update**
+
 This request is called in _reEncrypt()_ it asks for the browser's credentials. It is the one from you are opening/downloading the file.
 
 - usage 
@@ -114,6 +118,9 @@ This request is called when asking for info about the blockchain and version of 
 ```
 
 ### selection/info
+
+**At the moment _selection_ is being used it will change in the next update**
+
 This request is called in _getSelected_ in order to get the selection hash of the selected files.
 
 - usage
@@ -136,6 +143,9 @@ This request is called in _getSelected_ in order to get the selection hash of th
 ```
 
 ### share/credentials
+
+**At the moment _credentials/share_ is being used it will change in the next update**
+
 This request is called in _share()_. The server responds with recipient and data about decryption for the recipient.
 
 - usage 
@@ -222,6 +232,9 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
 ## API/POST 
 
 ### credentials/create/passb
+
+**At the moment _credentials_ is being used it will change in the next update**
+
 This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for the selected user 
 
 - usage - http://localhost:3000/credentials/create/passb?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b
@@ -257,6 +270,9 @@ This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for t
 
 
 ### credentials/create/pubkeyb
+
+**At the moment _credentials/exchange_ is being used it will change in the next update**
+
 This request is called in _prepare()_ to give half of the password to the browser, which it then to pass to the recipient.
 
 - usage
