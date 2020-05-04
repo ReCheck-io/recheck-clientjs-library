@@ -20,26 +20,27 @@ function getEndpointUrl(action, appendix) {
 
 token=${token}`
 ## Table of contents 
-- [GET](#api/get)
-  - [credentials/info](#credentials/info)
-  - [data/info](#data/info)
-  - [login/challenge](#login/challenge)
-  - [login/check](#login/check)
-  - [selection/info](#selection/info)
-  - [share/credentials](#share/credentials)
-  - [share/info](#share/info)
-  - [signature/info](#signature/info)
-  - [tx/check](#tx/check)
-- [POST](#api/post) 
-  - [credentials/create/passb](#credentials/create/passb)
-  - [credentials/create/pubkeyb](#credentials/create/pubkeyb)
-  - [credentials/validate](#credentials/validate)
-  - [data/create](#data/create)
-  - [login/mobile](#login/mobile)
-  - [selection/create](#selection/create)
-  - [share/create](#share/create)
-  - [signature/create](#signature/create)
-  - [tx/create](#tx/create)
+- [GET](#apiget)
+  - [credentials/info](#credentialsinfo)
+  - [data/info](#datainfo)
+  - [login/challenge](#loginchallenge)
+  - [login/check](#logincheck)
+  - [selection/info](#selectioninfo)
+  - [share/credentials](#sharecredentials)
+  - [share/info](#shareinfo)
+  - [signature/info](#signatureinfo)
+  - [tx/check](#txcheck)
+  - [tx/certificate](#txcertificate)
+- [POST](#apipost) 
+  - [credentials/create/passb](#credentialscreatepassb)
+  - [credentials/create/pubkeyb](#credentialscreatepubkeyb)
+  - [credentials/validate](#credentialsvalidate)
+  - [data/create](#datacreate)
+  - [login/mobile](#loginmobile)
+  - [selection/create](#selectioncreate)
+  - [share/create](#sharecreate)
+  - [signature/create](#signaturecreate)
+  - [tx/create](#txcreate)
 ## API/GET 
 
 ### credentials/info
@@ -185,6 +186,20 @@ This request is called in _share()_. The server responds with recipient and data
 - usage
 - returns
 
+### tx/certificate
+
+- usage
+- returns
+```
+dataName: 
+dataExtension: 
+uploadData: 
+shareData: 
+signData: 
+downloadData: 
+verifyData: 
+```
+
 ### tx/check
 This request is called in _checkHash_. 
 
@@ -227,6 +242,7 @@ http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&
     ]
 }
 ```
+
 
 ------------------
 ## API/POST 

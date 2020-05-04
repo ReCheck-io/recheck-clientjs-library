@@ -29,7 +29,7 @@ A [Sequence Diagram](WebSequenceDiagram.md)
 ## Getting started
 
 
-### Exported functions : 
+### Exported functions
 
 #### debug: setDebugMode,
 Setting the debug either true or false. 
