@@ -29,8 +29,9 @@ token=${token}`
   - [share/credentials](#sharecredentials)
   - [share/info](#shareinfo)
   - [signature/info](#signatureinfo)
-  - [tx/check](#txcheck)
   - [tx/certificate](#txcertificate)
+  - [tx/check](#txcheck)
+ 
 - [POST](#apipost) 
   - [credentials/create/passb](#credentialscreatepassb)
   - [credentials/create/pubkeyb](#credentialscreatepubkeyb)
@@ -200,11 +201,11 @@ downloadData:
 verifyData: 
 ```
 
-### tx/check
-This request is called in _checkHash_. 
+### tx/info
+This request is called in _checkHash_. Needs the userID and dataID to check whether the data's hash is registered in the blockchain.
 
 - usage
-http://localhost:3000/tx/check?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537
+http://localhost:3000/tx/info?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537
 - returns 
 
 ```
