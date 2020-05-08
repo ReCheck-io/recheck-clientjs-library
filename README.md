@@ -1,4 +1,4 @@
-[![Website recheck.io](https://img.shields.io/badge/Website-recheck.io-brightgreen.svg)](https://recheck.io/) [![npm version](https://badge.fury.io/js/recheck-clientjs-library.svg)](https://badge.fury.io/js/symbol-sdk)
+[![Website recheck.io](https://img.shields.io/badge/Website-recheck.io-brightgreen.svg)](https://recheck.io/) [![npm version](https://badge.fury.io/js/recheck-clientjs-library.svg)](https://badge.fury.io/js/symbol-sdk)<a href="https://discord.gg/a2S6WX"><img src="https://img.shields.io/discord/675683560673509386?logo=discord" alt="chat on Discord"></a>
 
 # Client API
 
