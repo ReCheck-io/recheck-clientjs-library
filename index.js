@@ -16,6 +16,7 @@ let token = null;
 let network = "ae"; //ae,eth
 
 const defaultRequestId = 'ReCheck';
+let isWorkingExecReEncr = false;
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 
@@ -157,14 +158,7 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
             throw new Error('Decryption failed.');
         }
 
-        const base64DecryptedMessage = encodeUTF8(decrypted);
-
-        //TODO remove try-catch after beta reset
-        try {
-            return JSON.parse(base64DecryptedMessage);
-        } catch (ignored) {
-            return base64DecryptedMessage;
-        }
+        return encodeUTF8(decrypted);//base64DecryptedMessage
     }
 }
 
@@ -436,14 +430,7 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
     log('Server returns result', submitRes.data);
 
     if (submitRes.status === "ERROR") {
-        throw new Error(`Error code: ${submitRes.code}, message ${submitRes.message}`);
-    } else if (submitRes.action === 'check') {
-        //TODO dataName dataExtension
-        if (isNullAny(submitRes.data.name)) {
-            throw new Error(`This file has been already registered by another user.`);
-        } else {
-            throw new Error(`This file already exist as '${submitRes.data.name}'.`);
-        }
+        throw submitRes.data;
     }
 
     if (!txPolling) {
@@ -593,6 +580,11 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     log('shareencrypted get request', getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
+
+    if (getShareResponse.status === "ERROR") {
+        throw getShareResponse.data;
+    }
+
     //TODO when recipient wants to share with sender. check if recipient has the data and return for client
     if (getShareResponse.data.dataId !== dataId) {
         throw new Error('Unable to create share. Data id mismatch.');
@@ -706,7 +698,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     log('browser poll post result', browserPubKeySubmitRes.data);
 
     if (browserPubKeySubmitRes.status === 'ERROR') {
-        throw new Error(`Intermediate public key B submission error. Details:${browserPubKeySubmitRes}`);
+        throw browserPubKeySubmitRes.data;
     }
 
     return browserPubKeySubmitRes.data;
@@ -782,7 +774,7 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
     for (let i = 0; i < 50; i++) {
         let pollRes = (await axios.get(pollUrl)).data;
 
-        if (isNullAny(pollRes.data.encryption)) {
+        if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryption)) {
             // log('waiting a bit')
             await sleep(1000);
             continue;
@@ -823,7 +815,9 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 
         function decryptDataWithSymmetricKey(messageWithNonce, key) {
             const keyUint8Array = decodeBase64(key);
-            const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+
+            const messageWithNonceAsUint8Array = new Uint8Array(Array.prototype.slice.call(new Buffer(messageWithNonce, 'base64'), 0));//decodeBase64 without validation
+
             const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
 
             const message = messageWithNonceAsUint8Array.slice(
@@ -861,7 +855,7 @@ async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
             let pollRes = (await axios.get(pollUrl)).data;
 
             if (pollRes.status === 'ERROR') {
-                throw new Error(`Error code: ${pollRes.code}, message ${pollRes.message}`);
+                throw pollRes.data;
             }
 
             let sharesRows = pollRes.data;
@@ -898,7 +892,7 @@ async function pollSign(dataIds, userId, isExternal = false) {
             let pollRes = (await axios.get(pollUrl)).data;
 
             if (pollRes.status === 'ERROR') {
-                throw new Error(`Error code: ${pollRes.code}, message ${pollRes.message}`);
+                throw pollRes.data;
             }
 
             let signRow = pollRes.data;
@@ -931,9 +925,7 @@ async function select(files, recipients, isExternal = false) {
     })).data;
 
     if (result.status === 'ERROR') {
-        log('Unable to set selection.');
-    } else {
-        log('Selection set successfully.');
+        throw  result.data;
     }
 
     return result.data.selectionHash;
@@ -944,6 +936,10 @@ async function getSelected(selectionHash) {
     log('getSelected get request', getUrl);
 
     let selectionResponse = (await axios.get(getUrl)).data;
+
+    if (selectionResponse.status === "ERROR") {
+        throw selectionResponse.data;
+    }
 
     return selectionResponse.data;
 }
@@ -990,111 +986,120 @@ async function prepareSelection(selection, keyPair) {
 }
 
 async function execSelection(selection, keyPair, txPolling = false, trailExtraArgs = null) {
+    this.isWorkingExecReEncr = false;
+
     if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
         throw new Error('Missing selection operation code.');
     }
 
-    let actionSelectionHash = selection.split(':');
-    let action = actionSelectionHash[0];
-    let selectionHash = actionSelectionHash[1];
+    try {
+        let actionSelectionHash = selection.split(':');
+        let action = actionSelectionHash[0];
+        let selectionHash = actionSelectionHash[1];
 
-    let selectionResult = await getSelected(selectionHash);
-    log('selection result', selectionResult);
+        let selectionResult = await getSelected(selectionHash);
+        log('selection result', selectionResult);
 
-    if (isNullAny(selectionResult.selectionHash)) {
-        return [];
-    }
+        if (isNullAny(selectionResult.selectionHash)) {
+            return [];
+        }
 
-    let recipients = selectionResult.usersIds;
-    let files = selectionResult.dataIds;
+        let recipients = selectionResult.usersIds;
+        let files = selectionResult.dataIds;
 
-    if (recipients.length !== files.length) {   // the array sizes must be equal
-        throw new Error('Invalid selection format.');
-    }
+        if (recipients.length !== files.length) {   // the array sizes must be equal
+            throw new Error('Invalid selection format.');
+        }
 
-    let result = [];
-    for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
-        switch (action) {
-            case 'op':
-                if (keyPair.address !== recipients[i]) {
-                    log('selection entry omitted', `${recipients[i]}:${files[i]}`);
-                    continue;                             // skip entries that are not for that keypair
-                }
+        let result = [];
+        for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
+            switch (action) {
+                case 'op':
+                    if (keyPair.address !== recipients[i]) {
+                        log('selection entry omitted', `${recipients[i]}:${files[i]}`);
+                        continue;                             // skip entries that are not for that keypair
+                    }
 
-                if (!isNullAny(keyPair.secretEncKey)) {
+                    if (!isNullAny(keyPair.secretEncKey)) {
+                        log('selection entry added', `${recipients[i]}:${files[i]}`);
+
+                        let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling, trailExtraArgs);
+
+                        let fileObj = {
+                            dataId: files[i],
+                            data: fileContent
+                        };
+
+                        result.push(fileObj);
+                    } else {
+                        let credentialsResponse = {
+                            dataId: files[i],
+                            userId: recipients[i]
+                        };
+
+                        let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
+
+                        this.isWorkingExecReEncr = true;
+
+                        let fileObj = {
+                            dataId: files[i],
+                            data: fileContent//returns empty if error
+                        };
+
+                        result.push(fileObj);
+                    }
+                    break;
+
+                case 're':
+                    if (keyPair.address !== recipients[i]) {
+                        log('selection entry omitted', `${recipients[i]}:${files[i]}`);
+                        continue;                      // skip entries that are not for that keypair
+                    }
+
                     log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                    let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling, trailExtraArgs);
+                    let scanResult = await reEncrypt(recipients[i], files[i], keyPair, trailExtraArgs);
 
-                    let fileObj = {
+                    let scanObj = {
                         dataId: files[i],
-                        data: fileContent
+                        data: scanResult
                     };
 
-                    result.push(fileObj);
-                } else {
-                    let credentialsResponse = {
+                    result.push(scanObj);
+                    break;
+
+                case'sh':
+                    let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+
+                    let shareObj = {
                         dataId: files[i],
-                        userId: recipients[i]
+                        data: shareResult
                     };
 
-                    let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
+                    result.push(shareObj);
+                    break;
 
-                    let fileObj = {
+                case'sg':
+                    let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+
+                    let signObj = {
                         dataId: files[i],
-                        data: fileContent//returns empty if error
+                        data: signResult
                     };
 
-                    result.push(fileObj);
-                }
-                break;
+                    result.push(signObj);
+                    break;
 
-            case 're':
-                if (keyPair.address !== recipients[i]) {
-                    log('selection entry omitted', `${recipients[i]}:${files[i]}`);
-                    continue;                      // skip entries that are not for that keypair
-                }
-
-                log('selection entry added', `${recipients[i]}:${files[i]}`);
-
-                let scanResult = await reEncrypt(recipients[i], files[i], keyPair, trailExtraArgs);
-
-                let scanObj = {
-                    dataId: files[i],
-                    data: scanResult
-                };
-
-                result.push(scanObj);
-                break;
-
-            case'sh':
-                let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
-
-                let shareObj = {
-                    dataId: files[i],
-                    data: shareResult
-                };
-
-                result.push(shareObj);
-                break;
-
-            case'sg':
-                let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
-
-                let signObj = {
-                    dataId: files[i],
-                    data: signResult
-                };
-
-                result.push(signObj);
-                break;
-
-            default :
-                throw new Error('Unsupported selection operation code.');
+                default :
+                    throw new Error('Unsupported selection operation code.');
+            }
         }
-    }
 
-    return result;
+        return result;
+
+    } catch (error) {
+        throw (error);
+    }
 }
 
 function signMessage(message, secretKey) {
@@ -1191,7 +1196,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
     log('Server responds to registerHash POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
-        throw new Error(`Error code: ${serverPostResponse.code}, message ${serverPostResponse.message}`);
+        throw  serverPostResponse.data;
     }
 
     if (!txPolling) {
@@ -1211,7 +1216,7 @@ async function checkHash(dataChainId, userId, requestId = null, isExternal = fal
         query += `&requestId=${requestId}`;
     }
 
-    let getUrl = getEndpointUrl('tx/check', query);
+    let getUrl = getEndpointUrl('tx/info', query);
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
@@ -1235,7 +1240,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
     log('Server responds to saveExternalId POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
-        throw new Error(`Error code: ${serverPostResponse.code}, message ${serverPostResponse.message}`);
+        throw serverPostResponse.data;
     }
 
     return serverPostResponse.data;
@@ -1251,7 +1256,7 @@ async function convertExternalId(externalId, userId) {
     log('Server responds to convertExternalId GET', serverResponse.data);
 
     if (serverResponse.status === "ERROR") {
-        throw new Error(`Error code: ${serverResponse.code}, message ${serverResponse.message}`);
+        throw serverResponse.data;
     }
 
     return serverResponse.data;
@@ -1313,6 +1318,7 @@ module.exports = {
     prepareSelection: prepareSelection,
     // node hammer exec o:0x...(selection hash)
     execSelection: execSelection,
+    isWorkingExecReEncr: isWorkingExecReEncr,
 
     signMessage: signMessage,
     verifyMessage: verifyMessage,
