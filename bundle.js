@@ -1,1 +1,1 @@
-window.RECHECK = require('./recheck-client');
+window.RECHECK = require('./index.js');

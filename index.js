@@ -585,7 +585,6 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
         throw getShareResponse.data;
     }
 
-    //TODO when recipient wants to share with sender. check if recipient has the data and return for client
     if (getShareResponse.data.dataId !== dataId) {
         throw new Error('Unable to create share. Data id mismatch.');
     }
@@ -627,13 +626,16 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     let serverPostResponse = (await axios.post(postUrl, createShare)).data;
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
-    //TODO when recipient wants to share with sender. check if recipient has the data and return for client
+
+    if (serverPostResponse.status === "ERROR") {
+        throw serverPostResponse.data;
+    }
+
     if (!txPolling) {
         return serverPostResponse.data;
     }
 
     return await processTxPolling(dataId, userId, 'requestType', 'share');
-
 }
 
 async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
@@ -859,8 +861,7 @@ async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
             }
 
             let sharesRows = pollRes.data;
-            if (isNullAny(sharesRows)
-                || !sharesRows.some(r => r.senderId === userId && r.recipientId === recipientIds[j])) {
+            if (isNullAny(sharesRows)) {
                 await sleep(1000);
                 break;
             } else {
