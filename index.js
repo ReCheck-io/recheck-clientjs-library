@@ -852,16 +852,11 @@ async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
 
     for (let i = 0; i < 50; i++) {
         for (let j = 0; j < dataIds.length; j++) {
-            let pollUrl = getEndpointUrl('share/info', `&userId=${userId}&dataId=${dataIds[j]}`);
+            let pollUrl = getEndpointUrl('share/info', `&userId=${recipientIds[j]}&dataId=${dataIds[j]}`);
 
             let pollRes = (await axios.get(pollUrl)).data;
 
-            if (pollRes.status === 'ERROR') {
-                throw pollRes.data;
-            }
-
-            let sharesRows = pollRes.data;
-            if (isNullAny(sharesRows)) {
+            if (isNullAny(pollRes.data)) {
                 await sleep(1000);
                 break;
             } else {
@@ -892,12 +887,7 @@ async function pollSign(dataIds, userId, isExternal = false) {
 
             let pollRes = (await axios.get(pollUrl)).data;
 
-            if (pollRes.status === 'ERROR') {
-                throw pollRes.data;
-            }
-
-            let signRow = pollRes.data;
-            if (isNullAny(signRow)) {
+            if (isNullAny(pollRes.data)) {
                 await sleep(1000);
                 break;
             } else {

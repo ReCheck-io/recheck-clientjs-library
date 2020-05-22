@@ -25177,16 +25177,11 @@ object-assign
 
                 for (let i = 0; i < 50; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
-                        let pollUrl = getEndpointUrl('share/info', `&userId=${userId}&dataId=${dataIds[j]}`);
+                        let pollUrl = getEndpointUrl('share/info', `&userId=${recipientIds[j]}&dataId=${dataIds[j]}`);
 
                         let pollRes = (await axios.get(pollUrl)).data;
 
-                        if (pollRes.status === 'ERROR') {
-                            throw pollRes.data;
-                        }
-
-                        let sharesRows = pollRes.data;
-                        if (isNullAny(sharesRows)) {
+                        if (isNullAny(pollRes.data)) {
                             await sleep(1000);
                             break;
                         } else {
@@ -25217,12 +25212,7 @@ object-assign
 
                         let pollRes = (await axios.get(pollUrl)).data;
 
-                        if (pollRes.status === 'ERROR') {
-                            throw pollRes.data;
-                        }
-
-                        let signRow = pollRes.data;
-                        if (isNullAny(signRow)) {
+                        if (isNullAny(pollRes.data)) {
                             await sleep(1000);
                             break;
                         } else {
@@ -55913,7 +55903,6 @@ function getTypes(coders) {
             }
 
             var sigma = new Uint8Array([101, 120, 112, 97, 110, 100, 32, 51, 50, 45, 98, 121, 116, 101, 32, 107]);
-
             // "expand 32-byte k"
 
             function crypto_stream_salsa20_xor(c, cpos, m, mpos, b, n, k) {
@@ -58598,7 +58587,6 @@ function getTypes(coders) {
             }
 
             var sigma = new Uint8Array([101, 120, 112, 97, 110, 100, 32, 51, 50, 45, 98, 121, 116, 101, 32, 107]);
-
             // "expand 32-byte k"
 
             function crypto_stream_salsa20_xor(c, cpos, m, mpos, b, n, k) {
