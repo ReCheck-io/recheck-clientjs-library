@@ -25177,7 +25177,7 @@ object-assign
 
                 for (let i = 0; i < 50; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
-                        let pollUrl = getEndpointUrl('share/info', `&userId=${recipientIds[j]}&dataId=${dataIds[j]}`);
+                        let pollUrl = getEndpointUrl('share/info', `&recipientId=${recipientIds[j]}&dataId=${dataIds[j]}`);
 
                         let pollRes = (await axios.get(pollUrl)).data;
 
