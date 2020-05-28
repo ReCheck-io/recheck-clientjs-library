@@ -346,26 +346,17 @@ async function loginWithChallenge(challenge, keyPair) {
 
 async function newKeyPair(passPhrase) {
 
-    let key1 = '';
-    let key2 = '';
-
     if (!isNullAny(passPhrase)) {
         const words = passPhrase.split(' ');
 
         if (words.length !== 12) {
             throw('Invalid passphrase. Must be 12 words long.');
         }
-
-        key1 = words.slice(0, 6).join(' ');//0-5
-        key2 = words.slice(6, 12).join(' ');//6-11
     } else {
-        key1 = diceware(6);
-        key2 = diceware(6);
+        passPhrase = diceware(12);
     }
 
-    let phrase = `${key1} ${key2}`;
-
-    let keys = await _session25519(key1, key2);
+    let keys = await _session25519(passPhrase, getHash(passPhrase));
 
     let publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
     let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
@@ -382,7 +373,7 @@ async function newKeyPair(passPhrase) {
                 secretKey: secretSignBuffer,
                 publicEncKey: publicEncBufferEncoded,
                 secretEncKey: secretEncBufferHex,
-                phrase: phrase
+                phrase: passPhrase
             };
 
         case  "eth":
@@ -397,7 +388,7 @@ async function newKeyPair(passPhrase) {
                 secretKey: secretSignKey,
                 publicEncKey: publicEncBufferEncoded,
                 secretEncKey: secretEncBufferHex,
-                phrase: phrase
+                phrase: passPhrase
             };
 
         default:
