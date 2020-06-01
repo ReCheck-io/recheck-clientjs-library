@@ -25222,6 +25222,18 @@ object-assign
 
             async function select(files, recipients, isExternal = false) {
 
+                let filteredDataIdsUserIds = [];
+                for (let i = 0; i < files.length; i++) {
+                    let currentDataIdUserId = files[i] + recipients[i];
+                    if (filteredDataIdsUserIds.includes(currentDataIdUserId)) {
+                        files.splice(i, 1);
+                        recipients.splice(i, 1);
+                        i--;
+                    } else {
+                        filteredDataIdsUserIds.push(currentDataIdUserId);
+                    }
+                }
+
                 files = await processExternalId(files, null, isExternal);
 
                 let validateUrl = getEndpointUrl('selection/create');
