@@ -25154,14 +25154,18 @@ object-assign
                 }
             }
 
-            async function pollShare(dataIds, recipientIds, userId, isExternal = false) {
+            async function pollShare(dataIds, recipientIds, userId, isExternal = false, functionId = '') {
                 if (!Array.isArray(dataIds)) {
                     dataIds = [dataIds];
                     recipientIds = [recipientIds];
                 }
 
+                if (!isNullAny(functionId)) {
+                    functionId = `$#${functionId}`;
+                }
+
                 if (dataIds.length !== recipientIds.length) {
-                    throw new Error(`Data count and recipient count mismatch.`);
+                    throw new Error(`Data count and recipient count mismatch.${functionId}`);
                 }
 
                 dataIds = await processExternalId(dataIds, userId, isExternal);
@@ -25183,16 +25187,20 @@ object-assign
                     }
 
                     if (dataIds.length === 0) {
-                        return true;
+                        return functionId.substr(2) || true;
                     }
                 }
 
-                throw new Error('Share polling timeout.');
+                throw new Error(`Share polling timeout...${functionId}`);
             }
 
-            async function pollSign(dataIds, userId, isExternal = false) {
+            async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
                 if (!Array.isArray(dataIds)) {
                     dataIds = [dataIds];
+                }
+
+                if (!isNullAny(functionId)) {
+                    functionId = `$#${functionId}`;
                 }
 
                 dataIds = await processExternalId(dataIds, userId, isExternal);
@@ -25213,14 +25221,26 @@ object-assign
                     }
 
                     if (dataIds.length === 0) {
-                        return true;
+                        return functionId.substr(2) || true;
                     }
                 }
 
-                throw new Error('Signature polling timeout.');
+                throw new Error(`Signature polling timeout.${functionId}`);
             }
 
             async function select(files, recipients, isExternal = false) {
+
+                let filteredDataIdsUserIds = [];
+                for (let i = 0; i < files.length; i++) {
+                    let currentDataIdUserId = files[i] + recipients[i];
+                    if (filteredDataIdsUserIds.includes(currentDataIdUserId)) {
+                        files.splice(i, 1);
+                        recipients.splice(i, 1);
+                        i--;
+                    } else {
+                        filteredDataIdsUserIds.push(currentDataIdUserId);
+                    }
+                }
 
                 files = await processExternalId(files, null, isExternal);
 
@@ -25330,12 +25350,16 @@ object-assign
                                 if (!isNullAny(keyPair.secretEncKey)) {
                                     log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                                    let fileContent = await open(files[i], keyPair.address, keyPair, false, txPolling, trailExtraArgs);
-
                                     let fileObj = {
-                                        dataId: files[i],
-                                        data: fileContent
-                                    };
+                                        dataId: files[i]
+                                    }
+
+                                    try {
+                                        fileObj.data = await open(files[i], keyPair.address, keyPair, false, txPolling, trailExtraArgs);
+                                    } catch (error) {
+                                        fileObj.data = error.message ? error.message : error;
+                                        fileObj.status = "ERROR";
+                                    }
 
                                     result.push(fileObj);
                                 } else {
@@ -25344,15 +25368,18 @@ object-assign
                                         userId: recipients[i]
                                     };
 
-                                    let fileContent = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
+                                    let fileObj = {
+                                        dataId: files[i]
+                                    }
+
+                                    try {
+                                        fileObj.data = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
+                                    } catch (error) {
+                                        fileObj.data = error.message ? error.message : error;
+                                        fileObj.status = "ERROR";
+                                    }
 
                                     this.isWorkingExecReEncr = true;
-
-                                    let fileObj = {
-                                        dataId: files[i],
-                                        data: fileContent//returns empty if error
-                                    };
-
                                     result.push(fileObj);
                                 }
                                 break;
@@ -25365,34 +25392,46 @@ object-assign
 
                                 log('selection entry added', `${recipients[i]}:${files[i]}`);
 
-                                let scanResult = await reEncrypt(recipients[i], files[i], keyPair, trailExtraArgs);
-
                                 let scanObj = {
-                                    dataId: files[i],
-                                    data: scanResult
-                                };
+                                    dataId: files[i]
+                                }
+
+                                try {
+                                    scanObj.data = await reEncrypt(recipients[i], files[i], keyPair, trailExtraArgs);
+                                } catch (error) {
+                                    scanObj.data = error.message ? error.message : error;
+                                    scanObj.status = "ERROR";
+                                }
 
                                 result.push(scanObj);
                                 break;
 
                             case'sh':
-                                let shareResult = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
-
                                 let shareObj = {
-                                    dataId: files[i],
-                                    data: shareResult
-                                };
+                                    dataId: files[i]
+                                }
+
+                                try {
+                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+                                } catch (error) {
+                                    shareObj.data = error.message ? error.message : error;
+                                    shareObj.status = "ERROR";
+                                }
 
                                 result.push(shareObj);
                                 break;
 
                             case'sg':
-                                let signResult = await sign(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
-
                                 let signObj = {
-                                    dataId: files[i],
-                                    data: signResult
-                                };
+                                    dataId: files[i]
+                                }
+
+                                try {
+                                    signObj.data = await sign(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+                                } catch (error) {
+                                    signObj.data = error.message ? error.message : error;
+                                    signObj.status = "ERROR";
+                                }
 
                                 result.push(signObj);
                                 break;
