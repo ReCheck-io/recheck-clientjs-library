@@ -676,8 +676,8 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         }
         queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
 
-        let query = btoa(JSON.stringify(queryObj));
-        let fragment = btoa(recipientEmailLinkKeyPair.secretEncKey);
+        let query = Buffer.from(JSON.stringify(queryObj)).toString('base64');
+        let fragment = Buffer.from(recipientEmailLinkKeyPair.secretEncKey).toString('base64');
 
         shareUrl = `${shareUrl}?q=${query}#${fragment}`;
         result.shareUrl = shareUrl;
