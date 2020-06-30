@@ -17,8 +17,10 @@ let network = "ae"; //ae,eth
 
 const defaultRequestId = 'ReCheck';
 let isWorkingExecReEncr = false;
+let mapShouldBeWorkingPollingForFunctionId = [];
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
+let recipientsEmailLinkKeyPair = null;
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -35,14 +37,8 @@ function getRequestHash(requestBodyOrUrl) {
 
     if (typeof requestBodyOrUrl === "object") {
         let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
-
-        if (!isNullAny(resultObj.payload)) {
             resultObj.payload = '';
-        }
-
-        if (!isNullAny(resultObj.requestBodyHashSignature)) {
             resultObj.requestBodyHashSignature = 'NULL';
-        }
 
         requestString = stringify(resultObj).replace(/\s/g, "");
     } else {
@@ -241,6 +237,21 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
     }
 
     return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
+}
+
+function isValidEmail(emailAddress) {
+    return /(.+)@(.+){2,}\.(.+){2,}/.test(emailAddress);
+}
+
+function isValidAddress(address) {
+    switch (network) {
+        case'eth':
+            return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
+        case'ae':
+            return new RegExp(`^ak_[0-9a-zA-Z]{41,}$`).test(address);
+        default:
+            return false;
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -562,12 +573,26 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
     return await processTxPolling(dataId, userId, 'requestType', 'verify');
 }
 
-async function share(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
+async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, isExecSelection = false) {
 
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
-    let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&recipientId=${recipientId}`);
+
+    let recipientType;
+    let isEmailShare = false;
+    if (!isValidEmail(recipient)) {
+        if (!isValidAddress(recipient)) {
+            throw new Error(`Invalid recipient email/id format: ${recipient}`);
+        }
+
+        recipientType = 'recipientId';
+    } else {
+        recipientType = 'recipientEmail';
+        isEmailShare = true;
+    }
+
+    let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
     log('shareencrypted get request', getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
@@ -580,11 +605,11 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
         throw new Error('Unable to create share. Data id mismatch.');
     }
 
-    recipientId = getShareResponse.data.recipientId;
+    recipient = getShareResponse.data[recipientType];
     dataId = getShareResponse.data.dataId;
-    let requestType = 'share';
+    let requestType = isEmailShare ? 'email' : 'share';
 
-    let trailHash = getTrailHash(dataId, userId, requestType, recipientId, trailExtraArgs);
+    let trailHash = getTrailHash(dataId, userId, requestType, recipient, trailExtraArgs);
 
     let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
     let pubKeyA = getShareResponse.data.encryption.pubKeyA;
@@ -592,6 +617,17 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     let syncPassHash = getHash(decryptedPassword);
 
     let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
+
+    let recipientEmailLinkKeyPair = null;
+    if (isEmailShare) {
+        if (!isExecSelection) {
+            recipientEmailLinkKeyPair = await newKeyPair(null);
+        } else {
+            recipientEmailLinkKeyPair = recipientsEmailLinkKeyPair;
+        }
+        recipientEncrKey = recipientEmailLinkKeyPair.publicEncKey;
+    }
+
     let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, recipientEncrKey, keyPair);
 
     let createShare = {
@@ -602,15 +638,16 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
         trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
-        recipientId: recipientId,
         encryption: {
             senderEncrKey: keyPair.publicEncKey,
             syncPassHash: syncPassHash,
             encryptedPassA: reEncryptedPasswordInfo.payload
         }
     };
+    createShare[recipientType] = recipient;
 
     createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
+
 
     let postUrl = getEndpointUrl('share/create');
 
@@ -618,15 +655,45 @@ async function share(dataId, recipientId, keyPair, isExternal = false, txPolling
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
 
+    let result = serverPostResponse.data;
     if (serverPostResponse.status === "ERROR") {
-        throw serverPostResponse.data;
+        throw result;
+    }
+
+    let shareUrl = null;
+    if (isEmailShare) {
+        if (isNullAny(result.selectionHash)) {
+            throw new Error('Unable to create email share selection hash. Contact your service provider.');
+        }
+
+        shareUrl = `${baseUrl}/view/${result.selectionHash}`;
+
+        let queryObj = {
+            selectionHash: result.selectionHash,
+            shareUrl: shareUrl,
+            pubEncrKey: recipientEncrKey,
+            requestBodyHashSignature: 'NULL',
+        }
+        queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
+
+        let query = btoa(JSON.stringify(queryObj));
+        let fragment = btoa(recipientEmailLinkKeyPair.secretEncKey);
+
+        shareUrl = `${shareUrl}?q=${query}#${fragment}`;
+        result.shareUrl = shareUrl;
     }
 
     if (!txPolling) {
-        return serverPostResponse.data;
+        return result;
     }
 
-    return await processTxPolling(dataId, userId, 'requestType', 'share');
+    result = await processTxPolling(dataId, userId, 'requestType', requestType);
+    if (isEmailShare) {
+        result.data = result;
+        result.shareUrl = shareUrl;
+    }
+
+    return result;
 }
 
 async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
@@ -829,25 +896,40 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
     }
 }
 
-async function pollShare(dataIds, recipientIds, userId, isExternal = false, functionId = '') {
+async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
     if (!Array.isArray(dataIds)) {
         dataIds = [dataIds];
-        recipientIds = [recipientIds];
+        recipients = [recipients];
     }
 
-    if (!isNullAny(functionId)) {
-        functionId = `$#${functionId}`;
-    }
-
-    if (dataIds.length !== recipientIds.length) {
+    if (dataIds.length !== recipients.length) {
         throw new Error(`Data count and recipient count mismatch.${functionId}`);
     }
 
     dataIds = await processExternalId(dataIds, userId, isExternal);
 
+    let recipientType;
+    if (recipients.some(r => !isValidEmail(r))) {
+        if (recipients.some(r => !isValidAddress(r))) {
+            throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
+        }
+
+        recipientType = 'recipientId';
+    } else {
+        recipientType = 'recipientEmail'
+    }
+
+    if (!isNullAny(functionId)) {
+        setShouldWorkPollingForFunctionId(functionId, true);
+    }
+
     for (let i = 0; i < 50; i++) {
         for (let j = 0; j < dataIds.length; j++) {
-            let pollUrl = getEndpointUrl('share/info', `&recipientId=${recipientIds[j]}&dataId=${dataIds[j]}`);
+            if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                return false;
+            }
+
+            let pollUrl = getEndpointUrl('share/info', `&${recipientType}=${recipients[j]}&dataId=${dataIds[j]}`);
 
             let pollRes = (await axios.get(pollUrl)).data;
 
@@ -856,16 +938,18 @@ async function pollShare(dataIds, recipientIds, userId, isExternal = false, func
                 break;
             } else {
                 dataIds.splice(j, 1);
-                recipientIds.splice(j, 1);
+                recipients.splice(j, 1);
                 j--;
             }
         }
 
         if (dataIds.length === 0) {
-            return functionId.substr(2) || true;
+            setShouldWorkPollingForFunctionId(functionId, false);
+            return functionId || true;
         }
     }
 
+    setShouldWorkPollingForFunctionId(functionId, false);
     throw new Error(`Share polling timeout...${functionId}`);
 }
 
@@ -874,14 +958,18 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
         dataIds = [dataIds];
     }
 
-    if (!isNullAny(functionId)) {
-        functionId = `$#${functionId}`;
-    }
-
     dataIds = await processExternalId(dataIds, userId, isExternal);
+
+    if (!isNullAny(functionId)) {
+        setShouldWorkPollingForFunctionId(functionId, true);
+    }
 
     for (let i = 0; i < 50; i++) {
         for (let j = 0; j < dataIds.length; j++) {
+            if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                return false;
+            }
+
             let pollUrl = getEndpointUrl('signature/info', `&userId=${userId}&dataId=${dataIds[j]}`);
 
             let pollRes = (await axios.get(pollUrl)).data;
@@ -896,24 +984,26 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
         }
 
         if (dataIds.length === 0) {
-            return functionId.substr(2) || true;
+            setShouldWorkPollingForFunctionId(functionId, false);
+            return functionId || true;
         }
     }
 
+    setShouldWorkPollingForFunctionId(functionId, false);
     throw new Error(`Signature polling timeout.${functionId}`);
 }
 
 async function select(files, recipients, isExternal = false) {
 
-    let filteredDataIdsUserIds = [];
+    let filteredDataIdsRecipients = [];
     for (let i = 0; i < files.length; i++) {
-        let currentDataIdUserId = files[i] + recipients[i];
-        if (filteredDataIdsUserIds.includes(currentDataIdUserId)) {
+        let currentDataIdRecipient = files[i] + recipients[i];
+        if (filteredDataIdsRecipients.includes(currentDataIdRecipient)) {
             files.splice(i, 1);
             recipients.splice(i, 1);
             i--;
         } else {
-            filteredDataIdsUserIds.push(currentDataIdUserId);
+            filteredDataIdsRecipients.push(currentDataIdRecipient);
         }
     }
 
@@ -921,10 +1011,26 @@ async function select(files, recipients, isExternal = false) {
 
     let validateUrl = getEndpointUrl('selection/create');
 
-    let result = (await axios.post(validateUrl, {
-        dataIds: files,
-        usersIds: recipients
-    })).data;
+    let postBody;
+    if (recipients.some(r => !isValidEmail(r))) {
+        if (recipients.some(r => !isValidAddress(r))) {
+            throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
+        }
+
+        postBody = {
+            dataIds: files,
+            usersIds: recipients,
+            usersEmails: null,
+        }
+    } else {
+        postBody = {
+            dataIds: files,
+            usersIds: null,
+            usersEmails: recipients
+        }
+    }
+
+    let result = (await axios.post(validateUrl, postBody)).data;
 
     if (result.status === 'ERROR') {
         throw  result.data;
@@ -1006,8 +1112,16 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
             return [];
         }
 
-        let recipients = selectionResult.usersIds;
         let files = selectionResult.dataIds;
+        let recipients = selectionResult.usersIds;
+        if (isNullAny(recipients)) {
+            if (action !== 'se') {
+                throw new Error('Invalid selection action.');
+            }
+
+            recipients = selectionResult.usersEmails;
+            recipientsEmailLinkKeyPair = await newKeyPair(null);
+        }
 
         if (recipients.length !== files.length) {   // the array sizes must be equal
             throw new Error('Invalid selection format.');
@@ -1081,13 +1195,14 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                     result.push(scanObj);
                     break;
 
+                case'se':
                 case'sh':
                     let shareObj = {
                         dataId: files[i]
                     }
 
                     try {
-                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, true);
                     } catch (error) {
                         shareObj.data = error.message ? error.message : error;
                         shareObj.status = "ERROR";
@@ -1120,6 +1235,8 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
 
     } catch (error) {
         throw (error);
+    } finally {
+        recipientsEmailLinkKeyPair = null;
     }
 }
 
@@ -1189,7 +1306,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
         requestType = 'register';
     }
 
-    if (!['upload', 'register', 'ipo_filing', 'bmd_register'].includes(requestType)) {
+    if (!['upload', 'register', 'ipo_filing', 'bmd_register'].includes(requestType.toLowerCase())) {
         throw new Error("Unsupported request type.");
     }
 
@@ -1283,6 +1400,9 @@ async function convertExternalId(externalId, userId) {
     return serverResponse.data;
 }
 
+function setShouldWorkPollingForFunctionId(functionId, value) {
+    mapShouldBeWorkingPollingForFunctionId[functionId] = value;
+}
 
 module.exports = {
     isNullAny: isNullAny,
@@ -1349,4 +1469,6 @@ module.exports = {
 
     saveExternalId: saveExternalId,
     convertExternalId: convertExternalId,
+
+    setShouldWorkPollingForFunctionId: setShouldWorkPollingForFunctionId,
 };
