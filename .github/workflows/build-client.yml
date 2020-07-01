@@ -8,8 +8,6 @@ on:
     branches:
       - master
       - freezone
-    paths:
-      - "./index.js"
 
 jobs:
   build:
