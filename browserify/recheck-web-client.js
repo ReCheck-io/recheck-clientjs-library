@@ -24998,7 +24998,7 @@ object-assign
                     let queryObj = {
                         selectionHash: result.selectionHash,
                         shareUrl: shareUrl,
-                        pubEncrKey: recipientEncrKey,
+                        pubEncKey: recipientEncrKey,
                         requestBodyHashSignature: 'NULL',
                     }
                     queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
@@ -25010,11 +25010,11 @@ object-assign
                     result.shareUrl = shareUrl;
 
                     if (isFirstExecFile && !isNullAny(emailSharePubEncKey)) {
-                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair).payload;
+                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair);
                         let emailSelectionsObj = {
                             selectionHash: selectionHash,
                             pubEncKey: emailSharePubEncKey,
-                            encryptedUrl: encryptedShareUrl
+                            encryptedUrl: encryptedShareUrl.payload
                         };
 
                         let submitUrl = getEndpointUrl('email/create');
