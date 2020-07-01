@@ -37,8 +37,8 @@ function getRequestHash(requestBodyOrUrl) {
 
     if (typeof requestBodyOrUrl === "object") {
         let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
-            resultObj.payload = '';
-            resultObj.requestBodyHashSignature = 'NULL';
+        resultObj.payload = '';
+        resultObj.requestBodyHashSignature = 'NULL';
 
         requestString = stringify(resultObj).replace(/\s/g, "");
     } else {
@@ -573,7 +573,7 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
     return await processTxPolling(dataId, userId, 'requestType', 'verify');
 }
 
-async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, isExecSelection = false) {
+async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubEncKey = null, isFirstExecFile = false) {
 
     let userId = keyPair.address;
 
@@ -618,13 +618,14 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
 
-    let recipientEmailLinkKeyPair = null;
+    let recipientEmailLinkKeyPair;
     if (isEmailShare) {
-        if (!isExecSelection) {
+        if (isNullAny(emailSharePubEncKey)) {
             recipientEmailLinkKeyPair = await newKeyPair(null);
         } else {
             recipientEmailLinkKeyPair = recipientsEmailLinkKeyPair;
         }
+
         recipientEncrKey = recipientEmailLinkKeyPair.publicEncKey;
     }
 
@@ -666,7 +667,8 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             throw new Error('Unable to create email share selection hash. Contact your service provider.');
         }
 
-        shareUrl = `${baseUrl}/view/${result.selectionHash}`;
+        let selectionHash = result.selectionHash;
+        shareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
         let queryObj = {
             selectionHash: result.selectionHash,
@@ -681,6 +683,23 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
         shareUrl = `${shareUrl}?q=${query}#${fragment}`;
         result.shareUrl = shareUrl;
+
+        if (isFirstExecFile && !isNullAny(emailSharePubEncKey)) {
+            let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair);
+            let emailSelectionsObj = {
+                selectionHash: selectionHash,
+                pubEncKey: emailSharePubEncKey,
+                encryptedUrl: encryptedShareUrl
+            };
+
+            let submitUrl = getEndpointUrl('email/create');
+            let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
+            log('Server returns result', submitRes.data);
+
+            if (submitRes.status === "ERROR") {
+                throw submitRes.data;
+            }
+        }
     }
 
     if (!txPolling) {
@@ -993,7 +1012,7 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
     throw new Error(`Signature polling timeout.${functionId}`);
 }
 
-async function select(files, recipients, isExternal = false) {
+async function select(files, recipients, emailShareCommPubEncKey = null, isExternal = false) {
 
     let filteredDataIdsRecipients = [];
     for (let i = 0; i < files.length; i++) {
@@ -1023,10 +1042,15 @@ async function select(files, recipients, isExternal = false) {
             usersEmails: null,
         }
     } else {
+        if (isNullAny(emailShareCommPubEncKey)) {
+            throw new Error('Missing public key for email share browser communication.');
+        }
+
         postBody = {
             dataIds: files,
             usersIds: null,
-            usersEmails: recipients
+            usersEmails: recipients,
+            pubEncKey: emailShareCommPubEncKey,
         }
     }
 
@@ -1034,6 +1058,14 @@ async function select(files, recipients, isExternal = false) {
 
     if (result.status === 'ERROR') {
         throw  result.data;
+    }
+
+    if (isNullAny(result.data)) {
+        throw new Error('Missing result data.');
+    }
+
+    if (!isNullAny(emailShareCommPubEncKey) && isNullAny(result.data.pubEncKey)) {
+        throw new Error('Error posting public key for email share browser communication.');
     }
 
     return result.data.selectionHash;
@@ -1114,13 +1146,27 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
 
         let files = selectionResult.dataIds;
         let recipients = selectionResult.usersIds;
+        let emailSharePubEncKey = null;
         if (isNullAny(recipients)) {
-            if (action !== 'se') {
-                throw new Error('Invalid selection action.');
+            if (action !== 'se' || isNullAny(selectionResult.usersEmails)) {
+                throw new Error('Invalid selection action/result.');
             }
 
             recipients = selectionResult.usersEmails;
             recipientsEmailLinkKeyPair = await newKeyPair(null);
+
+            let getUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+            let serverResponse = (await axios.get(getUrl)).data;
+
+            if (serverResponse.status === 'ERROR') {
+                throw serverResponse.data;
+            }
+
+            if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.pubEncKey)) {
+                throw new Error('Invalid email selection server response.');
+            }
+
+            emailSharePubEncKey = serverResponse.data.pubEncKey;
         }
 
         if (recipients.length !== files.length) {   // the array sizes must be equal
@@ -1202,7 +1248,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                     }
 
                     try {
-                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, true);
+                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubEncKey, i === 0);
                     } catch (error) {
                         shareObj.data = error.message ? error.message : error;
                         shareObj.status = "ERROR";
