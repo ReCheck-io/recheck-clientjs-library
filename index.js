@@ -685,7 +685,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         result.shareUrl = shareUrl;
 
         if (isFirstExecFile && !isNullAny(emailSharePubEncKey)) {
-            let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair);
+            let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair).payload;
             let emailSelectionsObj = {
                 selectionHash: selectionHash,
                 pubEncKey: emailSharePubEncKey,
