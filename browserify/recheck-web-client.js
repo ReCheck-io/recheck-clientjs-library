@@ -24455,34 +24455,6 @@ object-assign
                 }
             }
 
-            function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
-                let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
-                let secretKeyArray = hexStringToByte(secretKey);
-                let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
-
-                return decryptData(decryptedBox, payload);//decrypted
-
-
-                function decryptData(secretOrSharedKey, messageWithNonce, key) {
-                    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-                    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
-                    const message = messageWithNonceAsUint8Array.slice(
-                        box.nonceLength,
-                        messageWithNonce.length
-                    );
-
-                    const decrypted = key
-                        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-                        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
-
-                    if (isNullAny(decrypted)) {
-                        throw new Error('Decryption failed.');
-                    }
-
-                    return encodeUTF8(decrypted);//base64DecryptedMessage
-                }
-            }
-
             function getEndpointUrl(action, appendix) {
                 let url = `${baseUrl}/${action}?noapi=1`;
 
@@ -24591,6 +24563,34 @@ object-assign
                     init(window.location.origin);
                 }
             }());
+
+            function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
+                let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
+                let secretKeyArray = hexStringToByte(secretKey);
+                let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
+
+                return decryptData(decryptedBox, payload);//decrypted
+
+
+                function decryptData(secretOrSharedKey, messageWithNonce, key) {
+                    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+                    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
+                    const message = messageWithNonceAsUint8Array.slice(
+                        box.nonceLength,
+                        messageWithNonce.length
+                    );
+
+                    const decrypted = key
+                        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+                        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
+
+                    if (isNullAny(decrypted)) {
+                        throw new Error('Decryption failed.');
+                    }
+
+                    return encodeUTF8(decrypted);//base64DecryptedMessage
+                }
+            }
 
             function getHash(string) {
                 return `0x${keccak256(string).toString('hex')}`;
@@ -25776,6 +25776,7 @@ object-assign
             }
 
             module.exports = {
+                decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
                 isNullAny: isNullAny,
                 getHash: getHash,
 
