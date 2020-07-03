@@ -972,6 +972,36 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     throw new Error(`Share polling timeout...${functionId}`);
 }
 
+async function pollEmail(selectionHash, functionId = '') {
+    if (isNullAny(selectionHash)) {
+        throw new Error(`Missing selection hash.${functionId}`);
+    }
+
+    if (!isNullAny(functionId)) {
+        setShouldWorkPollingForFunctionId(functionId, true);
+    }
+
+    let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+
+    for (let i = 0; i < 50; i++) {
+        if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+            return false;
+        }
+
+        let pollRes = (await axios.get(pollUrl)).data;
+
+        if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
+            await sleep(1000);
+        } else {
+            setShouldWorkPollingForFunctionId(functionId, false);
+            return functionId || true;
+        }
+    }
+
+    setShouldWorkPollingForFunctionId(functionId, false);
+    throw new Error(`Email share polling timeout...${functionId}`);
+}
+
 async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
     if (!Array.isArray(dataIds)) {
         dataIds = [dataIds];
@@ -1487,6 +1517,8 @@ module.exports = {
     share: share,
     // browser poll for sharing
     pollShare: pollShare,
+    // browser poll for email sharing
+    pollEmail: pollEmail,
 
     sign: sign,
     // browser poll for signing
