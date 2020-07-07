@@ -24357,35 +24357,6 @@ object-assign
                 }
             };
 
-            function getRequestHash(requestBodyOrUrl) {
-                let requestString = '';
-
-                if (typeof requestBodyOrUrl === "object") {
-                    let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
-                    resultObj.payload = '';
-                    resultObj.requestBodyHashSignature = 'NULL';
-
-                    requestString = stringify(resultObj).replace(/\s/g, "");
-                } else {
-                    requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
-                    requestString = getUrlPathname(requestString);
-                }
-
-                return getHash(requestString);
-
-                function getUrlPathname(url) {
-                    let urlSplit = url.split('/');
-
-                    if (urlSplit.length < 4) {
-                        throw new Error(`Can not get url pathname from ${url}`);
-                    }
-
-                    let host = `${urlSplit[0]}//${urlSplit[2]}`;
-
-                    return url.replace(host, '');
-                }
-            }
-
             function encodeBase58Check(input) {
                 return bs58check.encode(Buffer.from(input));
             }
@@ -24526,16 +24497,6 @@ object-assign
                 return false;
             }
 
-            function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId = senderChainId, trailExtraArgs = null) {
-                if (isNullAny(trailExtraArgs)) {
-                    trailExtraArgs = "";
-                } else {
-                    trailExtraArgs = JSON.stringify(trailExtraArgs);
-                }
-
-                return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
-            }
-
             function isValidEmail(emailAddress) {
                 return /(.+)@(.+){2,}\.(.+){2,}/.test(emailAddress);
             }
@@ -24594,6 +24555,45 @@ object-assign
 
             function getHash(string) {
                 return `0x${keccak256(string).toString('hex')}`;
+            }
+
+            function getRequestHash(requestBodyOrUrl) {
+                let requestString = '';
+
+                if (typeof requestBodyOrUrl === "object") {
+                    let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
+                    resultObj.payload = '';
+                    resultObj.requestBodyHashSignature = 'NULL';
+
+                    requestString = stringify(resultObj).replace(/\s/g, "");
+                } else {
+                    requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
+                    requestString = getUrlPathname(requestString);
+                }
+
+                return getHash(requestString);
+
+                function getUrlPathname(url) {
+                    let urlSplit = url.split('/');
+
+                    if (urlSplit.length < 4) {
+                        throw new Error(`Can not get url pathname from ${url}`);
+                    }
+
+                    let host = `${urlSplit[0]}//${urlSplit[2]}`;
+
+                    return url.replace(host, '');
+                }
+            }
+
+            function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId = senderChainId, trailExtraArgs = null) {
+                if (isNullAny(trailExtraArgs)) {
+                    trailExtraArgs = "";
+                } else {
+                    trailExtraArgs = JSON.stringify(trailExtraArgs);
+                }
+
+                return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
             }
 
             function isNullAny(...args) {
@@ -24898,7 +24898,7 @@ object-assign
                 return await processTxPolling(dataId, userId, 'requestType', 'verify');
             }
 
-            async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubEncKey = null, isFirstExecFile = false) {
+            async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, isFirstExecFile = false) {
 
                 let userId = keyPair.address;
 
@@ -24945,7 +24945,7 @@ object-assign
 
                 let recipientEmailLinkKeyPair;
                 if (isEmailShare) {
-                    if (isNullAny(emailSharePubEncKey)) {
+                    if (isNullAny(emailSharePubKeys)) {
                         recipientEmailLinkKeyPair = await newKeyPair(null);
                     } else {
                         recipientEmailLinkKeyPair = recipientsEmailLinkKeyPair;
@@ -24997,27 +24997,36 @@ object-assign
 
                     let queryObj = {
                         selectionHash: result.selectionHash,
-                        shareUrl: shareUrl,
+                        pubKey: recipientEmailLinkKeyPair.publicKey,
                         pubEncKey: recipientEncrKey,
+                        shareUrl: shareUrl,
                         requestBodyHashSignature: 'NULL',
                     }
                     queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
 
                     let query = Buffer.from(JSON.stringify(queryObj)).toString('base64');
-                    let fragment = Buffer.from(recipientEmailLinkKeyPair.secretEncKey).toString('base64');
+
+                    let fragmentObj = {
+                        secretKey: recipientEmailLinkKeyPair.secretKey,
+                        secretEncKey: recipientEmailLinkKeyPair.secretEncKey,
+                    }
+
+                    let fragment = Buffer.from(JSON.stringify(fragmentObj)).toString('base64');
 
                     shareUrl = `${shareUrl}?q=${query}#${fragment}`;
                     result.shareUrl = shareUrl;
 
-                    if (isFirstExecFile && !isNullAny(emailSharePubEncKey)) {
-                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubEncKey, keyPair);
+                    if (isFirstExecFile && !isNullAny(emailSharePubKeys)) {
+
+                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
                         let emailSelectionsObj = {
                             selectionHash: selectionHash,
-                            pubEncKey: emailSharePubEncKey,
+                            pubKey: emailSharePubKeys.pubKey,
+                            pubEncKey: emailSharePubKeys.pubEncKey,
                             encryptedUrl: encryptedShareUrl.payload
                         };
 
-                        let submitUrl = getEndpointUrl('email/create');
+                        let submitUrl = getEndpointUrl('email/share/create');
                         let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
                         log('Server returns result', submitRes.data);
 
@@ -25367,7 +25376,7 @@ object-assign
                 throw new Error(`Signature polling timeout.${functionId}`);
             }
 
-            async function select(files, recipients, emailShareCommPubEncKey = null, isExternal = false) {
+            async function select(files, recipients, emailShareCommPubKeys = null, isExternal = false) {
 
                 let filteredDataIdsRecipients = [];
                 for (let i = 0; i < files.length; i++) {
@@ -25397,15 +25406,16 @@ object-assign
                         usersEmails: null,
                     }
                 } else {
-                    if (isNullAny(emailShareCommPubEncKey)) {
-                        throw new Error('Missing public key for email share browser communication.');
+                    if (isNullAny(emailShareCommPubKeys)) {
+                        throw new Error('Missing public keys for email share browser communication.');
                     }
 
                     postBody = {
                         dataIds: files,
                         usersIds: null,
                         usersEmails: recipients,
-                        pubEncKey: emailShareCommPubEncKey,
+                        pubKey: emailShareCommPubKeys.publicKey,
+                        pubEncKey: emailShareCommPubKeys.publicEncKey,
                     }
                 }
 
@@ -25419,8 +25429,8 @@ object-assign
                     throw new Error('Missing result data.');
                 }
 
-                if (!isNullAny(emailShareCommPubEncKey) && isNullAny(result.data.pubEncKey)) {
-                    throw new Error('Error posting public key for email share browser communication.');
+                if (!isNullAny(emailShareCommPubKeys) && isNullAny(result.data.pubKey, result.data.pubEncKey)) {
+                    throw new Error('Error posting public keys for email share browser communication.');
                 }
 
                 return result.data.selectionHash;
@@ -25501,7 +25511,7 @@ object-assign
 
                     let files = selectionResult.dataIds;
                     let recipients = selectionResult.usersIds;
-                    let emailSharePubEncKey = null;
+                    let emailSharePubKeys = null;
                     if (isNullAny(recipients)) {
                         if (action !== 'se' || isNullAny(selectionResult.usersEmails)) {
                             throw new Error('Invalid selection action/result.');
@@ -25517,11 +25527,14 @@ object-assign
                             throw serverResponse.data;
                         }
 
-                        if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.pubEncKey)) {
+                        if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.pubKey, serverResponse.data.pubEncKey)) {
                             throw new Error('Invalid email selection server response.');
                         }
 
-                        emailSharePubEncKey = serverResponse.data.pubEncKey;
+                        emailSharePubKeys = {
+                            pubKey: serverResponse.data.pubKey,
+                            pubEncKey: serverResponse.data.pubEncKey
+                        };
                     }
 
                     if (recipients.length !== files.length) {   // the array sizes must be equal
@@ -25603,7 +25616,7 @@ object-assign
                                 }
 
                                 try {
-                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubEncKey, i === 0);
+                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, i === 0);
                                 } catch (error) {
                                     shareObj.data = error.message ? error.message : error;
                                     shareObj.status = "ERROR";
@@ -25809,6 +25822,8 @@ object-assign
                 decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
                 isNullAny: isNullAny,
                 getHash: getHash,
+                getRequestHash: getRequestHash,
+                getTrailHash: getTrailHash,
 
                 debug: setDebugMode,
                 /* Specify API token and API host */
