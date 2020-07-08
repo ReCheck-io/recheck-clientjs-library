@@ -24898,7 +24898,7 @@ object-assign
                 return await processTxPolling(dataId, userId, 'requestType', 'verify');
             }
 
-            async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, isFirstExecFile = false) {
+            async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, firstExecFileSelectionHash = false) {
 
                 let userId = keyPair.address;
 
@@ -24993,6 +24993,11 @@ object-assign
                     }
 
                     let selectionHash = result.selectionHash;
+
+                    if (firstExecFileSelectionHash) {
+                        selectionHash = firstExecFileSelectionHash;
+                    }
+
                     shareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
                     let queryObj = {
@@ -25016,11 +25021,11 @@ object-assign
                     shareUrl = `${shareUrl}?q=${query}#${fragment}`;
                     result.shareUrl = shareUrl;
 
-                    if (isFirstExecFile && !isNullAny(emailSharePubKeys)) {
+                    if (firstExecFileSelectionHash && !isNullAny(emailSharePubKeys)) {
 
                         let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
                         let emailSelectionsObj = {
-                            selectionHash: selectionHash,
+                            selectionHash: firstExecFileSelectionHash,
                             pubKey: emailSharePubKeys.pubKey,
                             pubEncKey: emailSharePubKeys.pubEncKey,
                             encryptedUrl: encryptedShareUrl.payload
@@ -25616,7 +25621,7 @@ object-assign
                                 }
 
                                 try {
-                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, i === 0);
+                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, i === 0 ? selectionHash : false);
                                 } catch (error) {
                                     shareObj.data = error.message ? error.message : error;
                                     shareObj.status = "ERROR";
