@@ -25001,7 +25001,7 @@ object-assign
                     shareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
                     let queryObj = {
-                        selectionHash: result.selectionHash,
+                        selectionHash: selectionHash,
                         pubKey: recipientEmailLinkKeyPair.publicKey,
                         pubEncKey: recipientEncrKey,
                         shareUrl: shareUrl,
@@ -25025,7 +25025,7 @@ object-assign
 
                         let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
                         let emailSelectionsObj = {
-                            selectionHash: firstExecFileSelectionHash,
+                            selectionHash: selectionHash,
                             pubKey: emailSharePubKeys.pubKey,
                             pubEncKey: emailSharePubKeys.pubEncKey,
                             encryptedUrl: encryptedShareUrl.payload
