@@ -228,6 +228,45 @@ function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey)
     }
 }
 
+async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
+    let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
+    log('Browser decrypts sym password', decryptedSymPassword);
+
+    let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
+    log('Browser composes full password', fullPassword);
+
+    let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
+    log('Browser decrypts the file with the full password', decryptedFile);
+
+    let resultFileInfo = encryptedFileInfo;
+    resultFileInfo.payload = decryptedFile;
+    delete resultFileInfo.encryption;
+
+    return resultFileInfo;
+
+
+    function decryptDataWithSymmetricKey(messageWithNonce, key) {
+        const keyUint8Array = decodeBase64(key);
+
+        const messageWithNonceAsUint8Array = new Uint8Array(Array.prototype.slice.call(new Buffer(messageWithNonce, 'base64'), 0));//decodeBase64 without validation
+
+        const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
+
+        const message = messageWithNonceAsUint8Array.slice(
+            secretbox.nonceLength,
+            messageWithNonce.length
+        );
+
+        const decrypted = secretbox.open(message, nonce, keyUint8Array);
+
+        if (isNullAny(decrypted)) {
+            throw new Error("Decryption failed");
+        }
+
+        return encodeUTF8(decrypted); //base64DecryptedMessage
+    }
+}
+
 function getHash(string) {
     return `0x${keccak256(string).toString('hex')}`;
 }
@@ -887,46 +926,6 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
     }
 
     throw new Error('Polling timeout.');
-
-
-    async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
-        let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
-        log('Browser decrypts sym password', decryptedSymPassword);
-
-        let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
-        log('Browser composes full password', fullPassword);
-
-        let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
-        log('Browser decrypts the file with the full password', decryptedFile);
-
-        let resultFileInfo = encryptedFileInfo;
-        resultFileInfo.payload = decryptedFile;
-        delete resultFileInfo.encryption;
-
-        return resultFileInfo;
-
-
-        function decryptDataWithSymmetricKey(messageWithNonce, key) {
-            const keyUint8Array = decodeBase64(key);
-
-            const messageWithNonceAsUint8Array = new Uint8Array(Array.prototype.slice.call(new Buffer(messageWithNonce, 'base64'), 0));//decodeBase64 without validation
-
-            const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
-
-            const message = messageWithNonceAsUint8Array.slice(
-                secretbox.nonceLength,
-                messageWithNonce.length
-            );
-
-            const decrypted = secretbox.open(message, nonce, keyUint8Array);
-
-            if (isNullAny(decrypted)) {
-                throw new Error("Decryption failed");
-            }
-
-            return encodeUTF8(decrypted); //base64DecryptedMessage
-        }
-    }
 }
 
 async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
@@ -1497,6 +1496,7 @@ function setShouldWorkPollingForFunctionId(functionId, value) {
 
 module.exports = {
     decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
+    processEncryptedFileInfo: processEncryptedFileInfo,
     isNullAny: isNullAny,
     getHash: getHash,
     getRequestHash: getRequestHash,
