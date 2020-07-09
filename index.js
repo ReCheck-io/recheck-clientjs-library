@@ -612,7 +612,7 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
     return await processTxPolling(dataId, userId, 'requestType', 'verify');
 }
 
-async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, firstExecFileSelectionHash = false) {
+async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, execFileSelectionHash = null) {
 
     let userId = keyPair.address;
 
@@ -708,8 +708,8 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
         let selectionHash = result.selectionHash;
 
-        if (firstExecFileSelectionHash) {
-            selectionHash = firstExecFileSelectionHash;
+        if (!isNullAny(execFileSelectionHash)) {
+            selectionHash = execFileSelectionHash;
         }
 
         shareUrl = `${baseUrl}/view/email/${selectionHash}`;
@@ -735,7 +735,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         shareUrl = `${shareUrl}?q=${query}#${fragment}`;
         result.shareUrl = shareUrl;
 
-        if (firstExecFileSelectionHash && !isNullAny(emailSharePubKeys)) {
+        if (!isNullAny(execFileSelectionHash, emailSharePubKeys)) {
 
             let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
             let emailSelectionsObj = {
@@ -1292,7 +1292,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                     }
 
                     try {
-                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, i === 0 ? selectionHash : false);
+                        shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, selectionHash);
                     } catch (error) {
                         shareObj.data = error.message ? error.message : error;
                         shareObj.status = "ERROR";
