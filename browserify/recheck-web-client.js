@@ -25048,15 +25048,14 @@ object-assign
                     }
                     queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
 
-                    let query = Buffer.from(JSON.stringify(queryObj)).toString('base64');
+                    let query = Buffer.from(stringify(queryObj)).toString('base64');
 
                     let fragmentObj = {
                         secretKey: recipientEmailLinkKeyPair.secretKey,
                         secretEncKey: recipientEmailLinkKeyPair.secretEncKey,
                     }
 
-                    let fragment = Buffer.from(JSON.stringify(fragmentObj)).toString('base64');
-
+                    let fragment = Buffer.from(stringify(fragmentObj)).toString('base64');
                     shareUrl = `${shareUrl}?q=${query}#${fragment}`;
                     result.shareUrl = shareUrl;
 
@@ -25067,7 +25066,13 @@ object-assign
                             selectionHash: selectionHash,
                             pubKey: emailSharePubKeys.pubKey,
                             pubEncKey: emailSharePubKeys.pubEncKey,
-                            encryptedUrl: encryptedShareUrl.payload
+                            encryptedUrl: encryptedShareUrl.payload,
+                            shareUrl,
+                            query,
+                            fragment,
+                            recipientEmailLinkKeyPair,
+                            queryObj: queryObj,
+                            fragmentObj: fragmentObj,
                         };
 
                         let submitUrl = getEndpointUrl('email/share/create');
