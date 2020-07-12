@@ -24342,8 +24342,10 @@ object-assign
 
             const defaultRequestId = 'ReCheck';
             let isWorkingExecReEncr = false;
+            let mapShouldBeWorkingPollingForFunctionId = [];
 
             let browserKeyPair = undefined; // represents the browser temporary keypair while polling
+            let recipientsEmailLinkKeyPair = null;
 
             const newNonce = () => randomBytes(box.nonceLength);
 
@@ -24354,41 +24356,6 @@ object-assign
                     console.log(`[${message}]`, params ? params : '');
                 }
             };
-
-            function getRequestHash(requestBodyOrUrl) {
-                let requestString = '';
-
-                if (typeof requestBodyOrUrl === "object") {
-                    let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
-
-                    if (!isNullAny(resultObj.payload)) {
-                        resultObj.payload = '';
-                    }
-
-                    if (!isNullAny(resultObj.requestBodyHashSignature)) {
-                        resultObj.requestBodyHashSignature = 'NULL';
-                    }
-
-                    requestString = stringify(resultObj).replace(/\s/g, "");
-                } else {
-                    requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
-                    requestString = getUrlPathname(requestString);
-                }
-
-                return getHash(requestString);
-
-                function getUrlPathname(url) {
-                    let urlSplit = url.split('/');
-
-                    if (urlSplit.length < 4) {
-                        throw new Error(`Can not get url pathname from ${url}`);
-                    }
-
-                    let host = `${urlSplit[0]}//${urlSplit[2]}`;
-
-                    return url.replace(host, '');
-                }
-            }
 
             function encodeBase58Check(input) {
                 return bs58check.encode(Buffer.from(input));
@@ -24456,34 +24423,6 @@ object-assign
                     fullMessage.set(encrypted, nonce.length);
 
                     return encodeBase64(fullMessage);//base64FullMessage
-                }
-            }
-
-            function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
-                let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
-                let secretKeyArray = hexStringToByte(secretKey);
-                let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
-
-                return decryptData(decryptedBox, payload);//decrypted
-
-
-                function decryptData(secretOrSharedKey, messageWithNonce, key) {
-                    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
-                    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
-                    const message = messageWithNonceAsUint8Array.slice(
-                        box.nonceLength,
-                        messageWithNonce.length
-                    );
-
-                    const decrypted = key
-                        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-                        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
-
-                    if (isNullAny(decrypted)) {
-                        throw new Error('Decryption failed.');
-                    }
-
-                    return encodeUTF8(decrypted);//base64DecryptedMessage
                 }
             }
 
@@ -24558,14 +24497,19 @@ object-assign
                 return false;
             }
 
-            function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId = senderChainId, trailExtraArgs = null) {
-                if (isNullAny(trailExtraArgs)) {
-                    trailExtraArgs = "";
-                } else {
-                    trailExtraArgs = JSON.stringify(trailExtraArgs);
-                }
+            function isValidEmail(emailAddress) {
+                return /(.+)@(.+){2,}\.(.+){2,}/.test(emailAddress);
+            }
 
-                return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
+            function isValidAddress(address) {
+                switch (network) {
+                    case'eth':
+                        return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
+                    case'ae':
+                        return new RegExp(`^ak_[0-9a-zA-Z]{41,}$`).test(address);
+                    default:
+                        return false;
+                }
             }
 
 ////////////////////////////////////////////////////////////
@@ -24581,8 +24525,114 @@ object-assign
                 }
             }());
 
+            function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
+                let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
+                let secretKeyArray = hexStringToByte(secretKey);
+                let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
+
+                return decryptData(decryptedBox, payload);//decrypted
+
+
+                function decryptData(secretOrSharedKey, messageWithNonce, key) {
+                    const messageWithNonceAsUint8Array = decodeBase64(messageWithNonce);
+                    const nonce = messageWithNonceAsUint8Array.slice(0, box.nonceLength);
+                    const message = messageWithNonceAsUint8Array.slice(
+                        box.nonceLength,
+                        messageWithNonce.length
+                    );
+
+                    const decrypted = key
+                        ? box.open(message, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+                        : box.open.after(message, nonce, new Uint8Array(secretOrSharedKey));
+
+                    if (isNullAny(decrypted)) {
+                        throw new Error('Decryption failed.');
+                    }
+
+                    return encodeUTF8(decrypted);//base64DecryptedMessage
+                }
+            }
+
+            async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
+                let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
+                log('Browser decrypts sym password', decryptedSymPassword);
+
+                let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
+                log('Browser composes full password', fullPassword);
+
+                let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
+                log('Browser decrypts the file with the full password', decryptedFile);
+
+                let resultFileInfo = encryptedFileInfo;
+                resultFileInfo.payload = decryptedFile;
+                delete resultFileInfo.encryption;
+
+                return resultFileInfo;
+
+
+                function decryptDataWithSymmetricKey(messageWithNonce, key) {
+                    const keyUint8Array = decodeBase64(key);
+
+                    const messageWithNonceAsUint8Array = new Uint8Array(Array.prototype.slice.call(new Buffer(messageWithNonce, 'base64'), 0));//decodeBase64 without validation
+
+                    const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
+
+                    const message = messageWithNonceAsUint8Array.slice(
+                        secretbox.nonceLength,
+                        messageWithNonce.length
+                    );
+
+                    const decrypted = secretbox.open(message, nonce, keyUint8Array);
+
+                    if (isNullAny(decrypted)) {
+                        throw new Error("Decryption failed");
+                    }
+
+                    return encodeUTF8(decrypted); //base64DecryptedMessage
+                }
+            }
+
             function getHash(string) {
                 return `0x${keccak256(string).toString('hex')}`;
+            }
+
+            function getRequestHash(requestBodyOrUrl) {
+                let requestString = '';
+
+                if (typeof requestBodyOrUrl === "object") {
+                    let resultObj = JSON.parse(JSON.stringify(requestBodyOrUrl));
+                    resultObj.payload = '';
+                    resultObj.requestBodyHashSignature = 'NULL';
+
+                    requestString = stringify(resultObj).replace(/\s/g, "");
+                } else {
+                    requestString = requestBodyOrUrl.replace(/([&|?]requestBodyHashSignature=)(.*?)([&]|$)/g, '$1NULL$3');
+                    requestString = getUrlPathname(requestString);
+                }
+
+                return getHash(requestString);
+
+                function getUrlPathname(url) {
+                    let urlSplit = url.split('/');
+
+                    if (urlSplit.length < 4) {
+                        throw new Error(`Can not get url pathname from ${url}`);
+                    }
+
+                    let host = `${urlSplit[0]}//${urlSplit[2]}`;
+
+                    return url.replace(host, '');
+                }
+            }
+
+            function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId = senderChainId, trailExtraArgs = null) {
+                if (isNullAny(trailExtraArgs)) {
+                    trailExtraArgs = "";
+                } else {
+                    trailExtraArgs = JSON.stringify(trailExtraArgs);
+                }
+
+                return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
             }
 
             function isNullAny(...args) {
@@ -24887,12 +24937,26 @@ object-assign
                 return await processTxPolling(dataId, userId, 'requestType', 'verify');
             }
 
-            async function share(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
+            async function share(dataId, recipient, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null, emailSharePubKeys = null, execFileSelectionHash = null) {
 
                 let userId = keyPair.address;
 
                 dataId = await processExternalId(dataId, userId, isExternal);
-                let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&recipientId=${recipientId}`);
+
+                let recipientType;
+                let isEmailShare = false;
+                if (!isValidEmail(recipient)) {
+                    if (!isValidAddress(recipient)) {
+                        throw new Error(`Invalid recipient email/id format: ${recipient}`);
+                    }
+
+                    recipientType = 'recipientId';
+                } else {
+                    recipientType = 'recipientEmail';
+                    isEmailShare = true;
+                }
+
+                let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
                 log('shareencrypted get request', getUrl);
 
                 let getShareResponse = (await axios.get(getUrl)).data;
@@ -24905,11 +24969,11 @@ object-assign
                     throw new Error('Unable to create share. Data id mismatch.');
                 }
 
-                recipientId = getShareResponse.data.recipientId;
+                recipient = getShareResponse.data[recipientType];
                 dataId = getShareResponse.data.dataId;
-                let requestType = 'share';
+                let requestType = isEmailShare ? 'email' : 'share';
 
-                let trailHash = getTrailHash(dataId, userId, requestType, recipientId, trailExtraArgs);
+                let trailHash = getTrailHash(dataId, userId, requestType, recipient, trailExtraArgs);
 
                 let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
                 let pubKeyA = getShareResponse.data.encryption.pubKeyA;
@@ -24917,6 +24981,18 @@ object-assign
                 let syncPassHash = getHash(decryptedPassword);
 
                 let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
+
+                let recipientEmailLinkKeyPair;
+                if (isEmailShare) {
+                    if (isNullAny(emailSharePubKeys)) {
+                        recipientEmailLinkKeyPair = await newKeyPair(null);
+                    } else {
+                        recipientEmailLinkKeyPair = recipientsEmailLinkKeyPair;
+                    }
+
+                    recipientEncrKey = recipientEmailLinkKeyPair.publicEncKey;
+                }
+
                 let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, recipientEncrKey, keyPair);
 
                 let createShare = {
@@ -24927,15 +25003,16 @@ object-assign
                     requestBodyHashSignature: 'NULL',
                     trailHash: trailHash,
                     trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
-                    recipientId: recipientId,
                     encryption: {
                         senderEncrKey: keyPair.publicEncKey,
                         syncPassHash: syncPassHash,
                         encryptedPassA: reEncryptedPasswordInfo.payload
                     }
                 };
+                createShare[recipientType] = recipient;
 
                 createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
+
 
                 let postUrl = getEndpointUrl('share/create');
 
@@ -24943,15 +25020,82 @@ object-assign
                 log('Share POST to server encryption info', createShare);
                 log('Server responds to user device POST', serverPostResponse.data);
 
+                let result = serverPostResponse.data;
                 if (serverPostResponse.status === "ERROR") {
-                    throw serverPostResponse.data;
+                    throw result;
+                }
+
+                let shareUrl = null;
+                if (isEmailShare) {
+                    if (isNullAny(result.selectionHash)) {
+                        throw new Error('Unable to create email share selection hash. Contact your service provider.');
+                    }
+
+                    let selectionHash = result.selectionHash;
+
+                    if (!isNullAny(execFileSelectionHash)) {
+                        selectionHash = execFileSelectionHash;
+                    }
+
+                    shareUrl = `${baseUrl}/view/email/${selectionHash}`;
+
+                    let queryObj = {
+                        selectionHash: selectionHash,
+                        pubKey: recipientEmailLinkKeyPair.publicKey,
+                        pubEncKey: recipientEncrKey,
+                        shareUrl: shareUrl,
+                        requestBodyHashSignature: 'NULL',
+                    }
+                    queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
+
+                    let query = Buffer.from(stringify(queryObj)).toString('base64');
+
+                    let fragmentObj = {
+                        secretKey: recipientEmailLinkKeyPair.secretKey,
+                        secretEncKey: recipientEmailLinkKeyPair.secretEncKey,
+                    }
+
+                    let fragment = Buffer.from(stringify(fragmentObj)).toString('base64');
+                    shareUrl = `${shareUrl}?q=${query}#${fragment}`;
+                    result.shareUrl = shareUrl;
+
+                    if (!isNullAny(execFileSelectionHash, emailSharePubKeys)) {
+
+                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
+                        let emailSelectionsObj = {
+                            selectionHash: selectionHash,
+                            pubKey: emailSharePubKeys.pubKey,
+                            pubEncKey: emailSharePubKeys.pubEncKey,
+                            encryptedUrl: encryptedShareUrl.payload,
+                            shareUrl,
+                            query,
+                            fragment,
+                            recipientEmailLinkKeyPair,
+                            queryObj: queryObj,
+                            fragmentObj: fragmentObj,
+                        };
+
+                        let submitUrl = getEndpointUrl('email/share/create');
+                        let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
+                        log('Server returns result', submitRes.data);
+
+                        if (submitRes.status === "ERROR") {
+                            throw submitRes.data;
+                        }
+                    }
                 }
 
                 if (!txPolling) {
-                    return serverPostResponse.data;
+                    return result;
                 }
 
-                return await processTxPolling(dataId, userId, 'requestType', 'share');
+                result = await processTxPolling(dataId, userId, 'requestType', requestType);
+                if (isEmailShare) {
+                    result.data = result;
+                    result.shareUrl = shareUrl;
+                }
+
+                return result;
             }
 
             async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
@@ -25112,67 +25256,42 @@ object-assign
                 }
 
                 throw new Error('Polling timeout.');
-
-
-                async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
-                    let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
-                    log('Browser decrypts sym password', decryptedSymPassword);
-
-                    let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
-                    log('Browser composes full password', fullPassword);
-
-                    let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
-                    log('Browser decrypts the file with the full password', decryptedFile);
-
-                    let resultFileInfo = encryptedFileInfo;
-                    resultFileInfo.payload = decryptedFile;
-                    delete resultFileInfo.encryption;
-
-                    return resultFileInfo;
-
-
-                    function decryptDataWithSymmetricKey(messageWithNonce, key) {
-                        const keyUint8Array = decodeBase64(key);
-
-                        const messageWithNonceAsUint8Array = new Uint8Array(Array.prototype.slice.call(new Buffer(messageWithNonce, 'base64'), 0));//decodeBase64 without validation
-
-                        const nonce = messageWithNonceAsUint8Array.slice(0, secretbox.nonceLength);
-
-                        const message = messageWithNonceAsUint8Array.slice(
-                            secretbox.nonceLength,
-                            messageWithNonce.length
-                        );
-
-                        const decrypted = secretbox.open(message, nonce, keyUint8Array);
-
-                        if (isNullAny(decrypted)) {
-                            throw new Error("Decryption failed");
-                        }
-
-                        return encodeUTF8(decrypted); //base64DecryptedMessage
-                    }
-                }
             }
 
-            async function pollShare(dataIds, recipientIds, userId, isExternal = false, functionId = '') {
+            async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
                 if (!Array.isArray(dataIds)) {
                     dataIds = [dataIds];
-                    recipientIds = [recipientIds];
+                    recipients = [recipients];
                 }
 
-                if (!isNullAny(functionId)) {
-                    functionId = `$#${functionId}`;
-                }
-
-                if (dataIds.length !== recipientIds.length) {
+                if (dataIds.length !== recipients.length) {
                     throw new Error(`Data count and recipient count mismatch.${functionId}`);
                 }
 
                 dataIds = await processExternalId(dataIds, userId, isExternal);
 
+                let recipientType;
+                if (recipients.some(r => !isValidEmail(r))) {
+                    if (recipients.some(r => !isValidAddress(r))) {
+                        throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
+                    }
+
+                    recipientType = 'recipientId';
+                } else {
+                    recipientType = 'recipientEmail'
+                }
+
+                if (!isNullAny(functionId)) {
+                    setShouldWorkPollingForFunctionId(functionId, true);
+                }
+
                 for (let i = 0; i < 50; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
-                        let pollUrl = getEndpointUrl('share/info', `&recipientId=${recipientIds[j]}&dataId=${dataIds[j]}`);
+                        if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                            return false;
+                        }
+
+                        let pollUrl = getEndpointUrl('share/info', `&${recipientType}=${recipients[j]}&dataId=${dataIds[j]}`);
 
                         let pollRes = (await axios.get(pollUrl)).data;
 
@@ -25181,17 +25300,49 @@ object-assign
                             break;
                         } else {
                             dataIds.splice(j, 1);
-                            recipientIds.splice(j, 1);
+                            recipients.splice(j, 1);
                             j--;
                         }
                     }
 
                     if (dataIds.length === 0) {
-                        return functionId.substr(2) || true;
+                        setShouldWorkPollingForFunctionId(functionId, false);
+                        return functionId || true;
                     }
                 }
 
+                setShouldWorkPollingForFunctionId(functionId, false);
                 throw new Error(`Share polling timeout...${functionId}`);
+            }
+
+            async function pollEmail(selectionHash, functionId = '') {
+                if (isNullAny(selectionHash)) {
+                    throw new Error(`Missing selection hash.${functionId}`);
+                }
+
+                if (!isNullAny(functionId)) {
+                    setShouldWorkPollingForFunctionId(functionId, true);
+                }
+
+                let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+
+                for (let i = 0; i < 50; i++) {
+                    if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                        return false;
+                    }
+
+                    let pollRes = (await axios.get(pollUrl)).data;
+
+                    if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
+                        await sleep(1000);
+                    } else {
+                        setShouldWorkPollingForFunctionId(functionId, false);
+                        return functionId || true;
+                    }
+                }
+
+                setShouldWorkPollingForFunctionId(functionId, false);
+                throw new Error(`Email share polling timeout...${functionId}`);
             }
 
             async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
@@ -25199,14 +25350,18 @@ object-assign
                     dataIds = [dataIds];
                 }
 
-                if (!isNullAny(functionId)) {
-                    functionId = `$#${functionId}`;
-                }
-
                 dataIds = await processExternalId(dataIds, userId, isExternal);
+
+                if (!isNullAny(functionId)) {
+                    setShouldWorkPollingForFunctionId(functionId, true);
+                }
 
                 for (let i = 0; i < 50; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
+                        if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                            return false;
+                        }
+
                         let pollUrl = getEndpointUrl('signature/info', `&userId=${userId}&dataId=${dataIds[j]}`);
 
                         let pollRes = (await axios.get(pollUrl)).data;
@@ -25221,24 +25376,26 @@ object-assign
                     }
 
                     if (dataIds.length === 0) {
-                        return functionId.substr(2) || true;
+                        setShouldWorkPollingForFunctionId(functionId, false);
+                        return functionId || true;
                     }
                 }
 
+                setShouldWorkPollingForFunctionId(functionId, false);
                 throw new Error(`Signature polling timeout.${functionId}`);
             }
 
-            async function select(files, recipients, isExternal = false) {
+            async function select(files, recipients, emailShareCommPubKeys = null, isExternal = false) {
 
-                let filteredDataIdsUserIds = [];
+                let filteredDataIdsRecipients = [];
                 for (let i = 0; i < files.length; i++) {
-                    let currentDataIdUserId = files[i] + recipients[i];
-                    if (filteredDataIdsUserIds.includes(currentDataIdUserId)) {
+                    let currentDataIdRecipient = files[i] + recipients[i];
+                    if (filteredDataIdsRecipients.includes(currentDataIdRecipient)) {
                         files.splice(i, 1);
                         recipients.splice(i, 1);
                         i--;
                     } else {
-                        filteredDataIdsUserIds.push(currentDataIdUserId);
+                        filteredDataIdsRecipients.push(currentDataIdRecipient);
                     }
                 }
 
@@ -25246,13 +25403,43 @@ object-assign
 
                 let validateUrl = getEndpointUrl('selection/create');
 
-                let result = (await axios.post(validateUrl, {
-                    dataIds: files,
-                    usersIds: recipients
-                })).data;
+                let postBody;
+                if (recipients.some(r => !isValidEmail(r))) {
+                    if (recipients.some(r => !isValidAddress(r))) {
+                        throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
+                    }
+
+                    postBody = {
+                        dataIds: files,
+                        usersIds: recipients,
+                        usersEmails: null,
+                    }
+                } else {
+                    if (isNullAny(emailShareCommPubKeys)) {
+                        throw new Error('Missing public keys for email share browser communication.');
+                    }
+
+                    postBody = {
+                        dataIds: files,
+                        usersIds: null,
+                        usersEmails: recipients,
+                        pubKey: emailShareCommPubKeys.publicKey,
+                        pubEncKey: emailShareCommPubKeys.publicEncKey,
+                    }
+                }
+
+                let result = (await axios.post(validateUrl, postBody)).data;
 
                 if (result.status === 'ERROR') {
                     throw  result.data;
+                }
+
+                if (isNullAny(result.data)) {
+                    throw new Error('Missing result data.');
+                }
+
+                if (!isNullAny(emailShareCommPubKeys) && isNullAny(result.data.pubKey, result.data.pubEncKey)) {
+                    throw new Error('Error posting public keys for email share browser communication.');
                 }
 
                 return result.data.selectionHash;
@@ -25331,8 +25518,33 @@ object-assign
                         return [];
                     }
 
-                    let recipients = selectionResult.usersIds;
                     let files = selectionResult.dataIds;
+                    let recipients = selectionResult.usersIds;
+                    let emailSharePubKeys = null;
+                    if (isNullAny(recipients)) {
+                        if (action !== 'se' || isNullAny(selectionResult.usersEmails)) {
+                            throw new Error('Invalid selection action/result.');
+                        }
+
+                        recipients = selectionResult.usersEmails;
+                        recipientsEmailLinkKeyPair = await newKeyPair(null);
+
+                        let getUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+                        let serverResponse = (await axios.get(getUrl)).data;
+
+                        if (serverResponse.status === 'ERROR') {
+                            throw serverResponse.data;
+                        }
+
+                        if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.pubKey, serverResponse.data.pubEncKey)) {
+                            throw new Error('Invalid email selection server response.');
+                        }
+
+                        emailSharePubKeys = {
+                            pubKey: serverResponse.data.pubKey,
+                            pubEncKey: serverResponse.data.pubEncKey
+                        };
+                    }
 
                     if (recipients.length !== files.length) {   // the array sizes must be equal
                         throw new Error('Invalid selection format.');
@@ -25406,13 +25618,14 @@ object-assign
                                 result.push(scanObj);
                                 break;
 
+                            case'se':
                             case'sh':
                                 let shareObj = {
                                     dataId: files[i]
                                 }
 
                                 try {
-                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs);
+                                    shareObj.data = await share(files[i], recipients[i], keyPair, false, txPolling, trailExtraArgs, emailSharePubKeys, selectionHash);
                                 } catch (error) {
                                     shareObj.data = error.message ? error.message : error;
                                     shareObj.status = "ERROR";
@@ -25445,6 +25658,8 @@ object-assign
 
                 } catch (error) {
                     throw (error);
+                } finally {
+                    recipientsEmailLinkKeyPair = null;
                 }
             }
 
@@ -25514,7 +25729,7 @@ object-assign
                     requestType = 'register';
                 }
 
-                if (!['upload', 'register', 'ipo_filing', 'bmd_register'].includes(requestType)) {
+                if (!['upload', 'register', 'ipo_filing', 'bmd_register'].includes(requestType.toLowerCase())) {
                     throw new Error("Unsupported request type.");
                 }
 
@@ -25608,10 +25823,17 @@ object-assign
                 return serverResponse.data;
             }
 
+            function setShouldWorkPollingForFunctionId(functionId, value) {
+                mapShouldBeWorkingPollingForFunctionId[functionId] = value;
+            }
 
             module.exports = {
+                decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
+                processEncryptedFileInfo: processEncryptedFileInfo,
                 isNullAny: isNullAny,
                 getHash: getHash,
+                getRequestHash: getRequestHash,
+                getTrailHash: getTrailHash,
 
                 debug: setDebugMode,
                 /* Specify API token and API host */
@@ -25645,6 +25867,8 @@ object-assign
                 share: share,
                 // browser poll for sharing
                 pollShare: pollShare,
+                // browser poll for email sharing
+                pollEmail: pollEmail,
 
                 sign: sign,
                 // browser poll for signing
@@ -25674,6 +25898,8 @@ object-assign
 
                 saveExternalId: saveExternalId,
                 convertExternalId: convertExternalId,
+
+                setShouldWorkPollingForFunctionId: setShouldWorkPollingForFunctionId,
             };
 
         }).call(this, require("buffer").Buffer)
