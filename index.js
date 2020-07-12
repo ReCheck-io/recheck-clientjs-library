@@ -1,5 +1,5 @@
-const {box, secretbox, randomBytes} = require('tweetnacl');
-const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-util');
+const { box, secretbox, randomBytes } = require('tweetnacl');
+const { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } = require('tweetnacl-util');
 const diceware = require('diceware');
 const session25519 = require('session25519');
 const keccak256 = require('keccak256');
@@ -400,7 +400,7 @@ async function newKeyPair(passPhrase) {
         const words = passPhrase.split(' ');
 
         if (words.length !== 12) {
-            throw('Invalid passphrase. Must be 12 words long.');
+            throw ('Invalid passphrase. Must be 12 words long.');
         }
     } else {
         passPhrase = diceware(12);
@@ -412,7 +412,7 @@ async function newKeyPair(passPhrase) {
     let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
     let secretSignBuffer;
     switch (network) {
-        case"ae":
+        case "ae":
             let publicSignBuffer = Buffer.from(keys.publicSignKey);
             secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
             let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
@@ -426,7 +426,7 @@ async function newKeyPair(passPhrase) {
                 phrase: passPhrase
             };
 
-        case  "eth":
+        case "eth":
             secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
             let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
             let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
@@ -1106,7 +1106,7 @@ async function select(files, recipients, emailShareCommPubKeys = null, isExterna
     let result = (await axios.post(validateUrl, postBody)).data;
 
     if (result.status === 'ERROR') {
-        throw  result.data;
+        throw result.data;
     }
 
     if (isNullAny(result.data)) {
@@ -1168,7 +1168,7 @@ async function prepareSelection(selection, keyPair) {
 
         let credentialsResponse = await prepare(files[i], recipients[i]);
 
-        result.push({dataId: files[i], data: credentialsResponse});
+        result.push({ dataId: files[i], data: credentialsResponse });
     }
 
     return result;
@@ -1306,7 +1306,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                     result.push(shareObj);
                     break;
 
-                case'sg':
+                case 'sg':
                     let signObj = {
                         dataId: files[i]
                     }
@@ -1321,7 +1321,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                     result.push(signObj);
                     break;
 
-                default :
+                default:
                     throw new Error('Unsupported selection operation code.');
             }
         }
@@ -1429,7 +1429,7 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
     log('Server responds to registerHash POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
-        throw  serverPostResponse.data;
+        throw serverPostResponse.data;
     }
 
     if (!txPolling) {
