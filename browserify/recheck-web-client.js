@@ -24341,6 +24341,7 @@ object-assign
             let network = "ae"; //ae,eth
 
             const defaultRequestId = 'ReCheck';
+            const pollingTime = 90;
             let isWorkingExecReEncr = false;
             let mapShouldBeWorkingPollingForFunctionId = [];
 
@@ -24725,7 +24726,7 @@ object-assign
                     const words = passPhrase.split(' ');
 
                     if (words.length !== 12) {
-                        throw('Invalid passphrase. Must be 12 words long.');
+                        throw ('Invalid passphrase. Must be 12 words long.');
                     }
                 } else {
                     passPhrase = diceware(12);
@@ -24737,7 +24738,7 @@ object-assign
                 let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
                 let secretSignBuffer;
                 switch (network) {
-                    case"ae":
+                    case "ae":
                         let publicSignBuffer = Buffer.from(keys.publicSignKey);
                         secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
                         let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
@@ -24751,7 +24752,7 @@ object-assign
                             phrase: passPhrase
                         };
 
-                    case  "eth":
+                    case "eth":
                         secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
                         let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
                         let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
@@ -25233,7 +25234,7 @@ object-assign
 
                 let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}`);
 
-                for (let i = 0; i < 50; i++) {
+                for (let i = 0; i < pollingTime; i++) {
                     let pollRes = (await axios.get(pollUrl)).data;
 
                     if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryption)) {
@@ -25285,7 +25286,7 @@ object-assign
                     setShouldWorkPollingForFunctionId(functionId, true);
                 }
 
-                for (let i = 0; i < 50; i++) {
+                for (let i = 0; i < pollingTime; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
                         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
                             return false;
@@ -25326,7 +25327,7 @@ object-assign
 
                 let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
 
-                for (let i = 0; i < 50; i++) {
+                for (let i = 0; i < pollingTime; i++) {
                     if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
                         return false;
                     }
@@ -25356,7 +25357,7 @@ object-assign
                     setShouldWorkPollingForFunctionId(functionId, true);
                 }
 
-                for (let i = 0; i < 50; i++) {
+                for (let i = 0; i < pollingTime; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
                         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
                             return false;
@@ -25431,7 +25432,7 @@ object-assign
                 let result = (await axios.post(validateUrl, postBody)).data;
 
                 if (result.status === 'ERROR') {
-                    throw  result.data;
+                    throw result.data;
                 }
 
                 if (isNullAny(result.data)) {
@@ -25634,7 +25635,7 @@ object-assign
                                 result.push(shareObj);
                                 break;
 
-                            case'sg':
+                            case 'sg':
                                 let signObj = {
                                     dataId: files[i]
                                 }
@@ -25649,7 +25650,7 @@ object-assign
                                 result.push(signObj);
                                 break;
 
-                            default :
+                            default:
                                 throw new Error('Unsupported selection operation code.');
                         }
                     }
@@ -25757,7 +25758,7 @@ object-assign
                 log('Server responds to registerHash POST', serverPostResponse.data);
 
                 if (serverPostResponse.status === "ERROR") {
-                    throw  serverPostResponse.data;
+                    throw serverPostResponse.data;
                 }
 
                 if (!txPolling) {

@@ -16,6 +16,7 @@ let token = null;
 let network = "ae"; //ae,eth
 
 const defaultRequestId = 'ReCheck';
+const pollingTime = 90;
 let isWorkingExecReEncr = false;
 let mapShouldBeWorkingPollingForFunctionId = [];
 
@@ -908,7 +909,7 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 
     let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}`);
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < pollingTime; i++) {
         let pollRes = (await axios.get(pollUrl)).data;
 
         if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryption)) {
@@ -960,7 +961,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
                 return false;
@@ -1001,7 +1002,7 @@ async function pollEmail(selectionHash, functionId = '') {
 
     let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < pollingTime; i++) {
         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
             return false;
         }
@@ -1031,7 +1032,7 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
                 return false;
