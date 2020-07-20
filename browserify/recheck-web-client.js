@@ -25068,12 +25068,6 @@ object-assign
                             pubKey: emailSharePubKeys.pubKey,
                             pubEncKey: emailSharePubKeys.pubEncKey,
                             encryptedUrl: encryptedShareUrl.payload,
-                            shareUrl,
-                            query,
-                            fragment,
-                            recipientEmailLinkKeyPair,
-                            queryObj: queryObj,
-                            fragmentObj: fragmentObj,
                         };
 
                         let submitUrl = getEndpointUrl('email/share/create');
@@ -25828,6 +25822,48 @@ object-assign
                 mapShouldBeWorkingPollingForFunctionId[functionId] = value;
             }
 
+            async function createShortQueryUrl(url) {
+
+                let basePath = url.substr(0, url.lastIndexOf('/') + 1);
+                let fragment = url.substr(url.lastIndexOf('#'));
+                let pathQuery = url.replace(basePath, '').replace(fragment, '');
+
+                let body = {
+                    longQuery: pathQuery,
+                };
+
+                let postUrl = getEndpointUrl('email/share/url/create');
+                log('createShortUrl, ', body);
+
+                let serverPostResponse = (await axios.post(postUrl, body)).data;
+                log('Server responds to createShortUrl POST', serverPostResponse.data);
+
+                if (serverPostResponse.status === "ERROR"
+                    || isNullAny(serverPostResponse.data) || isNullAny(serverPostResponse.data.shortQuery)) {
+                    throw serverPostResponse.data;
+                }
+
+                return basePath + serverPostResponse.data.shortQuery + fragment;
+            }
+
+            async function getLongQueryUrl(queryHash) {
+                let query = `&queryHash=${queryHash}`;
+
+                let getUrl = getEndpointUrl('email/share/url/info', query);
+                log('query URL', getUrl);
+
+                let serverResponse = (await axios.get(getUrl)).data;
+                log('Server responds to getLongQueryUrl GET', serverResponse.data);
+
+                if (serverResponse.status === "ERROR"
+                    || isNullAny(serverResponse.data) || isNullAny(serverResponse.data.longQuery)) {
+                    throw serverResponse.data;
+                }
+
+                return serverResponse.data.longQuery;
+            }
+
+
             module.exports = {
                 decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
                 processEncryptedFileInfo: processEncryptedFileInfo,
@@ -25901,6 +25937,9 @@ object-assign
                 convertExternalId: convertExternalId,
 
                 setShouldWorkPollingForFunctionId: setShouldWorkPollingForFunctionId,
+
+                createShortQueryUrl: createShortQueryUrl,
+                getLongQueryUrl: getLongQueryUrl,
             };
 
         }).call(this, require("buffer").Buffer)
