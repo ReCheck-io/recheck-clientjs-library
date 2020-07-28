@@ -24340,7 +24340,7 @@ object-assign
             let token = null;
             let network = "ae"; //ae,eth
 
-            const defaultRequestId = 'ReCheck';
+            const defaultRequestId = defaultGUIRequestId || 'ReCheck';
             const pollingTime = 90;
             let isWorkingExecReEncr = false;
             let mapShouldBeWorkingPollingForFunctionId = [];
