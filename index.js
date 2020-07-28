@@ -15,7 +15,7 @@ let baseUrl = 'http://localhost:3000';
 let token = null;
 let network = "ae"; //ae,eth
 
-const defaultRequestId = defaultGUIRequestId || 'ReCheck';
+const defaultRequestId = defaultAPPRequestId || 'ReCheck';
 const pollingTime = 90;
 let isWorkingExecReEncr = false;
 let mapShouldBeWorkingPollingForFunctionId = [];
