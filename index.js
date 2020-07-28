@@ -9,7 +9,7 @@ const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
 
-let debug = true;
+let debug = false;
 
 let baseUrl = 'http://localhost:3000';
 let token = null;
