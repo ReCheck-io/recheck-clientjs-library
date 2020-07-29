@@ -24340,7 +24340,7 @@ object-assign
             let token = null;
             let network = "ae"; //ae,eth
 
-            const defaultRequestId = defaultAPPRequestId || 'ReCheck';
+            let defaultRequestId = 'ReCheck';
             const pollingTime = 90;
             let isWorkingExecReEncr = false;
             let mapShouldBeWorkingPollingForFunctionId = [];
@@ -24656,6 +24656,12 @@ object-assign
             const setDebugMode = (debugFlag) => {
                 debug = debugFlag;
             };
+
+            const setDefaultRequestId = (requestId) => {
+                if (!isNullAny(requestId)) {
+                    defaultRequestId = requestId;
+                }
+            }
 
             function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
                 baseUrl = sourceBaseUrl;
@@ -25873,6 +25879,7 @@ object-assign
                 getTrailHash: getTrailHash,
 
                 debug: setDebugMode,
+                setDefaultRequestId: setDefaultRequestId,
                 /* Specify API token and API host */
 
                 init: init,
