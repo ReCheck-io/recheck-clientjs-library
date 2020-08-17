@@ -25032,8 +25032,27 @@ object-assign
                     throw result;
                 }
 
-                let shareUrl = null;
+                let shareUrl = await generateEmailShareUrl();
+
+                if (!txPolling) {
+                    return result;
+                }
+
+                result = await processTxPolling(dataId, userId, 'requestType', requestType);
                 if (isEmailShare) {
+                    result.data = result;
+                    result.shareUrl = shareUrl;
+                }
+
+                return result;
+
+
+                async function generateEmailShareUrl() {
+                    let generatedShareUrl = null;
+                    if (!isEmailShare) {
+                        return generatedShareUrl;
+                    }
+
                     if (isNullAny(result.selectionHash)) {
                         throw new Error('Unable to create email share selection hash. Contact your service provider.');
                     }
@@ -25044,13 +25063,13 @@ object-assign
                         selectionHash = execFileSelectionHash;
                     }
 
-                    shareUrl = `${baseUrl}/view/email/${selectionHash}`;
+                    generatedShareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
                     let queryObj = {
                         selectionHash: selectionHash,
                         pubKey: recipientEmailLinkKeyPair.publicKey,
                         pubEncKey: recipientEncrKey,
-                        shareUrl: shareUrl,
+                        shareUrl: generatedShareUrl,
                         requestBodyHashSignature: 'NULL',
                     }
                     queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
@@ -25063,12 +25082,12 @@ object-assign
                     }
 
                     let fragment = Buffer.from(stringify(fragmentObj)).toString('base64');
-                    shareUrl = `${shareUrl}?q=${query}#${fragment}`;
-                    result.shareUrl = shareUrl;
+                    generatedShareUrl = `${generatedShareUrl}?q=${query}#${fragment}`;
+                    result.shareUrl = generatedShareUrl;
 
                     if (!isNullAny(execFileSelectionHash, emailSharePubKeys)) {
 
-                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(shareUrl, emailSharePubKeys.pubEncKey, keyPair);
+                        let encryptedShareUrl = await encryptDataToPublicKeyWithKeyPair(generatedShareUrl, emailSharePubKeys.pubEncKey, keyPair);
                         let emailSelectionsObj = {
                             selectionHash: selectionHash,
                             pubKey: emailSharePubKeys.pubKey,
@@ -25084,19 +25103,9 @@ object-assign
                             throw submitRes.data;
                         }
                     }
-                }
 
-                if (!txPolling) {
-                    return result;
+                    return generatedShareUrl;
                 }
-
-                result = await processTxPolling(dataId, userId, 'requestType', requestType);
-                if (isEmailShare) {
-                    result.data = result;
-                    result.shareUrl = shareUrl;
-                }
-
-                return result;
             }
 
             async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
