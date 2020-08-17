@@ -661,7 +661,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
     log('shareencrypted get request', getUrl);
-    console.log("api link", getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
 
@@ -672,8 +671,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     if (getShareResponse.data.dataId !== dataId) {
         throw new Error('Unable to create share. Data id mismatch.');
     }
-
-    console.log("api responce", getShareResponse);
 
     recipient = getShareResponse.data[recipientType];
     dataId = getShareResponse.data.dataId;
@@ -721,7 +718,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
 
-    console.log("toz create share", createShare);
     let postUrl = getEndpointUrl('share/create');
 
     let serverPostResponse = (await axios.post(postUrl, createShare)).data;
@@ -729,7 +725,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     log('Server responds to user device POST', serverPostResponse.data);
 
     let result = serverPostResponse.data;
-    console.log("server response", result);
     if (serverPostResponse.status === "ERROR") {
         throw result;
     }
@@ -765,15 +760,10 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             selectionHash = execFileSelectionHash;
         }
 
-<<<<<<< HEAD
         shareUrl = `${baseUrl}/view/email/${selectionHash}`;
         
-        console.log("toz shareUrl", shareUrl);
-        
-=======
         generatedShareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
->>>>>>> 61408b6c3bb6814e161d42f807b4ae7ee036f87d
         let queryObj = {
             selectionHash: selectionHash,
             pubKey: recipientEmailLinkKeyPair.publicKey,
@@ -783,8 +773,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         }
         queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
         
-        console.log("tui queryObj", queryObj);
-
         let query = Buffer.from(stringify(queryObj)).toString('base64');
 
         let fragmentObj = {
@@ -809,7 +797,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             let submitUrl = getEndpointUrl('email/share/create');
             let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
             log('Server returns result', submitRes.data);
-            console.log("kakoi tui det vryshta ot email share", submitRes.data);
             if (submitRes.status === "ERROR") {
                 throw submitRes.data;
             }
