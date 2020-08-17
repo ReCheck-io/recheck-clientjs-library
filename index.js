@@ -404,11 +404,32 @@ async function loginWithChallenge(challenge, keyPair) {
 async function newKeyPair(passPhrase) {
 
     if (!isNullAny(passPhrase)) {
+        passPhrase = passPhrase.toLowerCase();
         const words = passPhrase.split(' ');
 
         if (words.length !== 12) {
             throw ('Invalid passphrase. Must be 12 words long.');
         }
+        const dictionary = diceware.getWords()
+        let isWord = false;
+
+        for (let i = 0; i < 12; i++){
+            for (let j = 0; j < dictionary.length; j++) {
+               if(words[i] == dictionary[j]){
+                isWord = true
+                log("The word " + words[i] + " exist.");
+                break;
+               }
+               else{
+                isWord = false
+               }          
+            }
+            log("The word exists in the dictionary. ",isWord);
+            if(!isWord){
+                throw("An existing word is not from the dictionary, your secret phrase is wrong.")
+            }
+        }
+        
     } else {
         passPhrase = diceware(12);
     }
@@ -624,7 +645,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
-
+    
     let recipientType;
     let isEmailShare = false;
     if (!isValidEmail(recipient)) {
@@ -640,6 +661,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
     log('shareencrypted get request', getUrl);
+    console.log("api link", getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
 
@@ -651,9 +673,13 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         throw new Error('Unable to create share. Data id mismatch.');
     }
 
+    console.log("api responce", getShareResponse);
+
     recipient = getShareResponse.data[recipientType];
     dataId = getShareResponse.data.dataId;
-    let requestType = isEmailShare ? 'email' : 'share';
+  
+  
+  let requestType = isEmailShare ? 'email' : 'share';
 
     let trailHash = getTrailHash(dataId, userId, requestType, recipient, trailExtraArgs);
 
@@ -695,7 +721,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
 
-
+    console.log("toz create share", createShare);
     let postUrl = getEndpointUrl('share/create');
 
     let serverPostResponse = (await axios.post(postUrl, createShare)).data;
@@ -703,6 +729,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     log('Server responds to user device POST', serverPostResponse.data);
 
     let result = serverPostResponse.data;
+    console.log("server response", result);
     if (serverPostResponse.status === "ERROR") {
         throw result;
     }
@@ -720,7 +747,9 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         }
 
         shareUrl = `${baseUrl}/view/email/${selectionHash}`;
-
+        
+        console.log("toz shareUrl", shareUrl);
+        
         let queryObj = {
             selectionHash: selectionHash,
             pubKey: recipientEmailLinkKeyPair.publicKey,
@@ -729,6 +758,8 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             requestBodyHashSignature: 'NULL',
         }
         queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
+        
+        console.log("tui queryObj", queryObj);
 
         let query = Buffer.from(stringify(queryObj)).toString('base64');
 
@@ -754,7 +785,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             let submitUrl = getEndpointUrl('email/share/create');
             let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
             log('Server returns result', submitRes.data);
-
+            console.log("kakoi tui det vryshta ot email share", submitRes.data);
             if (submitRes.status === "ERROR") {
                 throw submitRes.data;
             }
