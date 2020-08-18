@@ -8,6 +8,7 @@ const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
+var wordlist = require('./wordlist');
 
 let debug = false;
 
@@ -410,25 +411,25 @@ async function newKeyPair(passPhrase) {
         if (words.length !== 12) {
             throw ('Invalid passphrase. Must be 12 words long.');
         }
-        // const dictionary = diceware.getWords()
-        // let isWord = false;
 
-        // for (let i = 0; i < 12; i++){
-        //     for (let j = 0; j < dictionary.length; j++) {
-        //        if(words[i] == dictionary[j]){
-        //         isWord = true
-        //         log("The word " + words[i] + " exist.");
-        //         break;
-        //        }
-        //        else{
-        //         isWord = false
-        //        }          
-        //     }
-        //     log("The word exists in the dictionary. ",isWord);
-        //     if(!isWord){
-        //         throw("An existing word is not from the dictionary, your secret phrase is wrong.")
-        //     }
-        // }
+        let isWord = false;
+
+        for (let i = 0; i < 12; i++){
+            for (let j = 0; j < wordlist.length; j++) {
+               if(words[i] == wordlist[j]){
+                isWord = true
+                log("The word " + words[i] + " exist.");
+                break;
+               }
+               else{
+                isWord = false
+               }          
+            }
+            log("The word exists in the dictionary. ",isWord);
+            if(!isWord){
+                throw("An existing word is not from the dictionary, your secret phrase is wrong.")
+            }
+        }
         
     } else {
         passPhrase = diceware(12);
