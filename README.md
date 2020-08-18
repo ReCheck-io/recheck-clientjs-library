@@ -4,11 +4,14 @@
 
 We are glad to receive any feedback you want to give us. 
 
+You can find a **demo page [here](https://github.com/ReCheck-io/demo-page)** that demonstrates the
+most important interactions with the system and sample code how to implement them. 
+
 You can find the **documentation [here](docs/index.md)**.
 
 You can find the **npm package [here](https://www.npmjs.com/package/recheck-clientjs-library)**.
 
-You can find the **API requests [here](docs/API.md)** 
+You can find the **API requests [here](docs/API.md)**.
 
 To connect to our environment you can use __https://beta.recheck.io__ .
 
