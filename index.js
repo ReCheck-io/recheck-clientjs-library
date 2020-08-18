@@ -8,7 +8,7 @@ const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
-var wordlist = require('./wordlist');
+const wordList = require('./wordlist');
 
 let debug = false;
 
@@ -404,7 +404,9 @@ async function loginWithChallenge(challenge, keyPair) {
 
 async function newKeyPair(passPhrase) {
 
-    if (!isNullAny(passPhrase)) {
+    if (isNullAny(passPhrase)) {
+        passPhrase = diceware(12);
+    } else {
         passPhrase = passPhrase.toLowerCase();
         const words = passPhrase.split(' ');
 
@@ -412,27 +414,11 @@ async function newKeyPair(passPhrase) {
             throw ('Invalid passphrase. Must be 12 words long.');
         }
 
-        let isWord = false;
-
-        for (let i = 0; i < 12; i++){
-            for (let j = 0; j < wordlist.length; j++) {
-               if(words[i] == wordlist[j]){
-                isWord = true
-                log("The word " + words[i] + " exist.");
-                break;
-               }
-               else{
-                isWord = false
-               }          
-            }
-            log("The word exists in the dictionary. ",isWord);
-            if(!isWord){
+        for (let i = 0; i < 12; i++) {
+            if (!wordList.includes(words[i])) {
                 throw("An existing word is not from the dictionary, your secret phrase is wrong.")
             }
         }
-        
-    } else {
-        passPhrase = diceware(12);
     }
 
     let keys = await _session25519(passPhrase, getHash(passPhrase));
@@ -646,7 +632,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     let userId = keyPair.address;
 
     dataId = await processExternalId(dataId, userId, isExternal);
-    
+
     let recipientType;
     let isEmailShare = false;
     if (!isValidEmail(recipient)) {
@@ -675,9 +661,8 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     recipient = getShareResponse.data[recipientType];
     dataId = getShareResponse.data.dataId;
-  
-  
-  let requestType = isEmailShare ? 'email' : 'share';
+
+    let requestType = isEmailShare ? 'email' : 'share';
 
     let trailHash = getTrailHash(dataId, userId, requestType, recipient, trailExtraArgs);
 
@@ -762,7 +747,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         }
 
         shareUrl = `${baseUrl}/view/email/${selectionHash}`;
-        
+
         generatedShareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
         let queryObj = {
@@ -773,7 +758,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             requestBodyHashSignature: 'NULL',
         }
         queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
-        
+
         let query = Buffer.from(stringify(queryObj)).toString('base64');
 
         let fragmentObj = {
