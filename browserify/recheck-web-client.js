@@ -24745,6 +24745,7 @@ object-assign
                         }
                     }
                 }
+
                 let keys = await _session25519(passPhrase, getHash(passPhrase));
 
                 let publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
@@ -25070,8 +25071,6 @@ object-assign
                         selectionHash = execFileSelectionHash;
                     }
 
-                    shareUrl = `${baseUrl}/view/email/${selectionHash}`;
-
                     generatedShareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
                     let queryObj = {
@@ -25350,6 +25349,11 @@ object-assign
                     }
 
                     let pollRes = (await axios.get(pollUrl)).data;
+
+                    if (i === 0 && !isNullAny(pollRes.data) && !pollRes.data.hasNewShare) {
+                        setShouldWorkPollingForFunctionId(functionId, false);
+                        throw new Error(`Recipients already have this data.${functionId}`);
+                    }
 
                     if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
                         await sleep(1000);

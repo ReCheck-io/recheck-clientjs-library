@@ -1025,6 +1025,11 @@ async function pollEmail(selectionHash, functionId = '') {
 
         let pollRes = (await axios.get(pollUrl)).data;
 
+        if (i === 0 && !isNullAny(pollRes.data) && !pollRes.data.hasNewShare) {
+            setShouldWorkPollingForFunctionId(functionId, false);
+            throw new Error(`Recipients already have this data.${functionId}`);
+        }
+
         if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
             await sleep(1000);
         } else {
