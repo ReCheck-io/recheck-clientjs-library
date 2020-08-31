@@ -746,8 +746,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             selectionHash = execFileSelectionHash;
         }
 
-        shareUrl = `${baseUrl}/view/email/${selectionHash}`;
-
         generatedShareUrl = `${baseUrl}/view/email/${selectionHash}`;
 
         let queryObj = {
