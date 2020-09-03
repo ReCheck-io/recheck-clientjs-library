@@ -379,12 +379,12 @@ async function login(keyPair) {
     return await loginWithChallenge(challengeResponse.data.challenge, keyPair);
 }
 
-async function loginWithChallenge(challenge, keyPair) {
+async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken') {
     let payload = {
         action: 'login',
         pubKey: keyPair.publicKey,
         pubEncKey: keyPair.publicEncKey,
-        firebase: 'notoken',
+        firebase: firebaseToken,
         challenge: challenge,
         challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
         rtnToken: 'notoken'
