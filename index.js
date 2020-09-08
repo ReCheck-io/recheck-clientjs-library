@@ -367,7 +367,7 @@ async function getServerInfo() {
     };
 }
 
-async function login(keyPair) {
+async function login(keyPair, firebaseToken) {
     let getChallengeUrl = getEndpointUrl('login/challenge');
 
     let challengeResponse = (await axios.get(getChallengeUrl)).data;
@@ -376,7 +376,9 @@ async function login(keyPair) {
         throw new Error('Unable to retrieve login challenge.');
     }
 
-    return await loginWithChallenge(challengeResponse.data.challenge, keyPair);
+    return await loginWithChallenge(
+        challengeResponse.data.challenge, keyPair, firebaseToken
+    );
 }
 
 async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken') {
