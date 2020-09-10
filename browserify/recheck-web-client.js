@@ -24348,6 +24348,7 @@ object-assign
 
             let browserKeyPair = undefined; // represents the browser temporary keypair while polling
             let recipientsEmailLinkKeyPair = null;
+            let notificationCallback = null;
 
             const newNonce = () => randomBytes(box.nonceLength);
 
@@ -24692,7 +24693,7 @@ object-assign
                 };
             }
 
-            async function login(keyPair) {
+            async function login(keyPair, firebaseToken) {
                 let getChallengeUrl = getEndpointUrl('login/challenge');
 
                 let challengeResponse = (await axios.get(getChallengeUrl)).data;
@@ -24701,15 +24702,17 @@ object-assign
                     throw new Error('Unable to retrieve login challenge.');
                 }
 
-                return await loginWithChallenge(challengeResponse.data.challenge, keyPair);
+                return await loginWithChallenge(
+                    challengeResponse.data.challenge, keyPair, firebaseToken
+                );
             }
 
-            async function loginWithChallenge(challenge, keyPair) {
+            async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken') {
                 let payload = {
                     action: 'login',
                     pubKey: keyPair.publicKey,
                     pubEncKey: keyPair.publicEncKey,
-                    firebase: 'notoken',
+                    firebase: firebaseToken,
                     challenge: challenge,
                     challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
                     rtnToken: 'notoken'
@@ -25282,6 +25285,7 @@ object-assign
                 }
 
                 if (dataIds.length !== recipients.length) {
+                    notificationCallback = null;
                     throw new Error(`Data count and recipient count mismatch.${functionId}`);
                 }
 
@@ -25290,6 +25294,7 @@ object-assign
                 let recipientType;
                 if (recipients.some(r => !isValidEmail(r))) {
                     if (recipients.some(r => !isValidAddress(r))) {
+                        notificationCallback = null;
                         throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
                     }
 
@@ -25302,9 +25307,11 @@ object-assign
                     setShouldWorkPollingForFunctionId(functionId, true);
                 }
 
+                let hasCalledCallback = false;
                 for (let i = 0; i < pollingTime; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
                         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                            notificationCallback = null;
                             return false;
                         }
 
@@ -25313,6 +25320,12 @@ object-assign
                         let pollRes = (await axios.get(pollUrl)).data;
 
                         if (isNullAny(pollRes.data)) {
+                            if (!hasCalledCallback && isNullAny(notificationCallback)) {
+                                notificationCallback();
+                                hasCalledCallback = true;
+                                notificationCallback = null;
+                            }
+
                             await sleep(1000);
                             break;
                         } else {
@@ -25324,11 +25337,13 @@ object-assign
 
                     if (dataIds.length === 0) {
                         setShouldWorkPollingForFunctionId(functionId, false);
+                        notificationCallback = null;
                         return functionId || true;
                     }
                 }
 
                 setShouldWorkPollingForFunctionId(functionId, false);
+                notificationCallback = null;
                 throw new Error(`Share polling timeout...${functionId}`);
             }
 
@@ -25890,6 +25905,10 @@ object-assign
                 return serverResponse.data.longQuery;
             }
 
+            function setNotificationCallback(func) {
+                notificationCallback = func;
+            }
+
 
             module.exports = {
                 decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
@@ -25968,6 +25987,8 @@ object-assign
 
                 createShortQueryUrl: createShortQueryUrl,
                 getLongQueryUrl: getLongQueryUrl,
+
+                setNotificationCallback: setNotificationCallback,
             };
 
         }).call(this, require("buffer").Buffer)

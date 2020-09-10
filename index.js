@@ -23,6 +23,7 @@ let mapShouldBeWorkingPollingForFunctionId = [];
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 let recipientsEmailLinkKeyPair = null;
+let notificationCallback = null;
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -959,6 +960,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     }
 
     if (dataIds.length !== recipients.length) {
+        notificationCallback = null;
         throw new Error(`Data count and recipient count mismatch.${functionId}`);
     }
 
@@ -967,6 +969,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     let recipientType;
     if (recipients.some(r => !isValidEmail(r))) {
         if (recipients.some(r => !isValidAddress(r))) {
+            notificationCallback = null;
             throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
         }
 
@@ -979,9 +982,11 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
+    let hasCalledCallback = false;
     for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                notificationCallback = null;
                 return false;
             }
 
@@ -990,6 +995,12 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
             let pollRes = (await axios.get(pollUrl)).data;
 
             if (isNullAny(pollRes.data)) {
+                if (!hasCalledCallback && isNullAny(notificationCallback)) {
+                    notificationCallback();
+                    hasCalledCallback = true;
+                    notificationCallback = null;
+                }
+
                 await sleep(1000);
                 break;
             } else {
@@ -1001,11 +1012,13 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
 
         if (dataIds.length === 0) {
             setShouldWorkPollingForFunctionId(functionId, false);
+            notificationCallback = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
+    notificationCallback = null;
     throw new Error(`Share polling timeout...${functionId}`);
 }
 
@@ -1564,6 +1577,10 @@ async function getLongQueryUrl(queryHash) {
     return serverResponse.data.longQuery;
 }
 
+function setNotificationCallback(func) {
+    notificationCallback = func;
+}
+
 
 module.exports = {
     decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
@@ -1642,4 +1659,6 @@ module.exports = {
 
     createShortQueryUrl: createShortQueryUrl,
     getLongQueryUrl: getLongQueryUrl,
+
+    setNotificationCallback: setNotificationCallback,
 };
