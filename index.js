@@ -194,7 +194,7 @@ function sendNotification() {
     let notificationUrl = getEndpointUrl('user/notification');
 
     if (!isNullAny(notificationSelectionActionHash)) {
-        axios.post(notificationUrl, notificationSelectionActionHash)
+        axios.post(notificationUrl, {selectionActionHash: notificationSelectionActionHash})
             .then((result) => {
                 logDebug('notification', result)
             });
