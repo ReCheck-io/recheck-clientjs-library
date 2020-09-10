@@ -24348,7 +24348,7 @@ object-assign
 
             let browserKeyPair = undefined; // represents the browser temporary keypair while polling
             let recipientsEmailLinkKeyPair = null;
-            let notificationCallback = null;
+            let notificationSelectionActionHash = null;
 
             const newNonce = () => randomBytes(box.nonceLength);
 
@@ -24513,6 +24513,19 @@ object-assign
                     default:
                         return false;
                 }
+            }
+
+            function sendNotification() {
+                let notificationUrl = getEndpointUrl('user/notification');
+
+                if (!isNullAny(notificationSelectionActionHash)) {
+                    axios.post(notificationUrl, notificationSelectionActionHash)
+                        .then((result) => {
+                            logDebug('notification', result)
+                        });
+                }
+
+                notificationSelectionActionHash = null;
             }
 
 ////////////////////////////////////////////////////////////
@@ -24693,7 +24706,7 @@ object-assign
                 };
             }
 
-            async function login(keyPair, firebaseToken) {
+            async function login(keyPair, firebaseToken = 'notoken') {
                 let getChallengeUrl = getEndpointUrl('login/challenge');
 
                 let challengeResponse = (await axios.get(getChallengeUrl)).data;
@@ -25285,7 +25298,7 @@ object-assign
                 }
 
                 if (dataIds.length !== recipients.length) {
-                    notificationCallback = null;
+                    notificationSelectionActionHash = null;
                     throw new Error(`Data count and recipient count mismatch.${functionId}`);
                 }
 
@@ -25294,7 +25307,7 @@ object-assign
                 let recipientType;
                 if (recipients.some(r => !isValidEmail(r))) {
                     if (recipients.some(r => !isValidAddress(r))) {
-                        notificationCallback = null;
+                        notificationSelectionActionHash = null;
                         throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
                     }
 
@@ -25307,11 +25320,11 @@ object-assign
                     setShouldWorkPollingForFunctionId(functionId, true);
                 }
 
-                let hasCalledCallback = false;
+                let hasSendNotification = false;
                 for (let i = 0; i < pollingTime; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
                         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
-                            notificationCallback = null;
+                            notificationSelectionActionHash = null;
                             return false;
                         }
 
@@ -25320,10 +25333,10 @@ object-assign
                         let pollRes = (await axios.get(pollUrl)).data;
 
                         if (isNullAny(pollRes.data)) {
-                            if (!hasCalledCallback && isNullAny(notificationCallback)) {
-                                notificationCallback();
-                                hasCalledCallback = true;
-                                notificationCallback = null;
+                            if (!hasSendNotification) {
+                                sendNotification();
+                                hasSendNotification = true;
+                                notificationSelectionActionHash = null;
                             }
 
                             await sleep(1000);
@@ -25337,18 +25350,19 @@ object-assign
 
                     if (dataIds.length === 0) {
                         setShouldWorkPollingForFunctionId(functionId, false);
-                        notificationCallback = null;
+                        notificationSelectionActionHash = null;
                         return functionId || true;
                     }
                 }
 
                 setShouldWorkPollingForFunctionId(functionId, false);
-                notificationCallback = null;
+                notificationSelectionActionHash = null;
                 throw new Error(`Share polling timeout...${functionId}`);
             }
 
             async function pollEmail(selectionHash, functionId = '') {
                 if (isNullAny(selectionHash)) {
+                    notificationSelectionActionHash = null;
                     throw new Error(`Missing selection hash.${functionId}`);
                 }
 
@@ -25358,8 +25372,10 @@ object-assign
 
                 let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
 
+                let hasSendNotification = false;
                 for (let i = 0; i < pollingTime; i++) {
                     if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                        notificationSelectionActionHash = null;
                         return false;
                     }
 
@@ -25367,18 +25383,27 @@ object-assign
 
                     if (i === 0 && !isNullAny(pollRes.data) && !pollRes.data.hasNewShare) {
                         setShouldWorkPollingForFunctionId(functionId, false);
+                        notificationSelectionActionHash = null;
                         throw new Error(`Recipients already have this data.${functionId}`);
                     }
 
                     if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
+                        if (!hasSendNotification) {
+                            sendNotification();
+                            hasSendNotification = true;
+                            notificationSelectionActionHash = null;
+                        }
+
                         await sleep(1000);
                     } else {
                         setShouldWorkPollingForFunctionId(functionId, false);
+                        notificationSelectionActionHash = null;
                         return functionId || true;
                     }
                 }
 
                 setShouldWorkPollingForFunctionId(functionId, false);
+                notificationSelectionActionHash = null;
                 throw new Error(`Email share polling timeout...${functionId}`);
             }
 
@@ -25393,9 +25418,11 @@ object-assign
                     setShouldWorkPollingForFunctionId(functionId, true);
                 }
 
+                let hasSendNotification = false;
                 for (let i = 0; i < pollingTime; i++) {
                     for (let j = 0; j < dataIds.length; j++) {
                         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                            notificationSelectionActionHash = null;
                             return false;
                         }
 
@@ -25404,6 +25431,12 @@ object-assign
                         let pollRes = (await axios.get(pollUrl)).data;
 
                         if (isNullAny(pollRes.data)) {
+                            if (!hasSendNotification) {
+                                sendNotification();
+                                hasSendNotification = true;
+                                notificationSelectionActionHash = null;
+                            }
+
                             await sleep(1000);
                             break;
                         } else {
@@ -25414,11 +25447,13 @@ object-assign
 
                     if (dataIds.length === 0) {
                         setShouldWorkPollingForFunctionId(functionId, false);
+                        notificationSelectionActionHash = null;
                         return functionId || true;
                     }
                 }
 
                 setShouldWorkPollingForFunctionId(functionId, false);
+                notificationSelectionActionHash = null;
                 throw new Error(`Signature polling timeout.${functionId}`);
             }
 
@@ -25587,6 +25622,7 @@ object-assign
                         throw new Error('Invalid selection format.');
                     }
 
+                    let hasSendNotification = false;
                     let result = [];
                     for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
                         switch (action) {
@@ -25619,6 +25655,12 @@ object-assign
 
                                     let fileObj = {
                                         dataId: files[i]
+                                    }
+
+                                    if (!hasSendNotification) {
+                                        sendNotification();
+                                        hasSendNotification = true;
+                                        notificationSelectionActionHash = null;
                                     }
 
                                     try {
@@ -25905,8 +25947,8 @@ object-assign
                 return serverResponse.data.longQuery;
             }
 
-            function setNotificationCallback(func) {
-                notificationCallback = func;
+            function setNotificationSelectionActionHash(selectionActionHash) {
+                notificationSelectionActionHash = selectionActionHash;
             }
 
 
@@ -25988,7 +26030,7 @@ object-assign
                 createShortQueryUrl: createShortQueryUrl,
                 getLongQueryUrl: getLongQueryUrl,
 
-                setNotificationCallback: setNotificationCallback,
+                setNotificationSelectionActionHash: setNotificationSelectionActionHash,
             };
 
         }).call(this, require("buffer").Buffer)

@@ -23,7 +23,7 @@ let mapShouldBeWorkingPollingForFunctionId = [];
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 let recipientsEmailLinkKeyPair = null;
-let notificationCallback = null;
+let notificationSelectionActionHash = null;
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -188,6 +188,19 @@ function isValidAddress(address) {
         default:
             return false;
     }
+}
+
+function sendNotification() {
+    let notificationUrl = getEndpointUrl('user/notification');
+
+    if (!isNullAny(notificationSelectionActionHash)) {
+        axios.post(notificationUrl, notificationSelectionActionHash)
+            .then((result) => {
+                logDebug('notification', result)
+            });
+    }
+
+    notificationSelectionActionHash = null;
 }
 
 ////////////////////////////////////////////////////////////
@@ -960,7 +973,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     }
 
     if (dataIds.length !== recipients.length) {
-        notificationCallback = null;
+        notificationSelectionActionHash = null;
         throw new Error(`Data count and recipient count mismatch.${functionId}`);
     }
 
@@ -969,7 +982,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     let recipientType;
     if (recipients.some(r => !isValidEmail(r))) {
         if (recipients.some(r => !isValidAddress(r))) {
-            notificationCallback = null;
+            notificationSelectionActionHash = null;
             throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
         }
 
@@ -982,11 +995,11 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
-    let hasCalledCallback = false;
+    let hasSendNotification = false;
     for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
-                notificationCallback = null;
+                notificationSelectionActionHash = null;
                 return false;
             }
 
@@ -995,10 +1008,10 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
             let pollRes = (await axios.get(pollUrl)).data;
 
             if (isNullAny(pollRes.data)) {
-                if (!hasCalledCallback && isNullAny(notificationCallback)) {
-                    notificationCallback();
-                    hasCalledCallback = true;
-                    notificationCallback = null;
+                if (!hasSendNotification) {
+                    sendNotification();
+                    hasSendNotification = true;
+                    notificationSelectionActionHash = null;
                 }
 
                 await sleep(1000);
@@ -1012,18 +1025,19 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
 
         if (dataIds.length === 0) {
             setShouldWorkPollingForFunctionId(functionId, false);
-            notificationCallback = null;
+            notificationSelectionActionHash = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
-    notificationCallback = null;
+    notificationSelectionActionHash = null;
     throw new Error(`Share polling timeout...${functionId}`);
 }
 
 async function pollEmail(selectionHash, functionId = '') {
     if (isNullAny(selectionHash)) {
+        notificationSelectionActionHash = null;
         throw new Error(`Missing selection hash.${functionId}`);
     }
 
@@ -1033,8 +1047,10 @@ async function pollEmail(selectionHash, functionId = '') {
 
     let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
 
+    let hasSendNotification = false;
     for (let i = 0; i < pollingTime; i++) {
         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+            notificationSelectionActionHash = null;
             return false;
         }
 
@@ -1042,18 +1058,27 @@ async function pollEmail(selectionHash, functionId = '') {
 
         if (i === 0 && !isNullAny(pollRes.data) && !pollRes.data.hasNewShare) {
             setShouldWorkPollingForFunctionId(functionId, false);
+            notificationSelectionActionHash = null;
             throw new Error(`Recipients already have this data.${functionId}`);
         }
 
         if (isNullAny(pollRes.data) || isNullAny(pollRes.data.encryptedUrl)) {
+            if (!hasSendNotification) {
+                sendNotification();
+                hasSendNotification = true;
+                notificationSelectionActionHash = null;
+            }
+
             await sleep(1000);
         } else {
             setShouldWorkPollingForFunctionId(functionId, false);
+            notificationSelectionActionHash = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
+    notificationSelectionActionHash = null;
     throw new Error(`Email share polling timeout...${functionId}`);
 }
 
@@ -1068,9 +1093,11 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
+    let hasSendNotification = false;
     for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
+                notificationSelectionActionHash = null;
                 return false;
             }
 
@@ -1079,6 +1106,12 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
             let pollRes = (await axios.get(pollUrl)).data;
 
             if (isNullAny(pollRes.data)) {
+                if (!hasSendNotification) {
+                    sendNotification();
+                    hasSendNotification = true;
+                    notificationSelectionActionHash = null;
+                }
+
                 await sleep(1000);
                 break;
             } else {
@@ -1089,11 +1122,13 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
 
         if (dataIds.length === 0) {
             setShouldWorkPollingForFunctionId(functionId, false);
+            notificationSelectionActionHash = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
+    notificationSelectionActionHash = null;
     throw new Error(`Signature polling timeout.${functionId}`);
 }
 
@@ -1259,6 +1294,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
             throw new Error('Invalid selection format.');
         }
 
+        let hasSendNotification = false;
         let result = [];
         for (let i = 0; i < files.length; i++) {  // iterate open each entry from the array
             switch (action) {
@@ -1291,6 +1327,12 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
 
                         let fileObj = {
                             dataId: files[i]
+                        }
+
+                        if (!hasSendNotification) {
+                            sendNotification();
+                            hasSendNotification = true;
+                            notificationSelectionActionHash = null;
                         }
 
                         try {
@@ -1577,8 +1619,8 @@ async function getLongQueryUrl(queryHash) {
     return serverResponse.data.longQuery;
 }
 
-function setNotificationCallback(func) {
-    notificationCallback = func;
+function setNotificationSelectionActionHash(selectionActionHash) {
+    notificationSelectionActionHash = selectionActionHash;
 }
 
 
@@ -1660,5 +1702,5 @@ module.exports = {
     createShortQueryUrl: createShortQueryUrl,
     getLongQueryUrl: getLongQueryUrl,
 
-    setNotificationCallback: setNotificationCallback,
+    setNotificationSelectionActionHash: setNotificationSelectionActionHash,
 };
