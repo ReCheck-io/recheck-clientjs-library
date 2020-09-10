@@ -368,7 +368,7 @@ async function getServerInfo() {
     };
 }
 
-async function login(keyPair, firebaseToken) {
+async function login(keyPair, firebaseToken = 'notoken') {
     let getChallengeUrl = getEndpointUrl('login/challenge');
 
     let challengeResponse = (await axios.get(getChallengeUrl)).data;
