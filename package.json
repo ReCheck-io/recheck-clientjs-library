@@ -2,18 +2,8 @@
   "name": "recheck-clientjs-library",
   "version": "1.0.21-beta.4",
   "description": "Encryption library that uses two PKI key pairs. ",
+  "author": "ReCheck BV <info@recheck.io>",
   "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ReCheck-io/recheck-clientjs-library.git"
-  },
-  "keywords": [
-    "encryption",
-    "npm",
-    "blockchain",
-    "PKI"
-  ],
-  "author": "ReCheck team",
   "license": "MIT",
   "dependencies": {
     "aes256": "^1.0.4",
@@ -31,8 +21,18 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReCheck-io/recheck-clientjs-library.git"
+  },
   "bugs": {
     "url": "https://github.com/ReCheck-io/recheck-clientjs-library/issues"
   },
-  "homepage": "https://github.com/ReCheck-io/recheck-clientjs-library#readme"
+  "homepage": "https://github.com/ReCheck-io/recheck-clientjs-library#readme",
+  "keywords": [
+    "encryption",
+    "npm",
+    "blockchain",
+    "PKI"
+  ]
 }
