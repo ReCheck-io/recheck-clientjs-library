@@ -23,7 +23,7 @@ let mapShouldBeWorkingPollingForFunctionId = [];
 
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 let recipientsEmailLinkKeyPair = null;
-let notificationSelectionActionHash = null;
+let notificationObject = null;
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -193,14 +193,14 @@ function isValidAddress(address) {
 function sendNotification() {
     let notificationUrl = getEndpointUrl('user/notification');
 
-    if (!isNullAny(notificationSelectionActionHash)) {
-        axios.post(notificationUrl, {selectionActionHash: notificationSelectionActionHash})
+    if (!isNullAny(notificationObject)) {
+        axios.post(notificationUrl, notificationObject)
             .then((result) => {
                 logDebug('notification', result)
             });
     }
 
-    notificationSelectionActionHash = null;
+    notificationObject = null;
 }
 
 ////////////////////////////////////////////////////////////
@@ -973,7 +973,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     }
 
     if (dataIds.length !== recipients.length) {
-        notificationSelectionActionHash = null;
+        notificationObject = null;
         throw new Error(`Data count and recipient count mismatch.${functionId}`);
     }
 
@@ -982,7 +982,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     let recipientType;
     if (recipients.some(r => !isValidEmail(r))) {
         if (recipients.some(r => !isValidAddress(r))) {
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             throw new Error(`Invalid recipient email/id format: ${JSON.stringify(recipients)}`);
         }
 
@@ -999,7 +999,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
     for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
-                notificationSelectionActionHash = null;
+                notificationObject = null;
                 return false;
             }
 
@@ -1011,7 +1011,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
                 if (!hasSendNotification) {
                     sendNotification();
                     hasSendNotification = true;
-                    notificationSelectionActionHash = null;
+                    notificationObject = null;
                 }
 
                 await sleep(1000);
@@ -1025,19 +1025,19 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
 
         if (dataIds.length === 0) {
             setShouldWorkPollingForFunctionId(functionId, false);
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
-    notificationSelectionActionHash = null;
+    notificationObject = null;
     throw new Error(`Share polling timeout...${functionId}`);
 }
 
 async function pollEmail(selectionHash, functionId = '') {
     if (isNullAny(selectionHash)) {
-        notificationSelectionActionHash = null;
+        notificationObject = null;
         throw new Error(`Missing selection hash.${functionId}`);
     }
 
@@ -1050,7 +1050,7 @@ async function pollEmail(selectionHash, functionId = '') {
     let hasSendNotification = false;
     for (let i = 0; i < pollingTime; i++) {
         if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             return false;
         }
 
@@ -1058,7 +1058,7 @@ async function pollEmail(selectionHash, functionId = '') {
 
         if (i === 0 && !isNullAny(pollRes.data) && !pollRes.data.hasNewShare) {
             setShouldWorkPollingForFunctionId(functionId, false);
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             throw new Error(`Recipients already have this data.${functionId}`);
         }
 
@@ -1066,19 +1066,19 @@ async function pollEmail(selectionHash, functionId = '') {
             if (!hasSendNotification) {
                 sendNotification();
                 hasSendNotification = true;
-                notificationSelectionActionHash = null;
+                notificationObject = null;
             }
 
             await sleep(1000);
         } else {
             setShouldWorkPollingForFunctionId(functionId, false);
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
-    notificationSelectionActionHash = null;
+    notificationObject = null;
     throw new Error(`Email share polling timeout...${functionId}`);
 }
 
@@ -1097,7 +1097,7 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
     for (let i = 0; i < pollingTime; i++) {
         for (let j = 0; j < dataIds.length; j++) {
             if (!isNullAny(functionId) && !mapShouldBeWorkingPollingForFunctionId[functionId]) {
-                notificationSelectionActionHash = null;
+                notificationObject = null;
                 return false;
             }
 
@@ -1109,7 +1109,7 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
                 if (!hasSendNotification) {
                     sendNotification();
                     hasSendNotification = true;
-                    notificationSelectionActionHash = null;
+                    notificationObject = null;
                 }
 
                 await sleep(1000);
@@ -1122,13 +1122,13 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
 
         if (dataIds.length === 0) {
             setShouldWorkPollingForFunctionId(functionId, false);
-            notificationSelectionActionHash = null;
+            notificationObject = null;
             return functionId || true;
         }
     }
 
     setShouldWorkPollingForFunctionId(functionId, false);
-    notificationSelectionActionHash = null;
+    notificationObject = null;
     throw new Error(`Signature polling timeout.${functionId}`);
 }
 
@@ -1332,7 +1332,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                         if (!hasSendNotification) {
                             sendNotification();
                             hasSendNotification = true;
-                            notificationSelectionActionHash = null;
+                            notificationObject = null;
                         }
 
                         try {
@@ -1619,8 +1619,8 @@ async function getLongQueryUrl(queryHash) {
     return serverResponse.data.longQuery;
 }
 
-function setNotificationSelectionActionHash(selectionActionHash) {
-    notificationSelectionActionHash = selectionActionHash;
+function setNotificationObject(selectionActionHash) {
+    notificationObject = {selectionActionHash};
 }
 
 
@@ -1702,5 +1702,5 @@ module.exports = {
     createShortQueryUrl: createShortQueryUrl,
     getLongQueryUrl: getLongQueryUrl,
 
-    setNotificationSelectionActionHash: setNotificationSelectionActionHash,
+    setNotificationObject: setNotificationObject,
 };
