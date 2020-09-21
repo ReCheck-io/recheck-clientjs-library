@@ -190,19 +190,6 @@ function isValidAddress(address) {
     }
 }
 
-function sendNotification() {
-    let notificationUrl = getEndpointUrl('user/notification');
-
-    if (!isNullAny(notificationObject)) {
-        axios.post(notificationUrl, notificationObject)
-            .then((result) => {
-                logDebug('notification', result)
-            });
-    }
-
-    notificationObject = null;
-}
-
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
@@ -1623,6 +1610,19 @@ function setNotificationObject(selectionActionHash, challenge = null) {
     notificationObject = {selectionActionHash, challenge};
 }
 
+function sendNotification() {
+    let notificationUrl = getEndpointUrl('user/notification');
+
+    if (!isNullAny(notificationObject)) {
+        axios.post(notificationUrl, notificationObject)
+            .then((result) => {
+                logDebug('notification', result)
+            });
+    }
+
+    notificationObject = null;
+}
+
 
 module.exports = {
     decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
@@ -1703,4 +1703,5 @@ module.exports = {
     getLongQueryUrl: getLongQueryUrl,
 
     setNotificationObject: setNotificationObject,
+    sendNotification: sendNotification,
 };
