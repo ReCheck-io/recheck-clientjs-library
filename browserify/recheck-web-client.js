@@ -24515,19 +24515,6 @@ object-assign
                 }
             }
 
-            function sendNotification() {
-                let notificationUrl = getEndpointUrl('user/notification');
-
-                if (!isNullAny(notificationObject)) {
-                    axios.post(notificationUrl, notificationObject)
-                        .then((result) => {
-                            logDebug('notification', result)
-                        });
-                }
-
-                notificationObject = null;
-            }
-
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
@@ -25951,6 +25938,19 @@ object-assign
                 notificationObject = {selectionActionHash, challenge};
             }
 
+            function sendNotification() {
+                let notificationUrl = getEndpointUrl('user/notification');
+
+                if (!isNullAny(notificationObject)) {
+                    axios.post(notificationUrl, notificationObject)
+                        .then((result) => {
+                            logDebug('notification', result)
+                        });
+                }
+
+                notificationObject = null;
+            }
+
 
             module.exports = {
                 decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
@@ -26031,6 +26031,7 @@ object-assign
                 getLongQueryUrl: getLongQueryUrl,
 
                 setNotificationObject: setNotificationObject,
+                sendNotification: sendNotification,
             };
 
         }).call(this, require("buffer").Buffer)
