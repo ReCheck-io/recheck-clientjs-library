@@ -25947,8 +25947,8 @@ object-assign
                 return serverResponse.data.longQuery;
             }
 
-            function setNotificationObject(selectionActionHash) {
-                notificationObject = {selectionActionHash};
+            function setNotificationObject(selectionActionHash, challenge = null) {
+                notificationObject = {selectionActionHash, challenge};
             }
 
 
