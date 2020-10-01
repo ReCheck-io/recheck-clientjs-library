@@ -1329,7 +1329,11 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                             fileObj.status = "ERROR";
                         }
 
+                        
                         this.isWorkingExecReEncr = true;
+                        if (fileObj.data === "Polling timeout.") {
+                            throw new Error(fileObj.data);
+                        }
                         result.push(fileObj);
                     }
                     break;
