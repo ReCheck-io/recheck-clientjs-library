@@ -24693,7 +24693,7 @@ object-assign
                 };
             }
 
-            async function login(keyPair, firebaseToken = 'notoken') {
+            async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
                 let getChallengeUrl = getEndpointUrl('login/challenge');
 
                 let challengeResponse = (await axios.get(getChallengeUrl)).data;
@@ -24703,11 +24703,11 @@ object-assign
                 }
 
                 return await loginWithChallenge(
-                    challengeResponse.data.challenge, keyPair, firebaseToken
+                    challengeResponse.data.challenge, keyPair, firebaseToken, loginDevice
                 );
             }
 
-            async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken') {
+            async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
                 let payload = {
                     action: 'login',
                     pubKey: keyPair.publicKey,
@@ -24715,12 +24715,17 @@ object-assign
                     firebase: firebaseToken,
                     challenge: challenge,
                     challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
-                    rtnToken: 'notoken'
+                    rtnToken: 'notoken',
+                    loginDevice: loginDevice,
                 };
 
                 let loginUrl = getEndpointUrl('login/mobile');
 
                 let loginPostResult = (await axios.post(loginUrl, payload)).data;
+
+                if (loginPostResult.status === 'ERROR') {
+                    throw loginPostResult.data;
+                }
 
                 if (isNullAny(loginPostResult.data.rtnToken)) {
                     throw new Error('Unable to retrieve API token.');
