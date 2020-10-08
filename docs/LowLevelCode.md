@@ -52,7 +52,7 @@ Generates key pair, account, for AEternity blockchain. Takes as parameter the pa
  case"ae":
     let publicSignBuffer = Buffer.from(keys.publicSignKey);
     secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
-    let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
+    let address = `re_${encodeBase58Check(publicSignBuffer)}`;
 
     return {
         address: address,

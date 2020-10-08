@@ -184,7 +184,7 @@ function isValidAddress(address) {
         case'eth':
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
-            return new RegExp(`^ak_[0-9a-zA-Z]{41,}$`).test(address);
+            return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
         default:
             return false;
     }
@@ -438,7 +438,7 @@ async function newKeyPair(passPhrase) {
         case "ae":
             let publicSignBuffer = Buffer.from(keys.publicSignKey);
             secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
-            let address = `ak_${encodeBase58Check(publicSignBuffer)}`;
+            let address = `re_${encodeBase58Check(publicSignBuffer)}`;
 
             return {
                 address: address,

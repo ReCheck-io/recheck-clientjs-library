@@ -54,7 +54,7 @@ This request is called in _reEncrypt()_ it asks for the browser's credentials. I
     - let query = &userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash};
     
       let getUrl = getEndpointUrl('credentials/info', query);
-    -  http://localhost:3000/credentials/info?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
+    -  http://localhost:3000/credentials/info?api=1&token=61101fa0-8896-11ea-8313-2b73e6c31f3b&userId=re_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&requestId=ReCheck&requestType=download&requestBodyHashSignature=DFi3iatmDRN7PNVovchzMRbqUYo97Xo7EHUxumweBfionGG7PxvtAww9wPXdw5SSqR63sHXVTFpXwbDv4ix6p4riSA1JW&trailHash=0xda2d928dc31c1f107bf73a14ea25815abd4a3f76d7dc90bae21b5d551f603e56&trailHashSignatureHash=0xec3fb1f9f6bba8b113905ac17a8dc46e318fe9311701b26c42732ba88ca8b0b6
 - response 
 ```
 { 
@@ -66,7 +66,7 @@ This request is called in _reEncrypt()_ it asks for the browser's credentials. I
   data: 
    {
      dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
      encryption: 
       {
         encryptedPassA: 'y0pjZx3r/zk9f6CcQmIvKwWHsAm1DTZc7n0Vl0NaNcMZM1wEZKg9s9U352IuK2Bi4fVnYsNCpH6wYjy7K13ntdKsrDPEkdJTA27wG6O4mOvXeJr2',
@@ -139,7 +139,7 @@ This request is called in _getSelected_ in order to get the selection hash of th
   data: 
    { selectionHash: '0x0758d99c69e463c5fcce17c418cbe9efd4371a2adfd5f42c042cac178bbbd633',
      dataIds: [ '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819', '..' ],
-     usersIds: [ 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5', '..' ] 
+     usersIds: [ 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5', '..' ] 
     } 
 }
 ```
@@ -152,7 +152,7 @@ This request is called in _share()_. The server responds with recipient and data
 
 - usage 
     - getEndpointUrl('share/credentials', &dataId=${dataId}&recipientId=${recipientId})
-    - http://localhost:3000/share/credentials?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&recipientId=ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W
+    - http://localhost:3000/share/credentials?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b&dataId=0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5&recipientId=re_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W
 
 - returns 
 ```
@@ -171,7 +171,7 @@ This request is called in _share()_. The server responds with recipient and data
         pubKeyA: '2bp7KqG2hjdPyWnKuAaBA89H1YNpN5SRkE3jxkU8oj8Ck2nHNN',
         recipientEncrKey: '2KsyaLVqnadzxMjEC5fSt3KMLKCeyL3zmE91MHXTMrVw5HW7BZ' 
       },
-    recipientId: 'ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W' 
+    recipientId: 're_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W' 
    } 
 }
 ```
@@ -205,7 +205,7 @@ verifyData:
 This request is called in _checkHash_. Needs the userID and dataID to check whether the data's hash is registered in the blockchain.
 
 - usage
-http://localhost:3000/tx/info?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&userId=ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537
+http://localhost:3000/tx/info?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&userId=re_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5&dataId=0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537
 - returns 
 
 ```
@@ -219,8 +219,8 @@ http://localhost:3000/tx/info?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&u
    [ {
        txRowId: 18,
        dataId: '0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537',
-       userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
-       recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+       userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+       recipientId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
        requestId: 'ReCheck',
        requestType: 'register',
        requestBody: {Object},
@@ -228,7 +228,7 @@ http://localhost:3000/tx/info?api=1&token=2eb3e900-8946-11ea-aee2-33022313c596&u
        trailHash: '0x0e8b0e38684020111e1f10ce179058fb69e48addb94173e1520404c1d2798788',
        trailHashSignatureHash: '0x09eb43432605bb66ecb84bc4829e7a24a76dc1b1379e6be719cb8f40318cdaf1',
        extraTrailHashes: [],
-       executorId: 'ak_mEMRng9eTTwqkwJGnrDm79pnoi559YPBv3eXX1iphT6hxNemf',
+       executorId: 're_mEMRng9eTTwqkwJGnrDm79pnoi559YPBv3eXX1iphT6hxNemf',
        contractId: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
        txHash: 'th_Aesk4ssdwJ4bkh7GQRf8qLDL36X4znMKtuw1vb6AdiybSK119',
        txReceipt: {Object},
@@ -259,7 +259,7 @@ This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for t
 ```
 { 
   dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   encryption: 
    { 
      syncPassHash: '0xa6a4f9cca18efbe3eb4909eeda8c62967dd20fc0ee4e4c5b9835bb2f7d37c68f',
@@ -280,7 +280,7 @@ This post request is called in _reEncrypt_ to reEncrypt the chosen file(s) for t
   data: 
    {
      dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
     }
 }
 ```
@@ -298,7 +298,7 @@ http://localhost:3000/credentials/create/pubkeyb?api=1&token=a89a6d30-893b-11ea-
 ```
  {
   dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   encryption: 
    { 
      pubKeyB: '2kQ4bUJ4c1D75tJayYHnk5nzLbdZtUk1ZuL6bgLVZD8s7VCcZR'
@@ -315,7 +315,7 @@ http://localhost:3000/credentials/create/pubkeyb?api=1&token=a89a6d30-893b-11ea-
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
     } 
 }
 ```
@@ -327,7 +327,7 @@ This request is called in _validate()_
  http://localhost:3000/credentials/validate?api=1&token=a89a6d30-893b-11ea-aee2-33022313c596
 - body 
 ```
-{ userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+{ userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
   requestId: 'ReCheck',
   requestType: 'verify',
@@ -349,7 +349,7 @@ This request is called in _validate()_
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
    } 
 }
 ```
@@ -361,7 +361,7 @@ This request is called in _store_ upon uploading data to the server.
 http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64b8
 - body
 ```
-{ userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+{ userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
   requestId: 'ReCheck',
   requestType: 'upload',
@@ -391,7 +391,7 @@ http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { dataId: '0x9eeb588e1f8a6185d3d9b3da9 2298836c18933f8b822735b7a01b45a17b96819',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
    }
 }
 ```
@@ -406,7 +406,7 @@ This request is called in _loginWithChallenge_ to get the token.
 ```
 { 
   action: 'login',
-  pubKey: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  pubKey: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   pubEncKey: '2pYnhELKZnC4Ykg8YwE9zKRTnzcN2dbkNzFQhn6qR7fcmkoSZ5',
   firebase: 'notoken',
   challenge: '0xba739785f23fe4f450a42b7c88910bf294bfdac8e6af4d17b79cbb50ffd1fa74',
@@ -444,14 +444,14 @@ This request is called in _share()_. Posts to the server the specific data you w
     - http://localhost:3000/share/create?api=1&token=f7162e90-8887-11ea-8313-2b73e6c31f3b
 - body 
 ```
- { userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+ { userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
   requestId: 'ReCheck',
   requestType: 'share',
   requestBodyHashSignature: '37FtVEKZ6rvGVHE4k2vZ8mdUzGeYhhSZwAja7H3R8KERy5tLP31XADcH7EUShGDZ66AbHsMdsBjAnAnoxMjwjn5iMDVrk',
   trailHash: '0x36ec436b215fd89bc7ce2f38ddf3c9bc0e63271f62868a9e5f16f45d0fb5b64e',
   trailHashSignatureHash: '0x2bb536ff04b0f64897fe5eaff0704f08b69cf85544dcadfb0d93e76e4edec269',
-  recipientId: 'ak_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W',
+  recipientId: 're_2YNSqPZ1th7MosxSQh4mjLs6QkYT9QJmWCXzaRzKEtf5eaiL2W',
   encryption: 
    {
      senderEncrKey: '2pYnhELKZnC4Ykg8YwE9zKRTnzcN2dbkNzFQhn6qR7fcmkoSZ5',
@@ -471,7 +471,7 @@ This request is called in _share()_. Posts to the server the specific data you w
   data: 
    { 
      dataId: '0x3d56619d858b2e6f31b12b295c17b6f19da53f91df758c51408c01bc0fa23da5',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
      notification: 'notoken' 
     } 
 }
@@ -485,9 +485,9 @@ http://localhost:3000/signature/create?api=1&token=25a47120-8934-11ea-8721-bf123
 - body
 ```
 { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   requestId: 'ReCheck',
-  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  recipientId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   requestType: 'sign',
   requestBodyHashSignature: '2sGAFRavHeAfpjfECNRu1cxyKskhvNgWfx94zgzHYFxkHBPNyxKaL6crV1cX8ZPnqP746fA8WjbjSEykaVKynA29SZihL',
   trailHash: '0x26f4cbc7d79a784441a5b471644149ffa62e4eb9b6915ec3a344df915c983e16',
@@ -505,7 +505,7 @@ http://localhost:3000/signature/create?api=1&token=25a47120-8934-11ea-8721-bf123
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
     } 
 }
 ```
@@ -518,9 +518,9 @@ http://localhost:3000/tx/create?api=1&token=5bd361f0-8945-11ea-aee2-33022313c596
 - body 
 ```
 { dataId: '0x9eeb588e1f8a6185d3d9b3da92298836c18933f8b822735b7a01b45a17b96819',
-  userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   requestId: 'ReCheck',
-  recipientId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
+  recipientId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5',
   requestType: 'register',
   requestBodyHashSignature: '4qGkoR3HhoS1bDbFjqN7xsugeWpy5UQbUBvdvn34PDRtuU22nA6icaKwGgAN9CuKSu4KqK4vWPLrmpLSy5k6XTvAAxczb',
   trailHash: '0xce6266a996b7c2e132cd6460f95c9fc4bec07e1f370f220068da3e48dde94258',
@@ -537,7 +537,7 @@ http://localhost:3000/tx/create?api=1&token=5bd361f0-8945-11ea-aee2-33022313c596
   contractAddress: 'ct_L1faE2uDpK9XtUYHv9Vrr4JdwC6s2sPwbMP97uT9YPGuJq1GK',
   data: 
    { dataId: '0xb9a5dc0048db9a7d13548781df3cd4b2334606391f75f40c14225a92f4cb3537',
-     userId: 'ak_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
+     userId: 're_ApGfbxjgRLrHzHsKXXmTrpX6h9QvRwTfC8GBKsD4ojBapKoE5' 
     } 
 }
 ```
