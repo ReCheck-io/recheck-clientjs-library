@@ -24509,8 +24509,7 @@ object-assign
                     case'eth':
                         return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
                     case'ae':
-                        return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address)
-                            || new RegExp(`^ak_[0-9a-zA-Z]{41,}$`).test(address);
+                        return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
                     default:
                         return false;
                 }
