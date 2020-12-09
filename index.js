@@ -476,11 +476,11 @@ async function newKeyPair(passPhrase) {
     }
 }
 
-async function store(fileObj, userChainId, userChainIdPubKey, externalId = null, txPolling = false, trailExtraArgs = null) {
+async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = null, txPolling = false, trailExtraArgs = null) {
 
     log('Browser encrypts to receiver', fileObj, userChainId);
 
-    let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubKey, trailExtraArgs);
+    let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs);
     log('Browser submits encrypted data to API', fileUploadData);
 
     if (!isNullAny(externalId)) {
@@ -503,9 +503,9 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
 
     return await processTxPolling(getHash(fileObj.payload), userChainId, 'requestType', 'upload');
 
-    async function getFileUploadData(fileObj, userChainId, userChainIdPubKey, trailExtraArgs = null) {
+    async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
         let fileContents = fileObj.payload;
-        let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubKey);
+        let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubEncKey);
         let syncPassHash = getHash(encryptedFile.credentials.syncPass);
         let dataOriginalHash = getHash(fileContents);
         let dataChainId = getHash(dataOriginalHash);
@@ -541,7 +541,7 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
         return fileUploadData;
 
 
-        async function encryptFileToPublicKey(fileData, dstPublicKey) {
+        async function encryptFileToPublicKey(fileData, dstPublicEncKey) {
             let fileKey = generateKey();
             let saltKey = generateKey();
             log('fileKey', fileKey);
@@ -552,7 +552,7 @@ async function store(fileObj, userChainId, userChainIdPubKey, externalId = null,
             log('fileData', fileData);
 
             let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-            let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicKey);
+            let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicEncKey);
 
             return {
                 payload: encryptedFile,
