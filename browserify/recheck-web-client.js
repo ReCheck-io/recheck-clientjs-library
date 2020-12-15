@@ -24739,8 +24739,11 @@ object-assign
 
                 token = resultObj.rtnToken;
 
-                if (!isNullAny(resultObj.returnChallenge)) {
-                    return resultObj;
+                if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)) {
+                    await axios.post(resultObj.returnUrl, {
+                        returnChallenge: resultObj.returnChallenge,
+                        recheckToken: token
+                    });
                 }
 
                 return token;
