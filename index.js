@@ -368,7 +368,7 @@ async function getServerInfo() {
     };
 }
 
-async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown', returnObj = {}) {
+async function getLoginChallenge(returnObj = {}) {
     let appendix = '';
     if (!isNullAny(returnObj)) {
         appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
@@ -382,8 +382,14 @@ async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown'
         throw new Error('Unable to retrieve login challenge.');
     }
 
+    return challengeResponse.data.challenge;
+}
+
+async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown', returnObj = {}) {
+    let loginChallenge = await getLoginChallenge(returnObj);
+
     return await loginWithChallenge(
-        challengeResponse.data.challenge, keyPair, firebaseToken, loginDevice
+        loginChallenge, keyPair, firebaseToken, loginDevice
     );
 }
 
@@ -1665,6 +1671,7 @@ module.exports = {
     // login i login with challenge
     // login hammer 0(account) 0x.. (challenge code)
     // node hammer login 1 (second user's login)
+    getLoginChallenge: getLoginChallenge,
     login: login,
     loginWithChallenge: loginWithChallenge,
 
