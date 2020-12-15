@@ -24693,8 +24693,13 @@ object-assign
                 };
             }
 
-            async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
-                let getChallengeUrl = getEndpointUrl('login/challenge');
+            async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown', returnObj = {}) {
+                let appendix = '';
+                if (!isNullAny(returnObj)) {
+                    appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
+                }
+
+                let getChallengeUrl = getEndpointUrl('login/challenge', appendix);
 
                 let challengeResponse = (await axios.get(getChallengeUrl)).data;
 
@@ -24727,11 +24732,17 @@ object-assign
                     throw loginPostResult.data;
                 }
 
-                if (isNullAny(loginPostResult.data.rtnToken)) {
+                let resultObj = loginPostResult.data;
+                if (isNullAny(resultObj) || isNullAny(resultObj.rtnToken)) {
                     throw new Error('Unable to retrieve API token.');
                 }
 
-                token = loginPostResult.data.rtnToken;
+                token = resultObj.rtnToken;
+
+                if (!isNullAny(resultObj.returnChallenge)) {
+                    return resultObj;
+                }
+
                 return token;
             }
 
