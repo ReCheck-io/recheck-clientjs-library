@@ -24746,7 +24746,7 @@ object-assign
                 token = resultObj.rtnToken;
 
                 if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)) {
-                    await axios.post(resultObj.returnUrl, {
+                    await axios.put(resultObj.returnUrl, {
                         returnChallenge: resultObj.returnChallenge,
                         recheckToken: token
                     });
