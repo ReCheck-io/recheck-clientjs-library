@@ -24385,50 +24385,6 @@ object-assign
                 return new Promise(resolve => setTimeout(resolve, ms));
             }
 
-            async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
-                if (isNullAny(srcAkPair)) {
-                    srcAkPair = await newKeyPair(null); // create random seed
-                }
-
-                let destPublicEncKeyArray = new Uint8Array(decodeBase58Check(dstPublicEncKey));
-                let rawSrcAkPair = akPairToRaw(srcAkPair);
-                let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
-                let encryptedData = encryptData(dstBox, data);
-
-                return {
-                    payload: encryptedData,
-                    dstPublicEncKey: dstPublicEncKey,
-                    srcPublicEncKey: srcAkPair.publicEncKey
-                };//encrypted
-
-
-                function akPairToRaw(akPair) {
-                    return {
-                        secretEncKey: hexStringToByte(akPair.secretEncKey),
-                        publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
-                    }
-                }
-
-                function encryptData(secretOrSharedKey, message, key) {
-                    if (typeof message !== "string") {
-                        throw new Error("only string allowed for message for encryption");
-                    }
-
-                    const nonce = newNonce();
-                    const messageUint8 = decodeUTF8(message);
-
-                    const encrypted = key
-                        ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
-                        : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
-
-                    const fullMessage = new Uint8Array(nonce.length + encrypted.length);
-                    fullMessage.set(nonce);
-                    fullMessage.set(encrypted, nonce.length);
-
-                    return encodeBase64(fullMessage);//base64FullMessage
-                }
-            }
-
             function getEndpointUrl(action, appendix) {
                 let url = `${baseUrl}/${action}?noapi=1`;
 
@@ -24527,6 +24483,50 @@ object-assign
                     init(window.location.origin);
                 }
             }());
+
+            async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
+                if (isNullAny(srcAkPair)) {
+                    srcAkPair = await newKeyPair(null); // create random seed
+                }
+
+                let destPublicEncKeyArray = new Uint8Array(decodeBase58Check(dstPublicEncKey));
+                let rawSrcAkPair = akPairToRaw(srcAkPair);
+                let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
+                let encryptedData = encryptData(dstBox, data);
+
+                return {
+                    payload: encryptedData,
+                    dstPublicEncKey: dstPublicEncKey,
+                    srcPublicEncKey: srcAkPair.publicEncKey
+                };//encrypted
+
+
+                function akPairToRaw(akPair) {
+                    return {
+                        secretEncKey: hexStringToByte(akPair.secretEncKey),
+                        publicEncKey: new Uint8Array(decodeBase58Check(akPair.publicEncKey)),
+                    }
+                }
+
+                function encryptData(secretOrSharedKey, message, key) {
+                    if (typeof message !== "string") {
+                        throw new Error("only string allowed for message for encryption");
+                    }
+
+                    const nonce = newNonce();
+                    const messageUint8 = decodeUTF8(message);
+
+                    const encrypted = key
+                        ? box(messageUint8, nonce, new Uint8Array(key), new Uint8Array(secretOrSharedKey))
+                        : box.after(messageUint8, nonce, new Uint8Array(secretOrSharedKey));
+
+                    const fullMessage = new Uint8Array(nonce.length + encrypted.length);
+                    fullMessage.set(nonce);
+                    fullMessage.set(encrypted, nonce.length);
+
+                    return encodeBase64(fullMessage);//base64FullMessage
+                }
+            }
 
             function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
                 let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
@@ -25982,6 +25982,7 @@ object-assign
 
 
             module.exports = {
+                encryptDataToPublicKeyWithKeyPair: encryptDataToPublicKeyWithKeyPair,
                 decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
                 processEncryptedFileInfo: processEncryptedFileInfo,
                 isNullAny: isNullAny,
