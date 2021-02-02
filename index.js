@@ -297,6 +297,10 @@ function getRequestHash(requestBodyOrUrl) {
             throw new Error(`Can not get url pathname from ${url}`);
         }
 
+        if (urlSplit[3] === "chain") {
+            url = url.replace("/chain", "");
+        }
+
         let host = `${urlSplit[0]}//${urlSplit[2]}`;
 
         return url.replace(host, '');
@@ -421,10 +425,10 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
     token = resultObj.rtnToken;
 
     if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)) {
-         await axios.put(resultObj.returnUrl, {
-             returnChallenge: resultObj.returnChallenge,
-             recheckToken: token
-         });
+        await axios.put(resultObj.returnUrl, {
+            returnChallenge: resultObj.returnChallenge,
+            recheckToken: token
+        });
     }
 
     return token;
