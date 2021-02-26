@@ -424,11 +424,9 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
 
     token = resultObj.rtnToken;
 
-    if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)) {
-        await axios.put(resultObj.returnUrl, {
-            returnChallenge: resultObj.returnChallenge,
-            recheckToken: token
-        });
+    if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)
+        && resultObj.returnUrlSendStatus !== "success") {
+        throw resultObj.returnUrlSendStatus;
     }
 
     return token;
