@@ -547,6 +547,7 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
             dataExtension: fileObj.dataExtension,
             category: fileObj.category,
             keywords: fileObj.keywords,
+            dataFolderId: fileObj.dataFolderId,
             payload: encryptedFile.payload,
             encryption: {
                 dataOriginalHash: dataOriginalHash,
