@@ -24337,7 +24337,7 @@ object-assign
 
             let debug = false;
 
-            let baseUrl = 'http://localhost:3000';
+            let baseUrl = 'http://localhost:4000';
             let token = null;
             let network = "ae"; //ae,eth
 
@@ -24749,11 +24749,9 @@ object-assign
 
                 token = resultObj.rtnToken;
 
-                if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)) {
-                    await axios.put(resultObj.returnUrl, {
-                        returnChallenge: resultObj.returnChallenge,
-                        recheckToken: token
-                    });
+                if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)
+                    && resultObj.returnUrlSendStatus !== "success") {
+                    throw resultObj.returnUrlSendStatus;
                 }
 
                 return token;
@@ -24874,6 +24872,7 @@ object-assign
                         dataExtension: fileObj.dataExtension,
                         category: fileObj.category,
                         keywords: fileObj.keywords,
+                        dataFolderId: fileObj.dataFolderId,
                         payload: encryptedFile.payload,
                         encryption: {
                             dataOriginalHash: dataOriginalHash,
