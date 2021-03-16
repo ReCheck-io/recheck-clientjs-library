@@ -12,7 +12,7 @@ const wordList = require('./wordlist');
 
 let debug = false;
 
-let baseUrl = 'http://localhost:3000';
+let baseUrl = 'http://localhost:4000';
 let token = null;
 let network = "ae"; //ae,eth
 
