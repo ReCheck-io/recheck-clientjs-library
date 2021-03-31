@@ -332,7 +332,7 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
         let current = args[i];
-        if (current.constructor === Object) {
+        if (current && current.constructor === Object) {
             try {
                 current = JSON.parse(JSON.stringify(args[i]));
             } catch (ignored) {
