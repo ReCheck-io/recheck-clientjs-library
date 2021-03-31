@@ -2,7 +2,7 @@ const {box, secretbox, randomBytes} = require('tweetnacl');
 const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-util');
 const diceware = require('diceware');
 const session25519 = require('session25519');
-const keccak256 = require('keccak256');
+const { keccak256, keccak_256 } = require('js-sha3');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
@@ -274,6 +274,18 @@ function getHash(string) {
     return `0x${keccak256(string).toString('hex')}`;
 }
 
+function getHashFromHashObject(hashObj) {
+    return `0x${hashObj.hex()}`;
+}
+
+function getUpdatedHashObj(string, hashObj = null) {
+    if (isNullAny(hashObj)) {
+        hashObj = keccak_256.create();
+    }
+
+    return hashObj.update(string);
+}
+
 function getRequestHash(requestBodyOrUrl) {
     let requestString = '';
 
@@ -319,7 +331,7 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
-        let current = args[i];
+        let current = JSON.parse(JSON.stringify(args[i]));
 
         if (current == null //element == null covers element === undefined
             || (current.hasOwnProperty('length') && current.length === 0) // has length and it's zero
@@ -1662,6 +1674,8 @@ module.exports = {
     processEncryptedFileInfo: processEncryptedFileInfo,
     isNullAny: isNullAny,
     getHash: getHash,
+    getHashFromHashObject: getHashFromHashObject,
+    getUpdatedHashObj: getUpdatedHashObj,
     getRequestHash: getRequestHash,
     getTrailHash: getTrailHash,
 
