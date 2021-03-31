@@ -2,7 +2,7 @@ const {box, secretbox, randomBytes} = require('tweetnacl');
 const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-util');
 const diceware = require('diceware');
 const session25519 = require('session25519');
-const { keccak256, keccak_256 } = require('js-sha3');
+const {keccak256, keccak_256} = require('js-sha3');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
@@ -331,18 +331,58 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
-        let current = JSON.parse(JSON.stringify(args[i]));
+        let current = args[i];
+        if (current.constructor === Object) {
+            try {
+                current = JSON.parse(JSON.stringify(args[i]));
+            } catch (ignored) {
+            }
+        }
 
-        if (current == null //element == null covers element === undefined
-            || (current.hasOwnProperty('length') && current.length === 0) // has length and it's zero
-            || (current.constructor === Object && Object.keys(current).length === 0) // is an Object and has no keys
-            || current.toString().toLowerCase() === 'null'
-            || current.toString().toLowerCase() === 'undefined'
-            || current.toString().trim() === "") {
+        if (current == null || // element == null covers element === undefined
+            (current.hasOwnProperty("length") && current.length === 0) || // has length and it's zero
+            (current.constructor === Object && Object.keys(current).length === 0) || // is an Object and has no keys
+            current.toString().toLowerCase() === "null" ||
+            current.toString().toLowerCase() === "undefined" ||
+            current.toString().trim() === "") {
+            return true;
+        }
 
+        if (typeof current !== "number") {
+            try {
+                if (+new Date(current) === 0) {
+                    // is not a number and can be parsed as null date 1970
+                    return true;
+                }
+            } catch (ignored) {
+            }
+        }
+
+        try {
+            const parsed = JSON.parse(current);
+            if (parsed !== current && isNullAny(parsed)) {
+                // recursive check for stringified object
+                return true;
+            }
+        } catch (ignored) {
+        }
+
+        // check for hashes of null values
+        if ([
+            "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", // null/undefined/""/[].toString(),
+            "0x7bc087f4ef9d0dc15fef823bff9c78cc5cca8be0a85234afcfd807f412f40877", // {}.toString()
+            "0x518674ab2b227e5f11e9084f615d57663cde47bce1ba168b4c19c7ee22a73d70", // JSON.stringify([])
+            "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d", // JSON.stringify({})
+            "0xefbde2c3aee204a69b7696d4b10ff31137fe78e3946306284f806e2dfc68b805", // "null"
+            "0x019726c6babc1de231f26fd6cbb2df2c912784a2e1ba55295496269a6d3ff651", // "undefined"
+            "0x681afa780d17da29203322b473d3f210a7d621259a4e6ce9e403f5a266ff719a", // " "
+            "0xfc6664300e2ce056cb146b05edef3501ff8bd027c49a8dde866901679a24fb7e", // new Date(0).toString()
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+        ].includes(current)) {
             return true;
         }
     }
+
     return false;
 }
 
