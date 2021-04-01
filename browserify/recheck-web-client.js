@@ -24342,13 +24342,13 @@ object-assign
             let network = "ae"; //ae,eth
 
             let defaultRequestId = 'ReCheck';
-const pollingTime = 90;
-let isWorkingExecReEncr = false;
-let mapShouldBeWorkingPollingForFunctionId = [];
+            const pollingTime = 90;
+            let isWorkingExecReEncr = false;
+            let mapShouldBeWorkingPollingForFunctionId = [];
 
-let browserKeyPair = undefined; // represents the browser temporary keypair while polling
-let recipientsEmailLinkKeyPair = null;
-let notificationObject = null;
+            let browserKeyPair = undefined; // represents the browser temporary keypair while polling
+            let recipientsEmailLinkKeyPair = null;
+            let notificationObject = null;
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -24560,7 +24560,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
     let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
     log('Browser decrypts sym password', decryptedSymPassword);
 
-    let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
+    let fullPassword = encodeBase64(hexStringToByte(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt)));
     log('Browser composes full password', fullPassword);
 
     let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
@@ -24596,7 +24596,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
 }
 
 function getHash(string) {
-    return `0x${keccak256(string).toString('hex')}`;
+    return `0x${keccak256(string)}`;
 }
 
 function getHashFromHashObject(hashObj) {
@@ -24947,7 +24947,7 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
             log('fileKey', fileKey);
             log('saltKey', saltKey);
 
-            let symKey = encodeBase64(keccak256(fileKey + saltKey));
+            let symKey = encodeBase64(hexStringToByte(keccak256(fileKey + saltKey)));
             log('symKey', symKey);
             log('fileData', fileData);
 
@@ -26156,14 +26156,14 @@ module.exports = {
                     delete requestHeaders['Content-Type']; // Let the browser set it
                 }
 
-    var request = new XMLHttpRequest();
+                var request = new XMLHttpRequest();
 
-    // HTTP basic authentication
-    if (config.auth) {
-      var username = config.auth.username || '';
-      var password = config.auth.password || '';
-      requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
-    }
+                // HTTP basic authentication
+                if (config.auth) {
+                    var username = config.auth.username || '';
+                    var password = config.auth.password || '';
+                    requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
+                }
 
     var fullPath = buildFullPath(config.baseURL, config.url);
     request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
@@ -26298,9 +26298,9 @@ module.exports = {
     if (config.cancelToken) {
       // Handle cancellation
       config.cancelToken.promise.then(function onCanceled(cancel) {
-        if (!request) {
-            return;
-        }
+          if (!request) {
+              return;
+          }
 
           request.abort();
           reject(cancel);
@@ -26347,20 +26347,20 @@ module.exports = {
             var context = new Axios(defaultConfig);
             var instance = bind(Axios.prototype.request, context);
 
-  // Copy axios.prototype to instance
-  utils.extend(instance, Axios.prototype, context);
+            // Copy axios.prototype to instance
+            utils.extend(instance, Axios.prototype, context);
 
-  // Copy context to instance
-  utils.extend(instance, context);
+            // Copy context to instance
+            utils.extend(instance, context);
 
-  return instance;
-}
+            return instance;
+        }
 
 // Create the default instance to be exported
 var axios = createInstance(defaults);
 
 // Expose Axios class to allow class inheritance
-axios.Axios = Axios;
+        axios.Axios = Axios;
 
 // Factory for creating new instances
         axios.create = function create(instanceConfig) {
@@ -26428,16 +26428,16 @@ axios.Axios = Axios;
          * @param {Function} executor The executor function.
          */
         function CancelToken(executor) {
-  if (typeof executor !== 'function') {
-    throw new TypeError('executor must be a function.');
-  }
+            if (typeof executor !== 'function') {
+                throw new TypeError('executor must be a function.');
+            }
 
-  var resolvePromise;
-  this.promise = new Promise(function promiseExecutor(resolve) {
-    resolvePromise = resolve;
-  });
+            var resolvePromise;
+            this.promise = new Promise(function promiseExecutor(resolve) {
+                resolvePromise = resolve;
+            });
 
-  var token = this;
+            var token = this;
   executor(function cancel(message) {
     if (token.reason) {
       // Cancellation has already been requested
@@ -26502,9 +26502,9 @@ CancelToken.source = function source() {
             this.defaults = instanceConfig;
             this.interceptors = {
                 request: new InterceptorManager(),
-    response: new InterceptorManager()
-  };
-}
+                response: new InterceptorManager()
+            };
+        }
 
 /**
  * Dispatch a request
@@ -27167,23 +27167,23 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 
                             if (utils.isString(path)) {
                                 cookie.push('path=' + path);
-          }
+                            }
 
-          if (utils.isString(domain)) {
-            cookie.push('domain=' + domain);
-          }
+                            if (utils.isString(domain)) {
+                                cookie.push('domain=' + domain);
+                            }
 
-          if (secure === true) {
-            cookie.push('secure');
-          }
+                            if (secure === true) {
+                                cookie.push('secure');
+                            }
 
-          document.cookie = cookie.join('; ');
-        },
+                            document.cookie = cookie.join('; ');
+                        },
 
-        read: function read(name) {
-            var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
-            return (match ? decodeURIComponent(match[3]) : null);
-        },
+                        read: function read(name) {
+                            var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+                            return (match ? decodeURIComponent(match[3]) : null);
+                        },
 
                         remove: function remove(name) {
                             this.write(name, '', Date.now() - 86400000);
@@ -27244,16 +27244,16 @@ module.exports = function buildURL(url, params, paramsSerializer) {
                      * @param {String} url The URL to be parsed
                      * @returns {Object}
                      */
-      function resolveURL(url) {
-        var href = url;
+                    function resolveURL(url) {
+                        var href = url;
 
-        if (msie) {
-        // IE needs attribute set twice to normalize properties
-          urlParsingNode.setAttribute('href', href);
-          href = urlParsingNode.href;
-        }
+                        if (msie) {
+                            // IE needs attribute set twice to normalize properties
+                            urlParsingNode.setAttribute('href', href);
+                            href = urlParsingNode.href;
+                        }
 
-        urlParsingNode.setAttribute('href', href);
+                        urlParsingNode.setAttribute('href', href);
 
         // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
         return {
@@ -27263,21 +27263,21 @@ module.exports = function buildURL(url, params, paramsSerializer) {
           search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
           hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
           hostname: urlParsingNode.hostname,
-          port: urlParsingNode.port,
-          pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
-            urlParsingNode.pathname :
-            '/' + urlParsingNode.pathname
+            port: urlParsingNode.port,
+            pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
+                urlParsingNode.pathname :
+                '/' + urlParsingNode.pathname
         };
-      }
+                    }
 
-      originURL = resolveURL(window.location.href);
+                    originURL = resolveURL(window.location.href);
 
-      /**
-       * Determine if a URL shares the same origin as the current location
-       *
-       * @param {String} requestURL The URL to test
-       * @returns {boolean} True if URL shares the same origin, otherwise false
-       */
+                    /**
+                     * Determine if a URL shares the same origin as the current location
+                     *
+                     * @param {String} requestURL The URL to test
+                     * @returns {boolean} True if URL shares the same origin, otherwise false
+                     */
                     return function isURLSameOrigin(requestURL) {
                         var parsed = (utils.isString(requestURL)) ? resolveURL(requestURL) : requestURL;
                         return (parsed.protocol === originURL.protocol &&
@@ -27718,9 +27718,9 @@ function extend(a, b, thisArg) {
 }
 
 module.exports = {
-  isArray: isArray,
-  isArrayBuffer: isArrayBuffer,
-  isBuffer: isBuffer,
+    isArray: isArray,
+    isArrayBuffer: isArrayBuffer,
+    isBuffer: isBuffer,
     isFormData: isFormData,
     isArrayBufferView: isArrayBufferView,
     isString: isString,
@@ -27796,16 +27796,22 @@ module.exports = {
                 }
                 BASE_MAP[xc] = i
             }
-  var BASE = ALPHABET.length
-  var LEADER = ALPHABET.charAt(0)
-  var FACTOR = Math.log(BASE) / Math.log(256) // log(BASE) / log(256), rounded up
-  var iFACTOR = Math.log(256) / Math.log(BASE) // log(256) / log(BASE), rounded up
-  function encode (source) {
-    if (Array.isArray(source) || source instanceof Uint8Array) { source = _Buffer.from(source) }
-    if (!_Buffer.isBuffer(source)) { throw new TypeError('Expected Buffer') }
-    if (source.length === 0) { return '' }
-        // Skip & count leading zeroes.
-    var zeroes = 0
+            var BASE = ALPHABET.length
+            var LEADER = ALPHABET.charAt(0)
+            var FACTOR = Math.log(BASE) / Math.log(256) // log(BASE) / log(256), rounded up
+            var iFACTOR = Math.log(256) / Math.log(BASE) // log(256) / log(BASE), rounded up
+            function encode(source) {
+                if (Array.isArray(source) || source instanceof Uint8Array) {
+                    source = _Buffer.from(source)
+                }
+                if (!_Buffer.isBuffer(source)) {
+                    throw new TypeError('Expected Buffer')
+                }
+                if (source.length === 0) {
+                    return ''
+                }
+                // Skip & count leading zeroes.
+                var zeroes = 0
     var length = 0
     var pbegin = 0
     var pend = source.length
@@ -27872,16 +27878,18 @@ module.exports = {
       length = i
       psz++
     }
-        // Skip trailing spaces.
-    if (source[psz] === ' ') { return }
-        // Skip leading zeroes in b256.
-    var it4 = size - length
-    while (it4 !== size && b256[it4] === 0) {
-      it4++
-    }
-    var vch = _Buffer.allocUnsafe(zeroes + (size - it4))
-    vch.fill(0x00, 0, zeroes)
-    var j = zeroes
+      // Skip trailing spaces.
+      if (source[psz] === ' ') {
+          return
+      }
+      // Skip leading zeroes in b256.
+      var it4 = size - length
+      while (it4 !== size && b256[it4] === 0) {
+          it4++
+      }
+      var vch = _Buffer.allocUnsafe(zeroes + (size - it4))
+      vch.fill(0x00, 0, zeroes)
+      var j = zeroes
       while (it4 !== size) {
           vch[j++] = b256[it4++]
       }
@@ -27930,15 +27938,15 @@ module.exports = {
 
             var lenS = buffer[5 + lenR]
             if (lenS === 0) return false
-  if ((6 + lenR + lenS) !== buffer.length) return false
+            if ((6 + lenR + lenS) !== buffer.length) return false
 
-  if (buffer[4] & 0x80) return false
-  if (lenR > 1 && (buffer[4] === 0x00) && !(buffer[5] & 0x80)) return false
+            if (buffer[4] & 0x80) return false
+            if (lenR > 1 && (buffer[4] === 0x00) && !(buffer[5] & 0x80)) return false
 
-  if (buffer[lenR + 6] & 0x80) return false
-  if (lenS > 1 && (buffer[lenR + 6] === 0x00) && !(buffer[lenR + 7] & 0x80)) return false
-  return true
-}
+            if (buffer[lenR + 6] & 0x80) return false
+            if (lenS > 1 && (buffer[lenR + 6] === 0x00) && !(buffer[lenR + 7] & 0x80)) return false
+            return true
+        }
 
 function decode (buffer) {
   if (buffer.length < 8) throw new Error('DER sequence length is too short')
@@ -28045,15 +28053,15 @@ function encode (r, s) {
                 return kind === '[object Uint8Array]' || kind === '[object Array]';
             }
 
-  function checkConfig(config) {
-    for (var key in config) {
-      switch (key) {
-      case 'key':
-      case 'personalization':
-      case 'salt':
-        if (!isByteArray(config[key])) {
-          throw new TypeError(key + ' must be a Uint8Array or an Array of bytes');
-        }
+            function checkConfig(config) {
+                for (var key in config) {
+                    switch (key) {
+                        case 'key':
+                        case 'personalization':
+                        case 'salt':
+                            if (!isByteArray(config[key])) {
+                                throw new TypeError(key + ' must be a Uint8Array or an Array of bytes');
+                            }
         break;
       default:
         throw new Error('unexpected key in config: ' + key)
@@ -29403,8 +29411,8 @@ function encode (r, s) {
   };
 
   BLAKE2s.prototype.hexDigest = function() {
-    var hex = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
-    var out = [];
+      var hex = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
+      var out = [];
       var d = this.digest();
       for (var i = 0; i < d.length; i++) {
           out.push(hex[(d[i] >> 4) & 0xf]);
@@ -29459,23 +29467,23 @@ function encode (r, s) {
             function decodeRaw(buffer) {
                 var payload = buffer.slice(0, -4)
                 var checksum = buffer.slice(-4)
-    var newChecksum = checksumFn(payload)
+                var newChecksum = checksumFn(payload)
 
-    if (checksum[0] ^ newChecksum[0] |
-        checksum[1] ^ newChecksum[1] |
-        checksum[2] ^ newChecksum[2] |
-        checksum[3] ^ newChecksum[3]) return
+                if (checksum[0] ^ newChecksum[0] |
+                    checksum[1] ^ newChecksum[1] |
+                    checksum[2] ^ newChecksum[2] |
+                    checksum[3] ^ newChecksum[3]) return
 
-    return payload
-  }
+                return payload
+            }
 
-  // Decode a base58-check encoded string to a buffer, no result if checksum is wrong
-  function decodeUnsafe (string) {
-    var buffer = base58.decodeUnsafe(string)
-    if (!buffer) return
+            // Decode a base58-check encoded string to a buffer, no result if checksum is wrong
+            function decodeUnsafe(string) {
+                var buffer = base58.decodeUnsafe(string)
+                if (!buffer) return
 
-      return decodeRaw(buffer)
-  }
+                return decodeRaw(buffer)
+            }
 
             function decode(string) {
                 var buffer = base58.decode(string)
@@ -29694,30 +29702,35 @@ module.exports = function (it) {
             var key, own, out;
             if (IS_GLOBAL) source = name;
             for (key in source) {
-    // contains in native
-    own = !IS_FORCED && target && target[key] !== undefined;
-    if (own && has(exports, key)) continue;
-    // export native or passed
-    out = own ? target[key] : source[key];
-    // prevent global pollution for namespaces
-    exports[key] = IS_GLOBAL && typeof target[key] != 'function' ? source[key]
-    // bind timers to global for call from export context
-    : IS_BIND && own ? ctx(out, global)
-    // wrap global constructors for prevent change them in library
+                // contains in native
+                own = !IS_FORCED && target && target[key] !== undefined;
+                if (own && has(exports, key)) continue;
+                // export native or passed
+                out = own ? target[key] : source[key];
+                // prevent global pollution for namespaces
+                exports[key] = IS_GLOBAL && typeof target[key] != 'function' ? source[key]
+                    // bind timers to global for call from export context
+                    : IS_BIND && own ? ctx(out, global)
+                        // wrap global constructors for prevent change them in library
     : IS_WRAP && target[key] == out ? (function (C) {
       var F = function (a, b, c) {
         if (this instanceof C) {
-          switch (arguments.length) {
-            case 0: return new C();
-            case 1: return new C(a);
-            case 2: return new C(a, b);
-          } return new C(a, b, c);
-        } return C.apply(this, arguments);
+            switch (arguments.length) {
+                case 0:
+                    return new C();
+                case 1:
+                    return new C(a);
+                case 2:
+                    return new C(a, b);
+            }
+            return new C(a, b, c);
+        }
+          return C.apply(this, arguments);
       };
-      F[PROTOTYPE] = C[PROTOTYPE];
-      return F;
-    // make static versions for prototype methods
-            })(out) : IS_PROTO && typeof out == 'function' ? ctx(Function.call, out) : out;
+                            F[PROTOTYPE] = C[PROTOTYPE];
+                            return F;
+                            // make static versions for prototype methods
+                        })(out) : IS_PROTO && typeof out == 'function' ? ctx(Function.call, out) : out;
                 // export proto methods to core.%CONSTRUCTOR%.methods.%NAME%
                 if (IS_PROTO) {
                     (exports.virtual || (exports.virtual = {}))[key] = out;
@@ -29872,16 +29885,25 @@ module.exports = function (it) {
         module.exports = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORCED) {
             $iterCreate(Constructor, NAME, next);
             var getMethod = function (kind) {
-    if (!BUGGY && kind in proto) return proto[kind];
-    switch (kind) {
-      case KEYS: return function keys() { return new Constructor(this, kind); };
-      case VALUES: return function values() { return new Constructor(this, kind); };
-    } return function entries() { return new Constructor(this, kind); };
-  };
-  var TAG = NAME + ' Iterator';
-  var DEF_VALUES = DEFAULT == VALUES;
-  var VALUES_BUG = false;
-  var proto = Base.prototype;
+                if (!BUGGY && kind in proto) return proto[kind];
+                switch (kind) {
+                    case KEYS:
+                        return function keys() {
+                            return new Constructor(this, kind);
+                        };
+                    case VALUES:
+                        return function values() {
+                            return new Constructor(this, kind);
+                        };
+                }
+                return function entries() {
+                    return new Constructor(this, kind);
+                };
+            };
+            var TAG = NAME + ' Iterator';
+            var DEF_VALUES = DEFAULT == VALUES;
+            var VALUES_BUG = false;
+            var proto = Base.prototype;
   var $native = proto[ITERATOR] || proto[FF_ITERATOR] || DEFAULT && proto[DEFAULT];
   var $default = $native || getMethod(DEFAULT);
   var $entries = DEFAULT ? !DEF_VALUES ? $default : getMethod('entries') : undefined;
@@ -29909,16 +29931,16 @@ module.exports = function (it) {
   // Plug for library
   Iterators[NAME] = $default;
   Iterators[TAG] = returnThis;
-  if (DEFAULT) {
-      methods = {
-          values: DEF_VALUES ? $default : getMethod(VALUES),
-          keys: IS_SET ? $default : getMethod(KEYS),
-          entries: $entries
-      };
-      if (FORCED) for (key in methods) {
-          if (!(key in proto)) redefine(proto, key, methods[key]);
-      } else $export($export.P + $export.F * (BUGGY || VALUES_BUG), NAME, methods);
-  }
+            if (DEFAULT) {
+                methods = {
+                    values: DEF_VALUES ? $default : getMethod(VALUES),
+                    keys: IS_SET ? $default : getMethod(KEYS),
+                    entries: $entries
+                };
+                if (FORCED) for (key in methods) {
+                    if (!(key in proto)) redefine(proto, key, methods[key]);
+                } else $export($export.P + $export.F * (BUGGY || VALUES_BUG), NAME, methods);
+            }
             return methods;
         };
 
@@ -29998,15 +30020,15 @@ module.exports = function (it) {
             require('./_html').appendChild(iframe);
             iframe.src = 'javascript:'; // eslint-disable-line no-script-url
             // createDict = iframe.contentWindow.Object;
-  // html.removeChild(iframe);
-  iframeDocument = iframe.contentWindow.document;
-  iframeDocument.open();
-  iframeDocument.write(lt + 'script' + gt + 'document.F=Object' + lt + '/script' + gt);
-  iframeDocument.close();
-  createDict = iframeDocument.F;
-  while (i--) delete createDict[PROTOTYPE][enumBugKeys[i]];
-  return createDict();
-};
+            // html.removeChild(iframe);
+            iframeDocument = iframe.contentWindow.document;
+            iframeDocument.open();
+            iframeDocument.write(lt + 'script' + gt + 'document.F=Object' + lt + '/script' + gt);
+            iframeDocument.close();
+            createDict = iframeDocument.F;
+            while (i--) delete createDict[PROTOTYPE][enumBugKeys[i]];
+            return createDict();
+        };
 
 module.exports = Object.create || function create(O, Properties) {
     var result;
@@ -30294,10 +30316,10 @@ module.exports = Object.create || function create(O, Properties) {
                 var mapfn = aLen > 1 ? arguments[1] : undefined;
                 var mapping = mapfn !== undefined;
                 var index = 0;
-    var iterFn = getIterFn(O);
-    var length, result, step, iterator;
-    if (mapping) mapfn = ctx(mapfn, aLen > 2 ? arguments[2] : undefined, 2);
-    // if object isn't iterable or it's array with default iterator - use simple case
+                var iterFn = getIterFn(O);
+                var length, result, step, iterator;
+                if (mapping) mapfn = ctx(mapfn, aLen > 2 ? arguments[2] : undefined, 2);
+                // if object isn't iterable or it's array with default iterator - use simple case
                 if (iterFn != undefined && !(C == Array && isArrayIter(iterFn))) {
                     for (iterator = iterFn.call(O), result = new C(); !(step = iterator.next()).done; index++) {
                         createProperty(result, index, mapping ? call(iterator, mapfn, [step.value, index], true) : step.value);
@@ -30389,16 +30411,16 @@ module.exports = Object.create || function create(O, Properties) {
             "abbey",
             "abbot",
             "abbott",
-	"abc",
-	"abe",
-	"abed",
-	"abel",
-	"abet",
-	"abide",
-	"abject",
-	"ablaze",
-	"able",
-	"abner",
+            "abc",
+            "abe",
+            "abed",
+            "abel",
+            "abet",
+            "abide",
+            "abject",
+            "ablaze",
+            "able",
+            "abner",
 	"abo",
 	"abode",
 	"abort",
@@ -38117,16 +38139,16 @@ module.exports = Object.create || function create(O, Properties) {
 	"92nd",
 	"93rd",
 	"94th",
-	"95th",
-	"96th",
-	"97th",
-	"98th",
-	"99th",
-	"9th",
-	"!",
-	"!!",
-	"\"",
-	"#",
+            "95th",
+            "96th",
+            "97th",
+            "98th",
+            "99th",
+            "9th",
+            "!",
+            "!!",
+            "\"",
+            "#",
             "##",
             "$",
             "$$",
@@ -38167,11 +38189,11 @@ module.exports = Object.create || function create(O, Properties) {
                 if (!condition) {
                     throw new Error(message || "Assertion failed");
                 }
-}
+            }
 
-function isScalar (x) {
-  return Buffer.isBuffer(x) && x.length === 32;
-}
+            function isScalar(x) {
+                return Buffer.isBuffer(x) && x.length === 32;
+            }
 
 function isValidPrivateKey(privateKey) {
   if (!isScalar(privateKey))
@@ -38393,7 +38415,7 @@ exports.encrypt = function(publicKeyTo, msg, opts) {
 exports.decrypt = function(privateKey, opts) {
   // Tmp variable to save context from flat promises;
   var encryptionKey;
-  return derive(privateKey, opts.ephemPublicKey).then(function(Px) {
+  return derive(privateKey, opts.ephemPublicKey).then(function (Px) {
       return sha512(Px);
   }).then(function (hash) {
       encryptionKey = hash.slice(0, 32);
@@ -38540,23 +38562,23 @@ exports.decrypt = function(privateKey, opts) {
                 "jshint": "^2.6.0",
                 "mocha": "^6.1.4"
             },
-  "files": [
-    "lib"
-  ],
-  "homepage": "https://github.com/indutny/elliptic",
-  "keywords": [
-    "EC",
-    "Elliptic",
-    "curve",
-    "Cryptography"
-  ],
-  "license": "MIT",
-  "main": "lib/elliptic.js",
-  "name": "elliptic",
-  "repository": {
-    "type": "git",
-      "url": "git+ssh://git@github.com/indutny/elliptic.git"
-  },
+            "files": [
+                "lib"
+            ],
+            "homepage": "https://github.com/indutny/elliptic",
+            "keywords": [
+                "EC",
+                "Elliptic",
+                "curve",
+                "Cryptography"
+            ],
+            "license": "MIT",
+            "main": "lib/elliptic.js",
+            "name": "elliptic",
+            "repository": {
+                "type": "git",
+                "url": "git+ssh://git@github.com/indutny/elliptic.git"
+            },
             "scripts": {
                 "jscs": "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
                 "jshint": "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
@@ -38604,13 +38626,13 @@ exports.decrypt = function(privateKey, opts) {
                 var compressedKey = (0, _publicKey.compress)(cipher.ephemPublicKey);
 
                 var ret = Buffer.concat([Buffer.from(cipher.iv, 'hex'), // 16bit
-    Buffer.from(compressedKey, 'hex'), // 33bit
-    Buffer.from(cipher.mac, 'hex'), // 32bit
-    Buffer.from(cipher.ciphertext, 'hex') // var bit
-    ]);
+                    Buffer.from(compressedKey, 'hex'), // 33bit
+                    Buffer.from(cipher.mac, 'hex'), // 32bit
+                    Buffer.from(cipher.ciphertext, 'hex') // var bit
+                ]);
 
-    return ret.toString('hex');
-}
+                return ret.toString('hex');
+            }
 
 function parse(str) {
     if (typeof str !== 'string') return str;
@@ -38716,15 +38738,15 @@ function createIdentity(entropy) {
 
                 encrypted = (0, _cipher.parse)(encrypted);
 
-    // remove trailing '0x' from privateKey
-    var twoStripped = (0, _util.removeTrailing0x)(privateKey);
+                // remove trailing '0x' from privateKey
+                var twoStripped = (0, _util.removeTrailing0x)(privateKey);
 
-    var encryptedBuffer = {
-        iv: Buffer.from(encrypted.iv, 'hex'),
-        ephemPublicKey: Buffer.from(encrypted.ephemPublicKey, 'hex'),
-        ciphertext: Buffer.from(encrypted.ciphertext, 'hex'),
-        mac: Buffer.from(encrypted.mac, 'hex')
-    };
+                var encryptedBuffer = {
+                    iv: Buffer.from(encrypted.iv, 'hex'),
+                    ephemPublicKey: Buffer.from(encrypted.ephemPublicKey, 'hex'),
+                    ciphertext: Buffer.from(encrypted.ciphertext, 'hex'),
+                    mac: Buffer.from(encrypted.mac, 'hex')
+                };
 
                 return (0, _eccrypto.decrypt)(Buffer.from(twoStripped, 'hex'), encryptedBuffer).then(function (decryptedBuffer) {
                     return decryptedBuffer.toString();
@@ -38750,8 +38772,8 @@ function createIdentity(entropy) {
                 // ensure its an uncompressed publicKey
                 publicKey = (0, _publicKey.decompress)(publicKey);
 
-    // re-add the compression-flag
-    var pubString = '04' + publicKey;
+                // re-add the compression-flag
+                var pubString = '04' + publicKey;
 
                 return (0, _eccrypto.encrypt)(Buffer.from(pubString, 'hex'), Buffer.from(message)).then(function (encryptedBuffers) {
                     var encrypted = {
@@ -38813,21 +38835,23 @@ function createIdentity(entropy) {
                 // if base64:true, we use our own function because it results in a smaller output
                 if (base64 === true) return Buffer.from(hex, 'hex').toString('base64');
 
-    var string = '';
-    while (hex.length % 4 != 0) {
-        // we need it to be multiple of 4
-        hex = '0' + hex;
-    }
-    for (var i = 0; i < hex.length; i += 4) {
-        // get char from ascii code which goes from 0 to 65536
-        string += String.fromCharCode(parseInt(hex.substring(i, i + 4), 16));
-    }
-    return string;
-} /**
-   * compress/decompress hex-strings to utf16 or base64
-   * thx @juvian
-   * @link https://stackoverflow.com/a/40471908/3443137
-   */
+                var string = '';
+                while (hex.length % 4 != 0) {
+                    // we need it to be multiple of 4
+                    hex = '0' + hex;
+                }
+                for (var i = 0; i < hex.length; i += 4) {
+                    // get char from ascii code which goes from 0 to 65536
+                    string += String.fromCharCode(parseInt(hex.substring(i, i + 4), 16));
+                }
+                return string;
+            }
+
+            /**
+             * compress/decompress hex-strings to utf16 or base64
+             * thx @juvian
+             * @link https://stackoverflow.com/a/40471908/3443137
+             */
 
             function decompress(compressedString) {
                 var base64 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
@@ -39021,11 +39045,11 @@ exports['default'] = {
             function compress(startsWith04) {
 
                 // add trailing 04 if not done before
-    var testBuffer = Buffer.from(startsWith04, 'hex');
-    if (testBuffer.length === 64) startsWith04 = '04' + startsWith04;
+                var testBuffer = Buffer.from(startsWith04, 'hex');
+                if (testBuffer.length === 64) startsWith04 = '04' + startsWith04;
 
-    return (0, _util.uint8ArrayToHex)((0, _secp256k.publicKeyConvert)((0, _util.hexToUnit8Array)(startsWith04), true));
-}
+                return (0, _util.uint8ArrayToHex)((0, _secp256k.publicKeyConvert)((0, _util.hexToUnit8Array)(startsWith04), true));
+            }
 
 function decompress(startsWith02Or03) {
 
@@ -39073,13 +39097,13 @@ function toAddress(publicKey) {
          * @param  {string} signature
          * @param  {string} hash
          * @return {string} publicKey
- */
+         */
 function recoverPublicKey(signature, hash) {
-    signature = (0, _util.removeTrailing0x)(signature);
+            signature = (0, _util.removeTrailing0x)(signature);
 
-    // split into v-value and sig
-    var sigOnly = signature.substring(0, signature.length - 2); // all but last 2 chars
-    var vValue = signature.slice(-2); // last 2 chars
+            // split into v-value and sig
+            var sigOnly = signature.substring(0, signature.length - 2); // all but last 2 chars
+            var vValue = signature.slice(-2); // last 2 chars
 
             var recoveryNumber = vValue === '1c' ? 1 : 0;
 
@@ -39176,9 +39200,9 @@ function signTransaction(rawTx, privateKey) {
              * we do not use sign from eth-lib because the pure secp256k1-version is 90% faster
              * @param  {string} privateKey
              * @param  {string} hash
- * @return {string} hexString
- */
-function sign(privateKey, hash) {
+             * @return {string} hexString
+             */
+            function sign(privateKey, hash) {
                 hash = (0, _util.addTrailing0x)(hash);
                 if (hash.length !== 66) throw new Error('EthCrypto.sign(): Can only sign hashes, given: ' + hash);
 
@@ -39963,8 +39987,8 @@ function txDataByCompiled(abi, bytecode, args) {
             let y = x.redSqr().redIMul(x).redIAdd(ecparams.b).redSqrt()
             if ((first === 0x03) !== y.isOdd()) y = y.redNeg()
 
-  return ec.keyPair({ pub: { x: x, y: y } })
-}
+            return ec.keyPair({pub: {x: x, y: y}})
+        }
 
 function loadUncompressedPublicKey (first, xbuf, ybuf) {
   let x = new BN(xbuf)
@@ -40368,11 +40392,11 @@ module.exports = {
             if (!cond) throw new Error(msg)
         }
 
-function isUint8Array (name, value, length) {
-  assert(value instanceof Uint8Array, `Expected ${name} to be an Uint8Array`)
+        function isUint8Array(name, value, length) {
+            assert(value instanceof Uint8Array, `Expected ${name} to be an Uint8Array`)
 
-  if (length !== undefined) {
-    if (Array.isArray(length)) {
+            if (length !== undefined) {
+                if (Array.isArray(length)) {
       const numbers = length.join(', ')
       const msg = `Expected ${name} to be an Uint8Array with length [${numbers}]`
       assert(length.includes(value.length), msg)
@@ -40663,15 +40687,15 @@ module.exports = (secp256k1) => {
       isUint8Array('public key', pubkey, [33, 65])
       isUint8Array('private key', seckey, 32)
       assert(toTypeString(options) === 'Object', 'Expected options to be an Object')
-      if (options.data !== undefined) isUint8Array('options.data', options.data)
-      if (options.hashfn !== undefined) {
-        assert(toTypeString(options.hashfn) === 'Function', 'Expected options.hashfn to be a Function')
-        if (options.xbuf !== undefined) isUint8Array('options.xbuf', options.xbuf, 32)
-        if (options.ybuf !== undefined) isUint8Array('options.ybuf', options.ybuf, 32)
-        isUint8Array('output', output)
-      } else {
-        output = getAssertedOutput(output, 32)
-      }
+        if (options.data !== undefined) isUint8Array('options.data', options.data)
+        if (options.hashfn !== undefined) {
+            assert(toTypeString(options.hashfn) === 'Function', 'Expected options.hashfn to be a Function')
+            if (options.xbuf !== undefined) isUint8Array('options.xbuf', options.xbuf, 32)
+            if (options.ybuf !== undefined) isUint8Array('options.ybuf', options.ybuf, 32)
+            isUint8Array('output', output)
+        } else {
+            output = getAssertedOutput(output, 32)
+        }
 
         switch (secp256k1.ecdh(output, pubkey, seckey, options.data, options.hashfn, options.xbuf, options.ybuf)) {
             case 0:
@@ -40704,10 +40728,10 @@ module.exports = (secp256k1) => {
 
             const toChecksum = address => {
                 const addressHash = keccak256s(address.slice(2));
-  let checksumAddress = "0x";
-  for (let i = 0; i < 40; i++) checksumAddress += parseInt(addressHash[i + 2], 16) > 7 ? address[i + 2].toUpperCase() : address[i + 2];
-  return checksumAddress;
-};
+                let checksumAddress = "0x";
+                for (let i = 0; i < 40; i++) checksumAddress += parseInt(addressHash[i + 2], 16) > 7 ? address[i + 2].toUpperCase() : address[i + 2];
+                return checksumAddress;
+            };
 
 const fromPrivate = privateKey => {
   const buffer = new Buffer(privateKey.slice(2), "hex");
@@ -40732,15 +40756,15 @@ const makeSigner = addToV => (hash, privateKey) => {
 
 const sign = makeSigner(27); // v=27|28 instead of 0|1...
 
-const recover = (hash, signature) => {
-  const vals = decodeSignature(signature);
-  const vrs = { v: Bytes.toNumber(vals[0]), r: vals[1].slice(2), s: vals[2].slice(2) };
-  const ecPublicKey = secp256k1.recoverPubKey(new Buffer(hash.slice(2), "hex"), vrs, vrs.v < 2 ? vrs.v : 1 - vrs.v % 2); // because odd vals mean v=0... sadly that means v=0 means v=1... I hate that
-  const publicKey = "0x" + ecPublicKey.encode("hex", false).slice(2);
-  const publicHash = keccak256(publicKey);
-  const address = toChecksum("0x" + publicHash.slice(-40));
-  return address;
-};
+            const recover = (hash, signature) => {
+                const vals = decodeSignature(signature);
+                const vrs = {v: Bytes.toNumber(vals[0]), r: vals[1].slice(2), s: vals[2].slice(2)};
+                const ecPublicKey = secp256k1.recoverPubKey(new Buffer(hash.slice(2), "hex"), vrs, vrs.v < 2 ? vrs.v : 1 - vrs.v % 2); // because odd vals mean v=0... sadly that means v=0 means v=1... I hate that
+                const publicKey = "0x" + ecPublicKey.encode("hex", false).slice(2);
+                const publicHash = keccak256(publicKey);
+                const address = toChecksum("0x" + publicHash.slice(-40));
+                return address;
+            };
 
             module.exports = {
                 create,
@@ -40923,7 +40947,7 @@ const toString = bytes => {
 };
 
 module.exports = {
-  random,
+    random,
     length,
     concat,
     flatten,
@@ -41366,15 +41390,15 @@ const decode = hex => {
     return head < "80" ? (i += 2, "0x" + head) : head < "c0" ? parseHex() : parseList();
   };
 
-  const parseLength = () => {
-    const len = parseInt(hex.slice(i, i += 2), 16) % 64;
-    return len < 56 ? len : parseInt(hex.slice(i, i += (len - 55) * 2), 16);
-  };
+    const parseLength = () => {
+        const len = parseInt(hex.slice(i, i += 2), 16) % 64;
+        return len < 56 ? len : parseInt(hex.slice(i, i += (len - 55) * 2), 16);
+    };
 
-  const parseHex = () => {
-    const len = parseLength();
-      return "0x" + hex.slice(i, i += len * 2);
-  };
+    const parseHex = () => {
+        const len = parseLength();
+        return "0x" + hex.slice(i, i += len * 2);
+    };
 
     const parseList = () => {
         const lim = parseLength() * 2 + i;
@@ -41413,16 +41437,16 @@ const decode = hex => {
                     "name": "chainstart",
                     "block": 0,
                     "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "homestead",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "dao",
+                    "finality": null
+                },
+                {
+                    "name": "homestead",
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "dao",
             "block": 0,
             "consensus": "poa",
             "finality": null
@@ -41557,16 +41581,16 @@ const decode = hex => {
                     "name": "chainstart",
                     "block": 0,
                     "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "homestead",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "dao",
+                    "finality": null
+                },
+                {
+                    "name": "homestead",
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "dao",
             "block": 0,
             "consensus": "poa",
             "finality": null
@@ -41662,16 +41686,16 @@ const decode = hex => {
                     "name": "chainstart",
                     "block": 0,
                     "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "homestead",
-            "block": 1150000,
-            "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "dao",
+                    "finality": null
+                },
+                {
+                    "name": "homestead",
+                    "block": 1150000,
+                    "consensus": "pow",
+                    "finality": null
+                },
+                {
+                    "name": "dao",
             "block": 1920000,
             "consensus": "pow",
             "finality": null
@@ -41801,16 +41825,16 @@ const decode = hex => {
                     "name": "chainstart",
                     "block": 0,
                     "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "homestead",
-            "block": 1,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "dao",
+                    "finality": null
+                },
+                {
+                    "name": "homestead",
+                    "block": 1,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "dao",
             "block": null,
             "consensus": "poa",
             "finality": null
@@ -41899,16 +41923,16 @@ const decode = hex => {
                     "name": "chainstart",
                     "block": 0,
                     "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "homestead",
-            "block": 0,
-            "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "dao",
+                    "finality": null
+                },
+                {
+                    "name": "homestead",
+                    "block": 0,
+                    "consensus": "pow",
+                    "finality": null
+                },
+                {
+                    "name": "dao",
             "block": null,
             "consensus": "pow",
             "finality": null
@@ -42010,7 +42034,7 @@ const decode = hex => {
                 "ecMul": {
                     "v": 40000,
                     "d": "Gas costs for curve multiplication precompile"
-        },
+                },
                 "ecPairing": {
                     "v": 100000,
                     "d": "Base gas costs for curve pairing precompile"
@@ -42053,16 +42077,16 @@ const decode = hex => {
             },
             "gasPrices": {
                 "base": {
-            "v": 2,
-            "d": "Gas base cost, used e.g. for ChainID opcode (Istanbul)"
-        },
-        "tierStep": {
-            "v": [0, 2, 3, 5, 8, 10, 20],
-            "d": "Once per operation, for a selection of them"
-        },
-        "exp": {
-            "v": 10,
-            "d": "Once per EXP instuction"
+                    "v": 2,
+                    "d": "Gas base cost, used e.g. for ChainID opcode (Istanbul)"
+                },
+                "tierStep": {
+                    "v": [0, 2, 3, 5, 8, 10, 20],
+                    "d": "Once per operation, for a selection of them"
+                },
+                "exp": {
+                    "v": 10,
+                    "d": "Once per EXP instuction"
         },
         "expByte": {
             "v": 10,
@@ -42259,15 +42283,15 @@ const decode = hex => {
                 "netSstoreCleanGas": {
                     "v": 5000,
                     "d": "Once per SSTORE operation from clean non-zero"
-        },
-        "netSstoreDirtyGas": {
-            "v": 200,
-            "d": "Once per SSTORE operation from dirty"
-        },
-        "netSstoreClearRefund": {
-            "v": 15000,
-            "d": "Once per SSTORE operation for clearing an originally existing storage slot"
-        },
+                },
+                "netSstoreDirtyGas": {
+                    "v": 200,
+                    "d": "Once per SSTORE operation from dirty"
+                },
+                "netSstoreClearRefund": {
+                    "v": 15000,
+                    "d": "Once per SSTORE operation for clearing an originally existing storage slot"
+                },
                 "netSstoreResetRefund": {
                     "v": 4800,
                     "d": "Once per SSTORE operation for resetting to the original non-zero value"
@@ -42372,16 +42396,16 @@ const decode = hex => {
                 "ecMul": {
                     "v": 6000,
                     "d": "Gas costs for curve multiplication precompile"
-        },
-        "ecPairing": {
-            "v": 45000,
-            "d": "Base gas costs for curve pairing precompile"
-        },
-        "ecPairingWord": {
-            "v": 34000,
-            "d": "Gas costs regarding curve pairing precompile input length"
-        },
-        "txDataNonZero": {
+                },
+                "ecPairing": {
+                    "v": 45000,
+                    "d": "Base gas costs for curve pairing precompile"
+                },
+                "ecPairingWord": {
+                    "v": 34000,
+                    "d": "Gas costs regarding curve pairing precompile input length"
+                },
+                "txDataNonZero": {
             "v": 16,
             "d": "Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions"
         },
@@ -42401,14 +42425,14 @@ const decode = hex => {
             "v": 20000,
             "d": "Once per SSTORE operation from clean zero to non-zero"
         },
-        "sstoreInitRefundEIP2200": {
-            "v": 19200,
-            "d": "Once per SSTORE operation for resetting to the original zero value"
-        },
-        "sstoreCleanGasEIP2200": {
-            "v": 5000,
-            "d": "Once per SSTORE operation from clean non-zero to something else"
-        },
+                "sstoreInitRefundEIP2200": {
+                    "v": 19200,
+                    "d": "Once per SSTORE operation for resetting to the original zero value"
+                },
+                "sstoreCleanGasEIP2200": {
+                    "v": 5000,
+                    "d": "Once per SSTORE operation from clean non-zero to something else"
+                },
                 "sstoreCleanRefundEIP2200": {
                     "v": 4200,
                     "d": "Once per SSTORE operation for resetting to the original non-zero value"
@@ -42463,15 +42487,15 @@ const decode = hex => {
                 "netSstoreCleanGas": {
                     "v": null,
                     "d": "Removed along EIP-1283"
-        },
-        "netSstoreDirtyGas": {
-            "v": null,
-            "d": "Removed along EIP-1283"
-        },
-        "netSstoreClearRefund": {
-            "v": null,
-            "d": "Removed along EIP-1283"
-        },
+                },
+                "netSstoreDirtyGas": {
+                    "v": null,
+                    "d": "Removed along EIP-1283"
+                },
+                "netSstoreClearRefund": {
+                    "v": null,
+                    "d": "Removed along EIP-1283"
+                },
                 "netSstoreResetRefund": {
                     "v": null,
                     "d": "Removed along EIP-1283"
@@ -42562,16 +42586,16 @@ const decode = hex => {
          */
         var Common = /** @class */ (function () {
             /**
-     * @constructor
-     * @param chain String ('mainnet') or Number (1) chain
-     * @param hardfork String identifier ('byzantium') for hardfork (optional)
-     * @param supportedHardforks Limit parameter returns to the given hardforks (optional)
-     */
-    function Common(chain, hardfork, supportedHardforks) {
-        this._chainParams = this.setChain(chain);
-        this._hardfork = null;
-        this._supportedHardforks = supportedHardforks === undefined ? [] : supportedHardforks;
-        if (hardfork) {
+             * @constructor
+             * @param chain String ('mainnet') or Number (1) chain
+             * @param hardfork String identifier ('byzantium') for hardfork (optional)
+             * @param supportedHardforks Limit parameter returns to the given hardforks (optional)
+             */
+            function Common(chain, hardfork, supportedHardforks) {
+                this._chainParams = this.setChain(chain);
+                this._hardfork = null;
+                this._supportedHardforks = supportedHardforks === undefined ? [] : supportedHardforks;
+                if (hardfork) {
             this.setHardfork(hardfork);
         }
     }
@@ -42937,13 +42961,13 @@ const decode = hex => {
     Common.prototype.chainName = function () {
         return chains_1.chains['names'][this.chainId()] || this._chainParams['name'];
     };
-    /**
-     * Returns the Id of current network
-     * @returns network Id
-     */
-    Common.prototype.networkId = function () {
-        return this._chainParams['networkId'];
-    };
+            /**
+             * Returns the Id of current network
+             * @returns network Id
+             */
+            Common.prototype.networkId = function () {
+                return this._chainParams['networkId'];
+            };
             return Common;
         }());
         exports.default = Common;
@@ -42978,16 +43002,16 @@ const decode = hex => {
         var transaction_1 = require("./transaction");
         /**
          * Creates a new transaction object that doesn't need to be signed.
- *
- * @param data - A transaction can be initialized with its rlp representation, an array containing
- * the value of its fields in order, or an object containing them by name.
- *
- * @param opts - The transaction's options, used to indicate the chain and hardfork the
- * transactions belongs to.
- *
- * @see Transaction
- */
-var FakeTransaction = /** @class */ (function (_super) {
+         *
+         * @param data - A transaction can be initialized with its rlp representation, an array containing
+         * the value of its fields in order, or an object containing them by name.
+         *
+         * @param opts - The transaction's options, used to indicate the chain and hardfork the
+         * transactions belongs to.
+         *
+         * @see Transaction
+         */
+        var FakeTransaction = /** @class */ (function (_super) {
     __extends(FakeTransaction, _super);
     function FakeTransaction(data, opts) {
         if (data === void 0) { data = {}; }
@@ -43016,7 +43040,9 @@ var FakeTransaction = /** @class */ (function (_super) {
      * @param includeSignature - Whether or not to include the signature
      */
     FakeTransaction.prototype.hash = function (includeSignature) {
-        if (includeSignature === void 0) { includeSignature = true; }
+        if (includeSignature === void 0) {
+            includeSignature = true;
+        }
         if (includeSignature && this._from && this._from.toString('hex') !== '') {
             // include a fake signature using the from address as a private key
             var fakeKey = buffer_1.Buffer.concat([this._from, this._from.slice(0, 12)]);
@@ -43059,16 +43085,16 @@ var FakeTransaction = /** @class */ (function (_super) {
         var N_DIV_2 = new ethereumjs_util_1.BN('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16);
         /**
          * An Ethereum transaction.
- */
-var Transaction = /** @class */ (function () {
-    /**
-     * Creates a new transaction from an object with its fields' values.
-     *
-     * @param data - A transaction can be initialized with its rlp representation, an array containing
-     * the value of its fields in order, or an object containing them by name.
-     *
-     * @param opts - The transaction's options, used to indicate the chain and hardfork the
-     * transactions belongs to.
+         */
+        var Transaction = /** @class */ (function () {
+            /**
+             * Creates a new transaction from an object with its fields' values.
+             *
+             * @param data - A transaction can be initialized with its rlp representation, an array containing
+             * the value of its fields in order, or an object containing them by name.
+             *
+             * @param opts - The transaction's options, used to indicate the chain and hardfork the
+             * transactions belongs to.
      *
      * @note Transaction objects implement EIP155 by default. To disable it, use the constructor's
      * second parameter to set a chain and hardfork before EIP155 activation (i.e. before Spurious
@@ -43405,16 +43431,16 @@ var Transaction = /** @class */ (function () {
             /**
              * Checks if the address is a valid. Accepts checksummed addresses too.
              */
-exports.isValidAddress = function (address) {
-    return /^0x[0-9a-fA-F]{40}$/.test(address);
-};
-/**
- * Checks if a given address is a zero address.
- */
-exports.isZeroAddress = function (address) {
-    var zeroAddr = exports.zeroAddress();
-    return zeroAddr === bytes_1.addHexPrefix(address);
-};
+            exports.isValidAddress = function (address) {
+                return /^0x[0-9a-fA-F]{40}$/.test(address);
+            };
+            /**
+             * Checks if a given address is a zero address.
+             */
+            exports.isZeroAddress = function (address) {
+                var zeroAddr = exports.zeroAddress();
+                return zeroAddr === bytes_1.addHexPrefix(address);
+            };
 /**
  * Returns a checksummed address.
  *
@@ -43576,16 +43602,18 @@ exports.importPublic = function (publicKey) {
              * @param right whether to start padding form the left or right
              * @return (Buffer|Array)
              */
-exports.setLengthLeft = function (msg, length, right) {
-    if (right === void 0) { right = false; }
-    var buf = exports.zeros(length);
-    msg = exports.toBuffer(msg);
-    if (right) {
-        if (msg.length < length) {
-            msg.copy(buf);
-            return buf;
-        }
-        return msg.slice(0, length);
+            exports.setLengthLeft = function (msg, length, right) {
+                if (right === void 0) {
+                    right = false;
+                }
+                var buf = exports.zeros(length);
+                msg = exports.toBuffer(msg);
+                if (right) {
+                    if (msg.length < length) {
+                        msg.copy(buf);
+                        return buf;
+                    }
+                    return msg.slice(0, length);
     }
     else {
         if (msg.length < length) {
@@ -43777,16 +43805,16 @@ exports.baToJSON = function (ba) {
                 if (typeof a === 'string' && !ethjsUtil.isHexString(a)) {
                     a = Buffer.from(a, 'utf8');
                 } else {
-        a = bytes_1.toBuffer(a);
-    }
-    if (!bits)
-        bits = 256;
-    return createKeccakHash("keccak" + bits)
-        .update(a)
-        .digest();
-};
-/**
- * Creates Keccak-256 hash of the input, alias for keccak(a, 256).
+                    a = bytes_1.toBuffer(a);
+                }
+                if (!bits)
+                    bits = 256;
+                return createKeccakHash("keccak" + bits)
+                    .update(a)
+                    .digest();
+            };
+            /**
+             * Creates Keccak-256 hash of the input, alias for keccak(a, 256).
  * @param a The input data (Buffer|Array|String|Number)
  */
 exports.keccak256 = function (a) {
@@ -43902,16 +43930,18 @@ exports.ripemd160 = function (a, padded) {
              */
             exports.defineProperties = function (self, fields, data) {
                 self.raw = [];
-    self._fields = [];
-    // attach the `toJSON`
-    self.toJSON = function (label) {
-        if (label === void 0) { label = false; }
-        if (label) {
-            var obj_1 = {};
-            self._fields.forEach(function (field) {
-                obj_1[field] = "0x" + self[field].toString('hex');
-            });
-            return obj_1;
+                self._fields = [];
+                // attach the `toJSON`
+                self.toJSON = function (label) {
+                    if (label === void 0) {
+                        label = false;
+                    }
+                    if (label) {
+                        var obj_1 = {};
+                        self._fields.forEach(function (field) {
+                            obj_1[field] = "0x" + self[field].toString('hex');
+                        });
+                        return obj_1;
         }
         return bytes_1.baToJSON(self.raw);
     };
@@ -44010,16 +44040,16 @@ exports.ripemd160 = function (a, padded) {
                 };
                 return ret;
             };
-/**
- * ECDSA public key recovery from signature.
- * @returns Recovered public key
- */
-exports.ecrecover = function (msgHash, v, r, s, chainId) {
-    var signature = Buffer.concat([bytes_1.setLength(r, 32), bytes_1.setLength(s, 32)], 64);
-    var recovery = calculateSigRecovery(v, chainId);
-    if (!isValidSigRecovery(recovery)) {
-        throw new Error('Invalid signature v value');
-    }
+            /**
+             * ECDSA public key recovery from signature.
+             * @returns Recovered public key
+             */
+            exports.ecrecover = function (msgHash, v, r, s, chainId) {
+                var signature = Buffer.concat([bytes_1.setLength(r, 32), bytes_1.setLength(s, 32)], 64);
+                var recovery = calculateSigRecovery(v, chainId);
+                if (!isValidSigRecovery(recovery)) {
+                    throw new Error('Invalid signature v value');
+                }
     var senderPubKey = secp256k1.recover(msgHash, signature, recovery);
     return secp256k1.publicKeyConvert(senderPubKey, false).slice(1);
 };
@@ -48771,14 +48801,14 @@ function getTypes(coders) {
                 var a = value; // eslint-disable-line
 
                 if (typeof a !== 'string') {
-    throw new Error('[ethjs-util] while padding to even, value must be string, is currently ' + typeof a + ', while padToEven.');
-  }
+                    throw new Error('[ethjs-util] while padding to even, value must be string, is currently ' + typeof a + ', while padToEven.');
+                }
 
-  if (a.length % 2) {
-    a = '0' + a;
-  }
+                if (a.length % 2) {
+                    a = '0' + a;
+                }
 
-  return a;
+                return a;
 }
 
 /**
@@ -48994,13 +49024,13 @@ module.exports = {
         function HashBase(blockSize) {
             Transform.call(this)
 
-  this._block = Buffer.allocUnsafe(blockSize)
-  this._blockSize = blockSize
-  this._blockOffset = 0
-  this._length = [0, 0, 0, 0]
+            this._block = Buffer.allocUnsafe(blockSize)
+            this._blockSize = blockSize
+            this._blockOffset = 0
+            this._length = [0, 0, 0, 0]
 
-  this._finalized = false
-}
+            this._finalized = false
+        }
 
 inherits(HashBase, Transform)
 
@@ -49163,16 +49193,16 @@ HashBase.prototype.digest = function (encoding) {
                 if (root.JS_SHA3_NO_WINDOW) {
                     WINDOW = false;
                 }
-  var WEB_WORKER = !WINDOW && typeof self === 'object';
-  var NODE_JS = !root.JS_SHA3_NO_NODE_JS && typeof process === 'object' && process.versions && process.versions.node;
-  if (NODE_JS) {
-    root = global;
-  } else if (WEB_WORKER) {
-    root = self;
-  }
-  var COMMON_JS = !root.JS_SHA3_NO_COMMON_JS && typeof module === 'object' && module.exports;
-  var AMD = typeof define === 'function' && define.amd;
-  var ARRAY_BUFFER = !root.JS_SHA3_NO_ARRAY_BUFFER && typeof ArrayBuffer !== 'undefined';
+                var WEB_WORKER = !WINDOW && typeof self === 'object';
+                var NODE_JS = !root.JS_SHA3_NO_NODE_JS && typeof process === 'object' && process.versions && process.versions.node;
+                if (NODE_JS) {
+                    root = global;
+                } else if (WEB_WORKER) {
+                    root = self;
+                }
+                var COMMON_JS = !root.JS_SHA3_NO_COMMON_JS && typeof module === 'object' && module.exports;
+                var AMD = typeof define === 'function' && define.amd;
+                var ARRAY_BUFFER = !root.JS_SHA3_NO_ARRAY_BUFFER && typeof ArrayBuffer !== 'undefined';
   var HEX_CHARS = '0123456789abcdef'.split('');
   var SHAKE_PADDING = [31, 7936, 2031616, 520093696];
   var CSHAKE_PADDING = [4, 1024, 262144, 67108864];
@@ -49826,14 +49856,14 @@ HashBase.prototype.digest = function (encoding) {
                 };
             })(opts.cmp);
 
-    var seen = [];
-    return (function stringify (parent, key, node, level) {
-        var indent = space ? ('\n' + new Array(level + 1).join(space)) : '';
-        var colonSeparator = space ? ': ' : ':';
+            var seen = [];
+            return (function stringify(parent, key, node, level) {
+                var indent = space ? ('\n' + new Array(level + 1).join(space)) : '';
+                var colonSeparator = space ? ': ' : ':';
 
-        if (node && node.toJSON && typeof node.toJSON === 'function') {
-            node = node.toJSON();
-        }
+                if (node && node.toJSON && typeof node.toJSON === 'function') {
+                    node = node.toJSON();
+                }
 
         node = replacer.call(parent, key, node);
 
@@ -49920,40 +49950,40 @@ var isArray = Array.isArray || function (x) {
                     name: 'SyntaxError',
                     message: m,
                     at: at,
-            text:    text
-        };
-    },
+                    text: text
+                };
+            },
 
             next = function (c) {
-        // If a c parameter is provided, verify that it matches the current character.
-        if (c && c !== ch) {
-            error("Expected '" + c + "' instead of '" + ch + "'");
-        }
+                // If a c parameter is provided, verify that it matches the current character.
+                if (c && c !== ch) {
+                    error("Expected '" + c + "' instead of '" + ch + "'");
+                }
 
                 // Get the next character. When there are no more characters,
-        // return the empty string.
+                // return the empty string.
 
                 ch = text.charAt(at);
-        at += 1;
-        return ch;
-    },
+                at += 1;
+                return ch;
+            },
 
             number = function () {
-        // Parse a number value.
-        var number,
-            string = '';
+                // Parse a number value.
+                var number,
+                    string = '';
 
                 if (ch === '-') {
-            string = '-';
-            next('-');
-        }
-        while (ch >= '0' && ch <= '9') {
-            string += ch;
-            next();
-        }
-        if (ch === '.') {
-            string += '.';
-            while (next() && ch >= '0' && ch <= '9') {
+                    string = '-';
+                    next('-');
+                }
+                while (ch >= '0' && ch <= '9') {
+                    string += ch;
+                    next();
+                }
+                if (ch === '.') {
+                    string += '.';
+                    while (next() && ch >= '0' && ch <= '9') {
                 string += ch;
             }
         }
@@ -49969,32 +49999,32 @@ var isArray = Array.isArray || function (x) {
                 next();
             }
         }
-        number = +string;
-        if (!isFinite(number)) {
-            error("Bad number");
-        } else {
-            return number;
-        }
-    },
+                number = +string;
+                if (!isFinite(number)) {
+                    error("Bad number");
+                } else {
+                    return number;
+                }
+            },
 
             string = function () {
-        // Parse a string value.
-        var hex,
-            i,
-            string = '',
-            uffff;
+                // Parse a string value.
+                var hex,
+                    i,
+                    string = '',
+                    uffff;
 
                 // When parsing for string values, we must look for " and \ characters.
-        if (ch === '"') {
-            while (next()) {
                 if (ch === '"') {
-                    next();
-                    return string;
-                } else if (ch === '\\') {
-                    next();
-                    if (ch === 'u') {
-                        uffff = 0;
-                        for (i = 0; i < 4; i += 1) {
+                    while (next()) {
+                        if (ch === '"') {
+                            next();
+                            return string;
+                        } else if (ch === '\\') {
+                            next();
+                            if (ch === 'u') {
+                                uffff = 0;
+                                for (i = 0; i < 4; i += 1) {
                             hex = parseInt(next(), 16);
                             if (!isFinite(hex)) {
                                 break;
@@ -50198,12 +50228,12 @@ module.exports = function (source, reviver) {
             // sequences.
 
             escapable.lastIndex = 0;
-    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
-        var c = meta[a];
-        return typeof c === 'string' ? c :
-            '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-    }) + '"' : '"' + string + '"';
-}
+            return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+                var c = meta[a];
+                return typeof c === 'string' ? c :
+                    '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+            }) + '"' : '"' + string + '"';
+        }
 
 function str(key, holder) {
     // Produce a string from holder[key].
@@ -50291,13 +50321,13 @@ function str(key, holder) {
             }
 
             // Join all of the member texts together, separated with commas,
-        // and wrap them in braces.
+            // and wrap them in braces.
 
-        v = partial.length === 0 ? '{}' : gap ?
-            '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' :
-            '{' + partial.join(',') + '}';
-        gap = mind;
-        return v;
+            v = partial.length === 0 ? '{}' : gap ?
+                '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' :
+                '{' + partial.join(',') + '}';
+            gap = mind;
+            return v;
     }
 }
 
@@ -50398,7 +50428,7 @@ module.exports = function (value, replacer, space) {
                 this._state = new KeccakState()
                 this._state.initialize(rate, capacity)
                 this._finalized = false
-  }
+            }
 
   inherits(Keccak, Transform)
 
@@ -50444,14 +50474,14 @@ module.exports = function (value, replacer, space) {
 
     this._resetState()
 
-    return digest
+      return digest
   }
 
-  // remove result from memory
-  Keccak.prototype._resetState = function () {
-    this._state.initialize(this._rate, this._capacity)
-    return this
-  }
+            // remove result from memory
+            Keccak.prototype._resetState = function () {
+                this._state.initialize(this._rate, this._capacity)
+                return this
+            }
 
             // because sometimes we need hash right now and little later
             Keccak.prototype._clone = function () {
@@ -50522,15 +50552,15 @@ module.exports = function (value, replacer, space) {
     }
 
     let data = this._state.squeeze(dataByteLength)
-    if (encoding !== undefined) data = data.toString(encoding)
+      if (encoding !== undefined) data = data.toString(encoding)
 
-    return data
+      return data
   }
 
-  Shake.prototype._resetState = function () {
-    this._state.initialize(this._rate, this._capacity)
-    return this
-  }
+            Shake.prototype._resetState = function () {
+                this._state.initialize(this._rate, this._capacity)
+                return this
+            }
 
             Shake.prototype._clone = function () {
                 const clone = new Shake(this._rate, this._capacity, this._delimitedSuffix, this._options)
@@ -50565,16 +50595,16 @@ module.exports = function (value, replacer, space) {
                 let lo = lo4 ^ (lo1 << 1 | hi1 >>> 31)
                 let hi = hi4 ^ (hi1 << 1 | lo1 >>> 31)
                 const t1slo0 = s[0] ^ lo
-    const t1shi0 = s[1] ^ hi
-    const t1slo5 = s[10] ^ lo
-    const t1shi5 = s[11] ^ hi
-    const t1slo10 = s[20] ^ lo
-    const t1shi10 = s[21] ^ hi
-    const t1slo15 = s[30] ^ lo
-    const t1shi15 = s[31] ^ hi
-    const t1slo20 = s[40] ^ lo
-    const t1shi20 = s[41] ^ hi
-    lo = lo0 ^ (lo2 << 1 | hi2 >>> 31)
+                const t1shi0 = s[1] ^ hi
+                const t1slo5 = s[10] ^ lo
+                const t1shi5 = s[11] ^ hi
+                const t1slo10 = s[20] ^ lo
+                const t1shi10 = s[21] ^ hi
+                const t1slo15 = s[30] ^ lo
+                const t1shi15 = s[31] ^ hi
+                const t1slo20 = s[40] ^ lo
+                const t1shi20 = s[41] ^ hi
+                lo = lo0 ^ (lo2 << 1 | hi2 >>> 31)
     hi = hi0 ^ (hi2 << 1 | lo2 >>> 31)
     const t1slo1 = s[2] ^ lo
     const t1shi1 = s[3] ^ hi
@@ -50703,16 +50733,16 @@ module.exports = function (value, replacer, space) {
     s[24] = t2slo12 ^ (~t2slo13 & t2slo14)
     s[25] = t2shi12 ^ (~t2shi13 & t2shi14)
     s[34] = t2slo17 ^ (~t2slo18 & t2slo19)
-    s[35] = t2shi17 ^ (~t2shi18 & t2shi19)
-    s[44] = t2slo22 ^ (~t2slo23 & t2slo24)
-    s[45] = t2shi22 ^ (~t2shi23 & t2shi24)
-    s[6] = t2slo3 ^ (~t2slo4 & t2slo0)
-    s[7] = t2shi3 ^ (~t2shi4 & t2shi0)
-    s[16] = t2slo8 ^ (~t2slo9 & t2slo5)
-    s[17] = t2shi8 ^ (~t2shi9 & t2shi5)
-    s[26] = t2slo13 ^ (~t2slo14 & t2slo10)
-    s[27] = t2shi13 ^ (~t2shi14 & t2shi10)
-    s[36] = t2slo18 ^ (~t2slo19 & t2slo15)
+                s[35] = t2shi17 ^ (~t2shi18 & t2shi19)
+                s[44] = t2slo22 ^ (~t2slo23 & t2slo24)
+                s[45] = t2shi22 ^ (~t2shi23 & t2shi24)
+                s[6] = t2slo3 ^ (~t2slo4 & t2slo0)
+                s[7] = t2shi3 ^ (~t2shi4 & t2shi0)
+                s[16] = t2slo8 ^ (~t2slo9 & t2slo5)
+                s[17] = t2shi8 ^ (~t2shi9 & t2shi5)
+                s[26] = t2slo13 ^ (~t2slo14 & t2slo10)
+                s[27] = t2shi13 ^ (~t2shi14 & t2shi10)
+                s[36] = t2slo18 ^ (~t2slo19 & t2slo15)
                 s[37] = t2shi18 ^ (~t2shi19 & t2shi15)
                 s[46] = t2slo23 ^ (~t2slo24 & t2slo20)
                 s[47] = t2shi23 ^ (~t2shi24 & t2shi20)
@@ -50841,16 +50871,16 @@ Keccak.prototype.squeeze = function (length) {
             }
 
             var NodeError =
-  /*#__PURE__*/
-  function (_Base) {
-    _inheritsLoose(NodeError, _Base);
+                /*#__PURE__*/
+                function (_Base) {
+                    _inheritsLoose(NodeError, _Base);
 
-    function NodeError(arg1, arg2, arg3) {
-      return _Base.call(this, getMessage(arg1, arg2, arg3)) || this;
-    }
+                    function NodeError(arg1, arg2, arg3) {
+                        return _Base.call(this, getMessage(arg1, arg2, arg3)) || this;
+                    }
 
-    return NodeError;
-  }(Base);
+                    return NodeError;
+                }(Base);
 
   NodeError.prototype.name = Base.name;
   NodeError.prototype.code = code;
@@ -50921,14 +50951,14 @@ createErrorType('ERR_INVALID_ARG_TYPE', function (name, expected, actual) {
   var msg;
 
   if (endsWith(name, ' argument')) {
-    // For cases like 'first argument'
-    msg = "The ".concat(name, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
+      // For cases like 'first argument'
+      msg = "The ".concat(name, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
   } else {
-    var type = includes(name, '.') ? 'property' : 'argument';
-    msg = "The \"".concat(name, "\" ").concat(type, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
+      var type = includes(name, '.') ? 'property' : 'argument';
+      msg = "The \"".concat(name, "\" ").concat(type, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
   }
 
-  msg += ". Received type ".concat(typeof actual);
+    msg += ". Received type ".concat(typeof actual);
     return msg;
 }, TypeError);
         createErrorType('ERR_STREAM_PUSH_AFTER_EOF', 'stream.push() after EOF');
@@ -53162,7 +53192,7 @@ Object.defineProperty(Writable.prototype, 'destroyed', {
     return this._writableState.destroyed;
   },
   set: function set(value) {
-    // we ignore the value if the stream
+      // we ignore the value if the stream
       // has not been initialized yet
       if (!this._writableState) {
           return;
@@ -53216,16 +53246,16 @@ Object.defineProperty(Writable.prototype, 'destroyed', {
             var kLastResolve = Symbol('lastResolve');
             var kLastReject = Symbol('lastReject');
             var kError = Symbol('error');
-var kEnded = Symbol('ended');
-var kLastPromise = Symbol('lastPromise');
-var kHandlePromise = Symbol('handlePromise');
-var kStream = Symbol('stream');
+            var kEnded = Symbol('ended');
+            var kLastPromise = Symbol('lastPromise');
+            var kHandlePromise = Symbol('handlePromise');
+            var kStream = Symbol('stream');
 
-function createIterResult(value, done) {
-  return {
-    value: value,
-    done: done
-  };
+            function createIterResult(value, done) {
+                return {
+                    value: value,
+                    done: done
+                };
 }
 
 function readAndResolve(iter) {
@@ -53388,15 +53418,15 @@ var createReadableStreamAsyncIterator = function createReadableStreamAsyncIterat
       if (reject !== null) {
         iterator[kLastPromise] = null;
         iterator[kLastResolve] = null;
-        iterator[kLastReject] = null;
-        reject(err);
+          iterator[kLastReject] = null;
+          reject(err);
       }
 
-      iterator[kError] = err;
-      return;
+        iterator[kError] = err;
+        return;
     }
 
-    var resolve = iterator[kLastResolve];
+      var resolve = iterator[kLastResolve];
 
       if (resolve !== null) {
           iterator[kLastPromise] = null;
@@ -53693,14 +53723,14 @@ function () {
                         }
                     }
 
-    return this;
-  } // we set destroyed to true before firing error callbacks in order
-  // to make it re-entrance safe in case destroy() is called within callbacks
+                    return this;
+                } // we set destroyed to true before firing error callbacks in order
+                // to make it re-entrance safe in case destroy() is called within callbacks
 
 
-  if (this._readableState) {
-    this._readableState.destroyed = true;
-  } // if this is a duplex stream mark the writable part as destroyed as well
+                if (this._readableState) {
+                    this._readableState.destroyed = true;
+                } // if this is a duplex stream mark the writable part as destroyed as well
 
 
   if (this._writableState) {
@@ -54067,16 +54097,18 @@ function pipeline() {
                     var buf = Buffer.concat(output);
                     return Buffer.concat([encodeLength(buf.length, 192), buf]);
                 } else {
-        var inputBuf = toBuffer(input);
-        return inputBuf.length === 1 && inputBuf[0] < 128
-            ? inputBuf
-            : Buffer.concat([encodeLength(inputBuf.length, 128), inputBuf]);
-    }
-}
-exports.encode = encode;
-/**
- * Parse integers. Check if there is no leading zeros
- * @param v The value to parse
+                    var inputBuf = toBuffer(input);
+                    return inputBuf.length === 1 && inputBuf[0] < 128
+                        ? inputBuf
+                        : Buffer.concat([encodeLength(inputBuf.length, 128), inputBuf]);
+                }
+            }
+
+            exports.encode = encode;
+
+            /**
+             * Parse integers. Check if there is no leading zeros
+             * @param v The value to parse
  * @param base The base to parse the integer into
  */
 function safeParseInt(v, base) {
@@ -54299,16 +54331,16 @@ function toBuffer(v) {
         if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
             module.exports = buffer
         } else {
-  // Copy properties from require('buffer')
-  copyProps(buffer, exports)
-  exports.Buffer = SafeBuffer
-}
+            // Copy properties from require('buffer')
+            copyProps(buffer, exports)
+            exports.Buffer = SafeBuffer
+        }
 
-function SafeBuffer (arg, encodingOrOffset, length) {
-  return Buffer(arg, encodingOrOffset, length)
-}
+        function SafeBuffer(arg, encodingOrOffset, length) {
+            return Buffer(arg, encodingOrOffset, length)
+        }
 
-SafeBuffer.prototype = Object.create(Buffer.prototype)
+        SafeBuffer.prototype = Object.create(Buffer.prototype)
 
 // Copy static methods from Buffer
 copyProps(Buffer, SafeBuffer)
@@ -54373,16 +54405,16 @@ SafeBuffer.allocUnsafe = function (size) {
              *            // (alternatively, you can specify logN)
              *    r:      // block size
              *    p:      // parallelization parameter
- *    dkLen:  // length of derived key, default = 32
- *    encoding: // optional encoding:
- *                    "base64" - standard Base64 encoding
- *                    "hex" — hex encoding,
- *                    "binary" — Uint8Array,
- *                    undefined/null - Array of bytes
- *    interruptStep: // optional, steps to split calculations (default is 0)
- * }
- *
- * Derives a key from password and salt and calls callback
+             *    dkLen:  // length of derived key, default = 32
+             *    encoding: // optional encoding:
+             *                    "base64" - standard Base64 encoding
+             *                    "hex" — hex encoding,
+             *                    "binary" — Uint8Array,
+             *                    undefined/null - Array of bytes
+             *    interruptStep: // optional, steps to split calculations (default is 0)
+             * }
+             *
+             * Derives a key from password and salt and calls callback
  * with derived key as the only argument.
  *
  * Calculations are interrupted with setImmediate (or zero setTimeout) at the
@@ -54867,12 +54899,14 @@ function scrypt(password, salt, logN, r, dkLen, interruptStep, callback, encodin
       smixStart(i*128*r);
       interruptedFor(0, N, interruptStep*2, smixStep1, function() {
         interruptedFor(0, N, interruptStep*2, smixStep2, function () {
-          smixFinish(i*128*r);
-          if (i + 1 < p) {
-            nextTick(function() { calculateAsync(i + 1); });
-          } else {
-            callback(getResult(encoding));
-          }
+            smixFinish(i * 128 * r);
+            if (i + 1 < p) {
+                nextTick(function () {
+                    calculateAsync(i + 1);
+                });
+            } else {
+                callback(getResult(encoding));
+            }
         });
       });
   }
@@ -54971,11 +55005,11 @@ exports.isBufferLength2 = function (buffer, length1, length2, message) {
             0x17, 0x98, 0x02, 0x21, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff, 0xfE, 0xba, 0xaE, 0xdc, 0xE6, 0xaf, 0x48, 0xa0, 0x3b, 0xbf, 0xd2, 0x5E,
             0x8c, 0xd0, 0x36, 0x41, 0x41, 0x02, 0x01, 0x01, 0xa1, 0x24, 0x03, 0x22, 0x00,
-  // public key
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00
-])
+            // public key
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00
+        ])
 
 var EC_PRIVKEY_EXPORT_DER_UNCOMPRESSED = Buffer.from([
   // begin
@@ -55116,15 +55150,15 @@ exports.signatureImportLax = function (sig) {
   // sequence tag byte for s
   if (sig[index++] !== 0x02) return
 
-  // length for s
-  var slen = sig[index++]
-  if (slen & 0x80) {
-    lenbyte = slen - 0x80
-    if (index + lenbyte > length) return
-    for (; lenbyte > 0 && sig[index] === 0x00; index += 1, lenbyte -= 1);
-    for (slen = 0; lenbyte > 0; index += 1, lenbyte -= 1) slen = (slen << 8) + sig[index]
-  }
-  if (slen > length - index) return
+    // length for s
+    var slen = sig[index++]
+    if (slen & 0x80) {
+        lenbyte = slen - 0x80
+        if (index + lenbyte > length) return
+        for (; lenbyte > 0 && sig[index] === 0x00; index += 1, lenbyte -= 1) ;
+        for (slen = 0; lenbyte > 0; index += 1, lenbyte -= 1) slen = (slen << 8) + sig[index]
+    }
+    if (slen > length - index) return
     var sindex = index
     index += slen
 
@@ -55167,10 +55201,10 @@ exports.signatureImportLax = function (sig) {
 
             // compute corresponding Y
             var y = x.redSqr().redIMul(x).redIAdd(ecparams.b).redSqrt()
-  if ((first === 0x03) !== y.isOdd()) y = y.redNeg()
+            if ((first === 0x03) !== y.isOdd()) y = y.redNeg()
 
-  return ec.keyPair({ pub: { x: x, y: y } })
-}
+            return ec.keyPair({pub: {x: x, y: y}})
+        }
 
 function loadUncompressedPublicKey (first, xBuffer, yBuffer) {
   var x = new BN(xBuffer)
@@ -55427,16 +55461,16 @@ exports.ecdh = function (publicKey, privateKey) {
 
         module.exports = function (secp256k1) {
             return {
-    privateKeyVerify: function (privateKey) {
-      assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
-      return privateKey.length === 32 && secp256k1.privateKeyVerify(privateKey)
-    },
+                privateKeyVerify: function (privateKey) {
+                    assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
+                    return privateKey.length === 32 && secp256k1.privateKeyVerify(privateKey)
+                },
 
-    privateKeyExport: function (privateKey, compressed) {
-      assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
-      assert.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID)
+                privateKeyExport: function (privateKey, compressed) {
+                    assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
+                    assert.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID)
 
-      compressed = initCompressedValue(compressed, true)
+                    compressed = initCompressedValue(compressed, true)
       var publicKey = secp256k1.privateKeyExport(privateKey, compressed)
 
       return der.privateKeyExport(privateKey, publicKey, compressed)
@@ -55867,7 +55901,7 @@ exports.ecdh = function (publicKey, privateKey) {
             var i, d = unescape(encodeURIComponent(s)), b = new Uint8Array(d.length)
             for (i = 0; i < d.length; i++) b[i] = d.charCodeAt(i)
             return b
-}
+        }
 
 // Input:
 //   key                      // User key hash (Uint8Array)
@@ -55908,14 +55942,14 @@ module.exports = function session (email, password, callback) {
 
   getScryptKey(scryptKey, email, 17, 8, 64, 1000, function (scryptByteArray) {
     try {
-      var keys, seedBytesUint8Array, boxKeyPairSeed,
-        signKeyPairSeed, signKeyPair
+        var keys, seedBytesUint8Array, boxKeyPairSeed,
+            signKeyPairSeed, signKeyPair
 
-      // Convert scrypt Array of Bytes to Uint8Array
-      seedBytesUint8Array = new Uint8Array(scryptByteArray)
+        // Convert scrypt Array of Bytes to Uint8Array
+        seedBytesUint8Array = new Uint8Array(scryptByteArray)
 
-      // First 32 Bytes of scrypt seed for encryption keys
-      // Note : first 32 Bytes are the same for dkLen 32 (old way) and 64!
+        // First 32 Bytes of scrypt seed for encryption keys
+        // Note : first 32 Bytes are the same for dkLen 32 (old way) and 64!
         boxKeyPairSeed = seedBytesUint8Array.subarray(0, 32)
         keys = nacl.box.keyPair.fromSecretKey(boxKeyPairSeed)
         keys.publicKeyBase64 = base64.fromByteArray(keys.publicKey)
@@ -58313,8 +58347,8 @@ nacl.setPRNG = function(fn) {
       cleanup(v);
     });
   } else if (typeof require !== 'undefined') {
-    // Node.js.
-    crypto = require('crypto');
+      // Node.js.
+      crypto = require('crypto');
       if (crypto && crypto.randomBytes) {
           nacl.setPRNG(function (x, n) {
               var i, v = crypto.randomBytes(n);
@@ -58393,16 +58427,16 @@ nacl.setPRNG = function(fn) {
                     if (!(/^(?:[A-Za-z0-9+\/]{2}[A-Za-z0-9+\/]{2})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/.test(s))) {
                         throw new TypeError('invalid encoding');
                     }
-  }
+                }
 
-  util.decodeUTF8 = function(s) {
-    if (typeof s !== 'string') throw new TypeError('expected string');
-    var i, d = unescape(encodeURIComponent(s)), b = new Uint8Array(d.length);
-    for (i = 0; i < d.length; i++) b[i] = d.charCodeAt(i);
-    return b;
-  };
+                util.decodeUTF8 = function (s) {
+                    if (typeof s !== 'string') throw new TypeError('expected string');
+                    var i, d = unescape(encodeURIComponent(s)), b = new Uint8Array(d.length);
+                    for (i = 0; i < d.length; i++) b[i] = d.charCodeAt(i);
+                    return b;
+                };
 
-  util.encodeUTF8 = function(arr) {
+                util.encodeUTF8 = function (arr) {
     var i, s = [];
     for (i = 0; i < arr.length; i++) s.push(String.fromCharCode(arr[i]));
     return decodeURIComponent(escape(s.join('')));
@@ -60837,8 +60871,8 @@ nacl.setPRNG = function(fn) {
       cleanup(v);
     });
   } else if (typeof require !== 'undefined') {
-    // Node.js.
-    crypto = require('crypto');
+      // Node.js.
+      crypto = require('crypto');
       if (crypto && crypto.randomBytes) {
           nacl.setPRNG(function (x, n) {
               var i, v = crypto.randomBytes(n);
@@ -60876,16 +60910,16 @@ nacl.setPRNG = function(fn) {
             "abbas",
             "abbe",
             "abbey",
-	"abbot",
-	"abbott",
-	"abc",
-	"abe",
-	"abed",
-	"abel",
-	"abet",
-	"abide",
-	"abject",
-	"ablaze",
+            "abbot",
+            "abbott",
+            "abc",
+            "abe",
+            "abed",
+            "abel",
+            "abet",
+            "abide",
+            "abject",
+            "ablaze",
 	"able",
 	"abner",
 	"abo",
@@ -68607,16 +68641,16 @@ nacl.setPRNG = function(fn) {
 	"93rd",
 	"94th",
 	"95th",
-	"96th",
-	"97th",
-	"98th",
-	"99th",
-	"9th",
-	"!",
-	"!!",
-	"\"",
-	"#",
-	"##",
+            "96th",
+            "97th",
+            "98th",
+            "99th",
+            "9th",
+            "!",
+            "!!",
+            "\"",
+            "#",
+            "##",
             "$",
             "$$",
             "%",

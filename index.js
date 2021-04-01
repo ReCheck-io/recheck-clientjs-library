@@ -235,7 +235,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
     let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
     log('Browser decrypts sym password', decryptedSymPassword);
 
-    let fullPassword = encodeBase64(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt));
+    let fullPassword = encodeBase64(hexStringToByte(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt)));
     log('Browser composes full password', fullPassword);
 
     let decryptedFile = decryptDataWithSymmetricKey(encryptedFileInfo.payload, fullPassword);
@@ -271,7 +271,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
 }
 
 function getHash(string) {
-    return `0x${keccak256(string).toString('hex')}`;
+    return `0x${keccak256(string)}`;
 }
 
 function getHashFromHashObject(hashObj) {
@@ -622,7 +622,7 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
             log('fileKey', fileKey);
             log('saltKey', saltKey);
 
-            let symKey = encodeBase64(keccak256(fileKey + saltKey));
+            let symKey = encodeBase64(hexStringToByte(keccak256(fileKey + saltKey)));
             log('symKey', symKey);
             log('fileData', fileData);
 
