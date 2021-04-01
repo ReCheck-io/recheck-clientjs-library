@@ -24335,6 +24335,7 @@ object-assign
             const stringify = require('json-stable-stringify');
             const wordList = require('./wordlist');
 
+
             let debug = false;
 
             let baseUrl = 'http://localhost:4000';
@@ -24350,14 +24351,15 @@ object-assign
             let recipientsEmailLinkKeyPair = null;
             let notificationObject = null;
 
-const newNonce = () => randomBytes(box.nonceLength);
 
-const generateKey = () => encodeBase64(randomBytes(secretbox.keyLength));
+            const newNonce = () => randomBytes(box.nonceLength);
 
-const log = (message, params) => {
-    if (debug) {
-        console.log(`[${message}]`, params ? params : '');
-    }
+            const generateKey = () => encodeBase64(randomBytes(secretbox.keyLength));
+
+            const log = (message, params) => {
+                if (debug) {
+                    console.log(`[${message}]`, params ? params : '');
+                }
 };
 
 function encodeBase58Check(input) {
@@ -24657,7 +24659,7 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
         let current = args[i];
-        if (current && current.constructor === Object) {
+        if ((current && (current.constructor === Object || current.constructor === keccak_256.create().constructor))) {
             try {
                 current = JSON.parse(JSON.stringify(args[i]));
             } catch (ignored) {
@@ -26165,15 +26167,15 @@ module.exports = {
                     requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
                 }
 
-    var fullPath = buildFullPath(config.baseURL, config.url);
-    request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
+                var fullPath = buildFullPath(config.baseURL, config.url);
+                request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
 
-    // Set the request timeout in MS
-    request.timeout = config.timeout;
+                // Set the request timeout in MS
+                request.timeout = config.timeout;
 
-    // Listen for ready state
-    request.onreadystatechange = function handleLoad() {
-      if (!request || request.readyState !== 4) {
+                // Listen for ready state
+                request.onreadystatechange = function handleLoad() {
+                    if (!request || request.readyState !== 4) {
         return;
       }
 
@@ -26438,14 +26440,14 @@ var axios = createInstance(defaults);
             });
 
             var token = this;
-  executor(function cancel(message) {
-    if (token.reason) {
-      // Cancellation has already been requested
-      return;
-    }
+            executor(function cancel(message) {
+                if (token.reason) {
+                    // Cancellation has already been requested
+                    return;
+                }
 
-    token.reason = new Cancel(message);
-    resolvePromise(token.reason);
+                token.reason = new Cancel(message);
+                resolvePromise(token.reason);
   });
 }
 
@@ -27255,19 +27257,19 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 
                         urlParsingNode.setAttribute('href', href);
 
-        // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
-        return {
-          href: urlParsingNode.href,
-          protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
-          host: urlParsingNode.host,
-          search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
-          hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
-          hostname: urlParsingNode.hostname,
-            port: urlParsingNode.port,
-            pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
-                urlParsingNode.pathname :
-                '/' + urlParsingNode.pathname
-        };
+                        // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
+                        return {
+                            href: urlParsingNode.href,
+                            protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
+                            host: urlParsingNode.host,
+                            search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
+                            hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
+                            hostname: urlParsingNode.hostname,
+                            port: urlParsingNode.port,
+                            pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
+                                urlParsingNode.pathname :
+                                '/' + urlParsingNode.pathname
+                        };
                     }
 
                     originURL = resolveURL(window.location.href);
@@ -27812,16 +27814,16 @@ module.exports = {
                 }
                 // Skip & count leading zeroes.
                 var zeroes = 0
-    var length = 0
-    var pbegin = 0
-    var pend = source.length
-    while (pbegin !== pend && source[pbegin] === 0) {
-      pbegin++
-      zeroes++
-    }
-        // Allocate enough space in big-endian base58 representation.
-    var size = ((pend - pbegin) * iFACTOR + 1) >>> 0
-    var b58 = new Uint8Array(size)
+                var length = 0
+                var pbegin = 0
+                var pend = source.length
+                while (pbegin !== pend && source[pbegin] === 0) {
+                    pbegin++
+                    zeroes++
+                }
+                // Allocate enough space in big-endian base58 representation.
+                var size = ((pend - pbegin) * iFACTOR + 1) >>> 0
+                var b58 = new Uint8Array(size)
         // Process the bytes.
     while (pbegin !== pend) {
       var carry = source[pbegin]
@@ -27868,15 +27870,17 @@ module.exports = {
       var carry = BASE_MAP[source.charCodeAt(psz)]
             // Invalid character
       if (carry === 255) { return }
-      var i = 0
-      for (var it3 = size - 1; (carry !== 0 || i < length) && (it3 !== -1); it3--, i++) {
-        carry += (BASE * b256[it3]) >>> 0
-        b256[it3] = (carry % 256) >>> 0
-        carry = (carry / 256) >>> 0
-      }
-      if (carry !== 0) { throw new Error('Non-zero carry') }
-      length = i
-      psz++
+        var i = 0
+        for (var it3 = size - 1; (carry !== 0 || i < length) && (it3 !== -1); it3--, i++) {
+            carry += (BASE * b256[it3]) >>> 0
+            b256[it3] = (carry % 256) >>> 0
+            carry = (carry / 256) >>> 0
+        }
+        if (carry !== 0) {
+            throw new Error('Non-zero carry')
+        }
+        length = i
+        psz++
     }
       // Skip trailing spaces.
       if (source[psz] === ' ') {
@@ -28062,16 +28066,16 @@ function encode (r, s) {
                             if (!isByteArray(config[key])) {
                                 throw new TypeError(key + ' must be a Uint8Array or an Array of bytes');
                             }
-        break;
-      default:
-        throw new Error('unexpected key in config: ' + key)
-      }
-    }
-  }
+                            break;
+                        default:
+                            throw new Error('unexpected key in config: ' + key)
+                    }
+                }
+            }
 
-  function load32(a, i) {
-    return (a[i + 0] & 0xff) | ((a[i + 1] & 0xff) << 8) |
-           ((a[i + 2] & 0xff) << 16) | ((a[i + 3] & 0xff) << 24);
+            function load32(a, i) {
+                return (a[i + 0] & 0xff) | ((a[i + 1] & 0xff) << 8) |
+                    ((a[i + 2] & 0xff) << 16) | ((a[i + 3] & 0xff) << 24);
   }
 
   function BLAKE2s(digestLength, keyOrConfig) {
@@ -29712,21 +29716,21 @@ module.exports = function (it) {
                     // bind timers to global for call from export context
                     : IS_BIND && own ? ctx(out, global)
                         // wrap global constructors for prevent change them in library
-    : IS_WRAP && target[key] == out ? (function (C) {
-      var F = function (a, b, c) {
-        if (this instanceof C) {
-            switch (arguments.length) {
-                case 0:
-                    return new C();
-                case 1:
-                    return new C(a);
-                case 2:
-                    return new C(a, b);
-            }
-            return new C(a, b, c);
-        }
-          return C.apply(this, arguments);
-      };
+                        : IS_WRAP && target[key] == out ? (function (C) {
+                            var F = function (a, b, c) {
+                                if (this instanceof C) {
+                                    switch (arguments.length) {
+                                        case 0:
+                                            return new C();
+                                        case 1:
+                                            return new C(a);
+                                        case 2:
+                                            return new C(a, b);
+                                    }
+                                    return new C(a, b, c);
+                                }
+                                return C.apply(this, arguments);
+                            };
                             F[PROTOTYPE] = C[PROTOTYPE];
                             return F;
                             // make static versions for prototype methods
@@ -29904,16 +29908,16 @@ module.exports = function (it) {
             var DEF_VALUES = DEFAULT == VALUES;
             var VALUES_BUG = false;
             var proto = Base.prototype;
-  var $native = proto[ITERATOR] || proto[FF_ITERATOR] || DEFAULT && proto[DEFAULT];
-  var $default = $native || getMethod(DEFAULT);
-  var $entries = DEFAULT ? !DEF_VALUES ? $default : getMethod('entries') : undefined;
-  var $anyNative = NAME == 'Array' ? proto.entries || $native : $native;
-  var methods, key, IteratorPrototype;
-  // Fix native
-  if ($anyNative) {
-    IteratorPrototype = getPrototypeOf($anyNative.call(new Base()));
-    if (IteratorPrototype !== Object.prototype && IteratorPrototype.next) {
-      // Set @@toStringTag to native iterators
+            var $native = proto[ITERATOR] || proto[FF_ITERATOR] || DEFAULT && proto[DEFAULT];
+            var $default = $native || getMethod(DEFAULT);
+            var $entries = DEFAULT ? !DEF_VALUES ? $default : getMethod('entries') : undefined;
+            var $anyNative = NAME == 'Array' ? proto.entries || $native : $native;
+            var methods, key, IteratorPrototype;
+            // Fix native
+            if ($anyNative) {
+                IteratorPrototype = getPrototypeOf($anyNative.call(new Base()));
+                if (IteratorPrototype !== Object.prototype && IteratorPrototype.next) {
+                    // Set @@toStringTag to native iterators
       setToStringTag(IteratorPrototype, TAG, true);
       // fix for some old engines
       if (!LIBRARY && typeof IteratorPrototype[ITERATOR] != 'function') hide(IteratorPrototype, ITERATOR, returnThis);
@@ -29921,16 +29925,18 @@ module.exports = function (it) {
   }
   // fix Array#{values, @@iterator}.name in V8 / FF
   if (DEF_VALUES && $native && $native.name !== VALUES) {
-    VALUES_BUG = true;
-    $default = function values() { return $native.call(this); };
+      VALUES_BUG = true;
+      $default = function values() {
+          return $native.call(this);
+      };
   }
-  // Define iterator
-  if ((!LIBRARY || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
-    hide(proto, ITERATOR, $default);
-  }
-  // Plug for library
-  Iterators[NAME] = $default;
-  Iterators[TAG] = returnThis;
+            // Define iterator
+            if ((!LIBRARY || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
+                hide(proto, ITERATOR, $default);
+            }
+            // Plug for library
+            Iterators[NAME] = $default;
+            Iterators[TAG] = returnThis;
             if (DEFAULT) {
                 methods = {
                     values: DEF_VALUES ? $default : getMethod(VALUES),
@@ -30421,16 +30427,16 @@ module.exports = Object.create || function create(O, Properties) {
             "ablaze",
             "able",
             "abner",
-	"abo",
-	"abode",
-	"abort",
-	"about",
-	"above",
-	"abrade",
-	"abram",
-	"absorb",
-	"abuse",
-	"abut",
+            "abo",
+            "abode",
+            "abort",
+            "about",
+            "above",
+            "abrade",
+            "abram",
+            "absorb",
+            "abuse",
+            "abut",
 	"abyss",
 	"ac",
 	"acadia",
@@ -38129,16 +38135,16 @@ module.exports = Object.create || function create(O, Properties) {
 	"83rd",
 	"84th",
 	"85th",
-	"86th",
-	"87th",
-	"88th",
-	"89th",
-	"8th",
-	"90th",
-	"91st",
-	"92nd",
-	"93rd",
-	"94th",
+            "86th",
+            "87th",
+            "88th",
+            "89th",
+            "8th",
+            "90th",
+            "91st",
+            "92nd",
+            "93rd",
+            "94th",
             "95th",
             "96th",
             "97th",
@@ -38413,25 +38419,25 @@ exports.encrypt = function(publicKeyTo, msg, opts) {
 };
 
 exports.decrypt = function(privateKey, opts) {
-  // Tmp variable to save context from flat promises;
-  var encryptionKey;
-  return derive(privateKey, opts.ephemPublicKey).then(function (Px) {
-      return sha512(Px);
-  }).then(function (hash) {
-      encryptionKey = hash.slice(0, 32);
-      var macKey = hash.slice(32);
-      var dataToMac = Buffer.concat([
-          opts.iv,
-          opts.ephemPublicKey,
-          opts.ciphertext
-      ]);
-      return hmacSha256Verify(macKey, dataToMac, opts.mac);
-  }).then(function (macGood) {
-      assert(macGood, "Bad MAC");
-      return aesCbcDecrypt(opts.iv, encryptionKey, opts.ciphertext);
-  }).then(function (msg) {
-      return Buffer.from(new Uint8Array(msg));
-  });
+    // Tmp variable to save context from flat promises;
+    var encryptionKey;
+    return derive(privateKey, opts.ephemPublicKey).then(function (Px) {
+        return sha512(Px);
+    }).then(function (hash) {
+        encryptionKey = hash.slice(0, 32);
+        var macKey = hash.slice(32);
+        var dataToMac = Buffer.concat([
+            opts.iv,
+            opts.ephemPublicKey,
+            opts.ciphertext
+        ]);
+        return hmacSha256Verify(macKey, dataToMac, opts.mac);
+    }).then(function (macGood) {
+        assert(macGood, "Bad MAC");
+        return aesCbcDecrypt(opts.iv, encryptionKey, opts.ciphertext);
+    }).then(function (msg) {
+        return Buffer.from(new Uint8Array(msg));
+    });
 };
 
 
@@ -40397,15 +40403,15 @@ module.exports = {
 
             if (length !== undefined) {
                 if (Array.isArray(length)) {
-      const numbers = length.join(', ')
-      const msg = `Expected ${name} to be an Uint8Array with length [${numbers}]`
-      assert(length.includes(value.length), msg)
-    } else {
-      const msg = `Expected ${name} to be an Uint8Array with length ${length}`
-      assert(value.length === length, msg)
-    }
-  }
-}
+                    const numbers = length.join(', ')
+                    const msg = `Expected ${name} to be an Uint8Array with length [${numbers}]`
+                    assert(length.includes(value.length), msg)
+                } else {
+                    const msg = `Expected ${name} to be an Uint8Array with length ${length}`
+                    assert(value.length === length, msg)
+                }
+            }
+        }
 
 function isCompressed (value) {
   assert(toTypeString(value) === 'Boolean', 'Expected compressed to be a Boolean')
@@ -40684,9 +40690,9 @@ module.exports = (secp256k1) => {
     },
 
     ecdh (pubkey, seckey, options = {}, output) {
-      isUint8Array('public key', pubkey, [33, 65])
-      isUint8Array('private key', seckey, 32)
-      assert(toTypeString(options) === 'Object', 'Expected options to be an Object')
+        isUint8Array('public key', pubkey, [33, 65])
+        isUint8Array('private key', seckey, 32)
+        assert(toTypeString(options) === 'Object', 'Expected options to be an Object')
         if (options.data !== undefined) isUint8Array('options.data', options.data)
         if (options.hashfn !== undefined) {
             assert(toTypeString(options.hashfn) === 'Function', 'Expected options.hashfn to be a Function')
@@ -41382,13 +41388,13 @@ const encode = tree => {
 };
 
 const decode = hex => {
-  let i = 2;
+    let i = 2;
 
-  const parseTree = () => {
-    if (i >= hex.length) throw "";
-    const head = hex.slice(i, i + 2);
-    return head < "80" ? (i += 2, "0x" + head) : head < "c0" ? parseHex() : parseList();
-  };
+    const parseTree = () => {
+        if (i >= hex.length) throw "";
+        const head = hex.slice(i, i + 2);
+        return head < "80" ? (i += 2, "0x" + head) : head < "c0" ? parseHex() : parseList();
+    };
 
     const parseLength = () => {
         const len = parseInt(hex.slice(i, i += 2), 16) % 64;
@@ -41447,16 +41453,16 @@ const decode = hex => {
                 },
                 {
                     "name": "dao",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "tangerineWhistle",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "tangerineWhistle",
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
         {
             "name": "spuriousDragon",
             "block": 0,
@@ -41591,16 +41597,16 @@ const decode = hex => {
                 },
                 {
                     "name": "dao",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "tangerineWhistle",
-            "block": 0,
-            "consensus": "poa",
-            "finality": null
-        },
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "tangerineWhistle",
+                    "block": 0,
+                    "consensus": "poa",
+                    "finality": null
+                },
         {
             "name": "spuriousDragon",
             "block": 0,
@@ -41696,16 +41702,16 @@ const decode = hex => {
                 },
                 {
                     "name": "dao",
-            "block": 1920000,
-            "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "tangerineWhistle",
-            "block": 2463000,
-            "consensus": "pow",
-            "finality": null
-        },
+                    "block": 1920000,
+                    "consensus": "pow",
+                    "finality": null
+                },
+                {
+                    "name": "tangerineWhistle",
+                    "block": 2463000,
+                    "consensus": "pow",
+                    "finality": null
+                },
         {
             "name": "spuriousDragon",
             "block": 2675000,
@@ -41835,16 +41841,16 @@ const decode = hex => {
                 },
                 {
                     "name": "dao",
-            "block": null,
-            "consensus": "poa",
-            "finality": null
-        },
-        {
-            "name": "tangerineWhistle",
-            "block": 2,
-            "consensus": "poa",
-            "finality": null
-        },
+                    "block": null,
+                    "consensus": "poa",
+                    "finality": null
+                },
+                {
+                    "name": "tangerineWhistle",
+                    "block": 2,
+                    "consensus": "poa",
+                    "finality": null
+                },
         {
             "name": "spuriousDragon",
             "block": 3,
@@ -41933,16 +41939,16 @@ const decode = hex => {
                 },
                 {
                     "name": "dao",
-            "block": null,
-            "consensus": "pow",
-            "finality": null
-        },
-        {
-            "name": "tangerineWhistle",
-            "block": 0,
-            "consensus": "pow",
-            "finality": null
-        },
+                    "block": null,
+                    "consensus": "pow",
+                    "finality": null
+                },
+                {
+                    "name": "tangerineWhistle",
+                    "block": 0,
+                    "consensus": "pow",
+                    "finality": null
+                },
         {
             "name": "spuriousDragon",
             "block": 10,
@@ -42087,16 +42093,16 @@ const decode = hex => {
                 "exp": {
                     "v": 10,
                     "d": "Once per EXP instuction"
-        },
-        "expByte": {
-            "v": 10,
-            "d": "Times ceil(log256(exponent)) for the EXP instruction"
-        },
-        "sha3": {
-            "v": 30,
-            "d": "Once per SHA3 operation"
-        },
-        "sha3Word": {
+                },
+                "expByte": {
+                    "v": 10,
+                    "d": "Times ceil(log256(exponent)) for the EXP instruction"
+                },
+                "sha3": {
+                    "v": 30,
+                    "d": "Once per SHA3 operation"
+                },
+                "sha3Word": {
             "v": 6,
             "d": "Once per word of the SHA3 operation's data"
         },
@@ -42406,25 +42412,25 @@ const decode = hex => {
                     "d": "Gas costs regarding curve pairing precompile input length"
                 },
                 "txDataNonZero": {
-            "v": 16,
-            "d": "Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions"
-        },
-        "sstoreSentryGasEIP2200": {
-            "v": 2300,
-            "d": "Minimum gas required to be present for an SSTORE call, not consumed"
-        },
-        "sstoreNoopGasEIP2200": {
-            "v": 800,
-            "d": "Once per SSTORE operation if the value doesn't change"
-        },
-        "sstoreDirtyGasEIP2200": {
-            "v": 800,
-            "d": "Once per SSTORE operation if a dirty value is changed"
-        },
-        "sstoreInitGasEIP2200": {
-            "v": 20000,
-            "d": "Once per SSTORE operation from clean zero to non-zero"
-        },
+                    "v": 16,
+                    "d": "Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions"
+                },
+                "sstoreSentryGasEIP2200": {
+                    "v": 2300,
+                    "d": "Minimum gas required to be present for an SSTORE call, not consumed"
+                },
+                "sstoreNoopGasEIP2200": {
+                    "v": 800,
+                    "d": "Once per SSTORE operation if the value doesn't change"
+                },
+                "sstoreDirtyGasEIP2200": {
+                    "v": 800,
+                    "d": "Once per SSTORE operation if a dirty value is changed"
+                },
+                "sstoreInitGasEIP2200": {
+                    "v": 20000,
+                    "d": "Once per SSTORE operation from clean zero to non-zero"
+                },
                 "sstoreInitRefundEIP2200": {
                     "v": 19200,
                     "d": "Once per SSTORE operation for resetting to the original zero value"
@@ -42596,16 +42602,17 @@ const decode = hex => {
                 this._hardfork = null;
                 this._supportedHardforks = supportedHardforks === undefined ? [] : supportedHardforks;
                 if (hardfork) {
-            this.setHardfork(hardfork);
-        }
-    }
-    /**
-     * Creates a Common object for a custom chain, based on a standard one. It uses all the [[Chain]]
-     * params from [[baseChain]] except the ones overridden in [[customChainParams]].
-     *
-     * @param baseChain The name (`mainnet`) or id (`1`) of a standard chain used to base the custom
-     * chain params on.
-     * @param customChainParams The custom parameters of the chain.
+                    this.setHardfork(hardfork);
+                }
+            }
+
+            /**
+             * Creates a Common object for a custom chain, based on a standard one. It uses all the [[Chain]]
+             * params from [[baseChain]] except the ones overridden in [[customChainParams]].
+             *
+             * @param baseChain The name (`mainnet`) or id (`1`) of a standard chain used to base the custom
+             * chain params on.
+             * @param customChainParams The custom parameters of the chain.
      * @param hardfork String identifier ('byzantium') for hardfork (optional)
      * @param supportedHardforks Limit parameter returns to the given hardforks (optional)
      */
@@ -42954,13 +42961,13 @@ const decode = hex => {
     Common.prototype.chainId = function () {
         return this._chainParams['chainId'];
     };
-    /**
-     * Returns the name of current chain
-     * @returns chain name (lower case)
-     */
-    Common.prototype.chainName = function () {
-        return chains_1.chains['names'][this.chainId()] || this._chainParams['name'];
-    };
+            /**
+             * Returns the name of current chain
+             * @returns chain name (lower case)
+             */
+            Common.prototype.chainName = function () {
+                return chains_1.chains['names'][this.chainId()] || this._chainParams['name'];
+            };
             /**
              * Returns the Id of current network
              * @returns network Id
@@ -43012,16 +43019,23 @@ const decode = hex => {
          * @see Transaction
          */
         var FakeTransaction = /** @class */ (function (_super) {
-    __extends(FakeTransaction, _super);
-    function FakeTransaction(data, opts) {
-        if (data === void 0) { data = {}; }
-        if (opts === void 0) { opts = {}; }
-        var _this = _super.call(this, data, opts) || this;
-        Object.defineProperty(_this, 'from', {
-            enumerable: true,
-            configurable: true,
-            get: function () { return _this.getSenderAddress(); },
-            set: function (val) {
+            __extends(FakeTransaction, _super);
+
+            function FakeTransaction(data, opts) {
+                if (data === void 0) {
+                    data = {};
+                }
+                if (opts === void 0) {
+                    opts = {};
+                }
+                var _this = _super.call(this, data, opts) || this;
+                Object.defineProperty(_this, 'from', {
+                    enumerable: true,
+                    configurable: true,
+                    get: function () {
+                        return _this.getSenderAddress();
+                    },
+                    set: function (val) {
                 if (val) {
                     _this._from = ethereumjs_util_1.toBuffer(val);
                 }
@@ -43095,16 +43109,16 @@ const decode = hex => {
              *
              * @param opts - The transaction's options, used to indicate the chain and hardfork the
              * transactions belongs to.
-     *
-     * @note Transaction objects implement EIP155 by default. To disable it, use the constructor's
-     * second parameter to set a chain and hardfork before EIP155 activation (i.e. before Spurious
-     * Dragon.)
-     *
-     * @example
-     * ```js
-     * const txData = {
-     *   nonce: '0x00',
-     *   gasPrice: '0x09184e72a000',
+             *
+             * @note Transaction objects implement EIP155 by default. To disable it, use the constructor's
+             * second parameter to set a chain and hardfork before EIP155 activation (i.e. before Spurious
+             * Dragon.)
+             *
+             * @example
+             * ```js
+             * const txData = {
+             *   nonce: '0x00',
+             *   gasPrice: '0x09184e72a000',
      *   gasLimit: '0x2710',
      *   to: '0x0000000000000000000000000000000000000000',
      *   value: '0x00',
@@ -43441,16 +43455,16 @@ const decode = hex => {
                 var zeroAddr = exports.zeroAddress();
                 return zeroAddr === bytes_1.addHexPrefix(address);
             };
-/**
- * Returns a checksummed address.
- *
- * If a eip1191ChainId is provided, the chainId will be included in the checksum calculation. This
- * has the effect of checksummed addresses for one chain having invalid checksums for others.
- * For more details, consult EIP-1191.
- *
- * WARNING: Checksums with and without the chainId will differ. As of 2019-06-26, the most commonly
- * used variation in Ethereum was without the chainId. This may change in the future.
- */
+            /**
+             * Returns a checksummed address.
+             *
+             * If a eip1191ChainId is provided, the chainId will be included in the checksum calculation. This
+             * has the effect of checksummed addresses for one chain having invalid checksums for others.
+             * For more details, consult EIP-1191.
+             *
+             * WARNING: Checksums with and without the chainId will differ. As of 2019-06-26, the most commonly
+             * used variation in Ethereum was without the chainId. This may change in the future.
+             */
 exports.toChecksumAddress = function (address, eip1191ChainId) {
     address = ethjsUtil.stripHexPrefix(address).toLowerCase();
     var prefix = eip1191ChainId !== undefined ? eip1191ChainId.toString() + '0x' : '';
@@ -43614,16 +43628,15 @@ exports.importPublic = function (publicKey) {
                         return buf;
                     }
                     return msg.slice(0, length);
-    }
-    else {
-        if (msg.length < length) {
-            msg.copy(buf, length - msg.length);
-            return buf;
-        }
-        return msg.slice(-length);
-    }
-};
-exports.setLength = exports.setLengthLeft;
+                } else {
+                    if (msg.length < length) {
+                        msg.copy(buf, length - msg.length);
+                        return buf;
+                    }
+                    return msg.slice(-length);
+                }
+            };
+            exports.setLength = exports.setLengthLeft;
 /**
  * Right Pads an `Array` or `Buffer` with leading zeros till it has `length` bytes.
  * Or it truncates the beginning if it exceeds.
@@ -43815,16 +43828,16 @@ exports.baToJSON = function (ba) {
             };
             /**
              * Creates Keccak-256 hash of the input, alias for keccak(a, 256).
- * @param a The input data (Buffer|Array|String|Number)
- */
-exports.keccak256 = function (a) {
-    return exports.keccak(a);
-};
-/**
- * Creates SHA256 hash of the input.
- * @param a The input data (Buffer|Array|String|Number)
- */
-exports.sha256 = function (a) {
+             * @param a The input data (Buffer|Array|String|Number)
+             */
+            exports.keccak256 = function (a) {
+                return exports.keccak(a);
+            };
+            /**
+             * Creates SHA256 hash of the input.
+             * @param a The input data (Buffer|Array|String|Number)
+             */
+            exports.sha256 = function (a) {
     a = bytes_1.toBuffer(a);
     return createHash('sha256')
         .update(a)
@@ -43942,16 +43955,17 @@ exports.ripemd160 = function (a, padded) {
                             obj_1[field] = "0x" + self[field].toString('hex');
                         });
                         return obj_1;
-        }
-        return bytes_1.baToJSON(self.raw);
-    };
-    self.serialize = function serialize() {
-        return rlp.encode(self.raw);
-    };
-    fields.forEach(function (field, i) {
-        self._fields.push(field.name);
-        function getter() {
-            return self.raw[i];
+                    }
+                    return bytes_1.baToJSON(self.raw);
+                };
+                self.serialize = function serialize() {
+                    return rlp.encode(self.raw);
+                };
+                fields.forEach(function (field, i) {
+                    self._fields.push(field.name);
+
+                    function getter() {
+                        return self.raw[i];
         }
         function setter(v) {
             v = bytes_1.toBuffer(v);
@@ -44050,16 +44064,16 @@ exports.ripemd160 = function (a, padded) {
                 if (!isValidSigRecovery(recovery)) {
                     throw new Error('Invalid signature v value');
                 }
-    var senderPubKey = secp256k1.recover(msgHash, signature, recovery);
-    return secp256k1.publicKeyConvert(senderPubKey, false).slice(1);
-};
-/**
- * Convert signature parameters into the format of `eth_sign` RPC method.
- * @returns Signature
- */
-exports.toRpcSig = function (v, r, s, chainId) {
-    var recovery = calculateSigRecovery(v, chainId);
-    if (!isValidSigRecovery(recovery)) {
+                var senderPubKey = secp256k1.recover(msgHash, signature, recovery);
+                return secp256k1.publicKeyConvert(senderPubKey, false).slice(1);
+            };
+            /**
+             * Convert signature parameters into the format of `eth_sign` RPC method.
+             * @returns Signature
+             */
+            exports.toRpcSig = function (v, r, s, chainId) {
+                var recovery = calculateSigRecovery(v, chainId);
+                if (!isValidSigRecovery(recovery)) {
         throw new Error('Invalid signature v value');
     }
     // geth (and the RPC eth_sign method) uses the 65 byte format used by Bitcoin
@@ -48809,7 +48823,7 @@ function getTypes(coders) {
                 }
 
                 return a;
-}
+            }
 
 /**
  * Converts a `Number` into a hex `String`
@@ -49203,16 +49217,16 @@ HashBase.prototype.digest = function (encoding) {
                 var COMMON_JS = !root.JS_SHA3_NO_COMMON_JS && typeof module === 'object' && module.exports;
                 var AMD = typeof define === 'function' && define.amd;
                 var ARRAY_BUFFER = !root.JS_SHA3_NO_ARRAY_BUFFER && typeof ArrayBuffer !== 'undefined';
-  var HEX_CHARS = '0123456789abcdef'.split('');
-  var SHAKE_PADDING = [31, 7936, 2031616, 520093696];
-  var CSHAKE_PADDING = [4, 1024, 262144, 67108864];
-  var KECCAK_PADDING = [1, 256, 65536, 16777216];
-  var PADDING = [6, 1536, 393216, 100663296];
-  var SHIFT = [0, 8, 16, 24];
-  var RC = [1, 0, 32898, 0, 32906, 2147483648, 2147516416, 2147483648, 32907, 0, 2147483649,
-    0, 2147516545, 2147483648, 32777, 2147483648, 138, 0, 136, 0, 2147516425, 0,
-    2147483658, 0, 2147516555, 0, 139, 2147483648, 32905, 2147483648, 32771,
-    2147483648, 32770, 2147483648, 128, 2147483648, 32778, 0, 2147483658, 2147483648,
+                var HEX_CHARS = '0123456789abcdef'.split('');
+                var SHAKE_PADDING = [31, 7936, 2031616, 520093696];
+                var CSHAKE_PADDING = [4, 1024, 262144, 67108864];
+                var KECCAK_PADDING = [1, 256, 65536, 16777216];
+                var PADDING = [6, 1536, 393216, 100663296];
+                var SHIFT = [0, 8, 16, 24];
+                var RC = [1, 0, 32898, 0, 32906, 2147483648, 2147516416, 2147483648, 32907, 0, 2147483649,
+                    0, 2147516545, 2147483648, 32777, 2147483648, 138, 0, 136, 0, 2147516425, 0,
+                    2147483658, 0, 2147516555, 0, 139, 2147483648, 32905, 2147483648, 32771,
+                    2147483648, 32770, 2147483648, 128, 2147483648, 32778, 0, 2147483658, 2147483648,
     2147516545, 2147483648, 32896, 2147483648, 2147483649, 0, 2147516424, 2147483648];
   var BITS = [224, 256, 384, 512];
   var SHAKE_BITS = [128, 256];
@@ -49865,15 +49879,15 @@ HashBase.prototype.digest = function (encoding) {
                     node = node.toJSON();
                 }
 
-        node = replacer.call(parent, key, node);
+                node = replacer.call(parent, key, node);
 
-        if (node === undefined) {
-            return;
-        }
-        if (typeof node !== 'object' || node === null) {
-            return json.stringify(node);
-        }
-        if (isArray(node)) {
+                if (node === undefined) {
+                    return;
+                }
+                if (typeof node !== 'object' || node === null) {
+                    return json.stringify(node);
+                }
+                if (isArray(node)) {
             var out = [];
             for (var i = 0; i < node.length; i++) {
                 var item = stringify(node, i, node[i], level+1) || json.stringify(null);
@@ -49984,21 +49998,21 @@ var isArray = Array.isArray || function (x) {
                 if (ch === '.') {
                     string += '.';
                     while (next() && ch >= '0' && ch <= '9') {
-                string += ch;
-            }
-        }
-        if (ch === 'e' || ch === 'E') {
-            string += ch;
-            next();
-            if (ch === '-' || ch === '+') {
-                string += ch;
-                next();
-            }
-            while (ch >= '0' && ch <= '9') {
-                string += ch;
-                next();
-            }
-        }
+                        string += ch;
+                    }
+                }
+                if (ch === 'e' || ch === 'E') {
+                    string += ch;
+                    next();
+                    if (ch === '-' || ch === '+') {
+                        string += ch;
+                        next();
+                    }
+                    while (ch >= '0' && ch <= '9') {
+                        string += ch;
+                        next();
+                    }
+                }
                 number = +string;
                 if (!isFinite(number)) {
                     error("Bad number");
@@ -50025,16 +50039,16 @@ var isArray = Array.isArray || function (x) {
                             if (ch === 'u') {
                                 uffff = 0;
                                 for (i = 0; i < 4; i += 1) {
-                            hex = parseInt(next(), 16);
-                            if (!isFinite(hex)) {
-                                break;
-                            }
-                            uffff = uffff * 16 + hex;
-                        }
-                        string += String.fromCharCode(uffff);
-                    } else if (typeof escapee[ch] === 'string') {
-                        string += escapee[ch];
-                    } else {
+                                    hex = parseInt(next(), 16);
+                                    if (!isFinite(hex)) {
+                                        break;
+                                    }
+                                    uffff = uffff * 16 + hex;
+                                }
+                                string += String.fromCharCode(uffff);
+                            } else if (typeof escapee[ch] === 'string') {
+                                string += escapee[ch];
+                            } else {
                         break;
                     }
                 } else {
@@ -50468,11 +50482,11 @@ module.exports = function (value, replacer, space) {
     if (this._finalized) throw new Error('Digest already called')
     this._finalized = true
 
-    if (this._delimitedSuffix) this._state.absorbLastFewBits(this._delimitedSuffix)
-    let digest = this._state.squeeze(this._hashBitLength / 8)
-    if (encoding !== undefined) digest = digest.toString(encoding)
+      if (this._delimitedSuffix) this._state.absorbLastFewBits(this._delimitedSuffix)
+      let digest = this._state.squeeze(this._hashBitLength / 8)
+      if (encoding !== undefined) digest = digest.toString(encoding)
 
-    this._resetState()
+      this._resetState()
 
       return digest
   }
@@ -50547,11 +50561,11 @@ module.exports = function (value, replacer, space) {
 
   Shake.prototype.squeeze = function (dataByteLength, encoding) {
     if (!this._finalized) {
-      this._finalized = true
-      this._state.absorbLastFewBits(this._delimitedSuffix)
+        this._finalized = true
+        this._state.absorbLastFewBits(this._delimitedSuffix)
     }
 
-    let data = this._state.squeeze(dataByteLength)
+      let data = this._state.squeeze(dataByteLength)
       if (encoding !== undefined) data = data.toString(encoding)
 
       return data
@@ -50605,16 +50619,16 @@ module.exports = function (value, replacer, space) {
                 const t1slo20 = s[40] ^ lo
                 const t1shi20 = s[41] ^ hi
                 lo = lo0 ^ (lo2 << 1 | hi2 >>> 31)
-    hi = hi0 ^ (hi2 << 1 | lo2 >>> 31)
-    const t1slo1 = s[2] ^ lo
-    const t1shi1 = s[3] ^ hi
-    const t1slo6 = s[12] ^ lo
-    const t1shi6 = s[13] ^ hi
-    const t1slo11 = s[22] ^ lo
-    const t1shi11 = s[23] ^ hi
-    const t1slo16 = s[32] ^ lo
-    const t1shi16 = s[33] ^ hi
-    const t1slo21 = s[42] ^ lo
+                hi = hi0 ^ (hi2 << 1 | lo2 >>> 31)
+                const t1slo1 = s[2] ^ lo
+                const t1shi1 = s[3] ^ hi
+                const t1slo6 = s[12] ^ lo
+                const t1shi6 = s[13] ^ hi
+                const t1slo11 = s[22] ^ lo
+                const t1shi11 = s[23] ^ hi
+                const t1slo16 = s[32] ^ lo
+                const t1shi16 = s[33] ^ hi
+                const t1slo21 = s[42] ^ lo
     const t1shi21 = s[43] ^ hi
     lo = lo1 ^ (lo3 << 1 | hi3 >>> 31)
     hi = hi1 ^ (hi3 << 1 | lo3 >>> 31)
@@ -50723,16 +50737,16 @@ module.exports = function (value, replacer, space) {
     s[22] = t2slo11 ^ (~t2slo12 & t2slo13)
     s[23] = t2shi11 ^ (~t2shi12 & t2shi13)
     s[32] = t2slo16 ^ (~t2slo17 & t2slo18)
-    s[33] = t2shi16 ^ (~t2shi17 & t2shi18)
-    s[42] = t2slo21 ^ (~t2slo22 & t2slo23)
-    s[43] = t2shi21 ^ (~t2shi22 & t2shi23)
-    s[4] = t2slo2 ^ (~t2slo3 & t2slo4)
-    s[5] = t2shi2 ^ (~t2shi3 & t2shi4)
-    s[14] = t2slo7 ^ (~t2slo8 & t2slo9)
-    s[15] = t2shi7 ^ (~t2shi8 & t2shi9)
-    s[24] = t2slo12 ^ (~t2slo13 & t2slo14)
-    s[25] = t2shi12 ^ (~t2shi13 & t2shi14)
-    s[34] = t2slo17 ^ (~t2slo18 & t2slo19)
+                s[33] = t2shi16 ^ (~t2shi17 & t2shi18)
+                s[42] = t2slo21 ^ (~t2slo22 & t2slo23)
+                s[43] = t2shi21 ^ (~t2shi22 & t2shi23)
+                s[4] = t2slo2 ^ (~t2slo3 & t2slo4)
+                s[5] = t2shi2 ^ (~t2shi3 & t2shi4)
+                s[14] = t2slo7 ^ (~t2slo8 & t2slo9)
+                s[15] = t2shi7 ^ (~t2shi8 & t2shi9)
+                s[24] = t2slo12 ^ (~t2slo13 & t2slo14)
+                s[25] = t2shi12 ^ (~t2shi13 & t2shi14)
+                s[34] = t2slo17 ^ (~t2slo18 & t2slo19)
                 s[35] = t2shi17 ^ (~t2shi18 & t2shi19)
                 s[44] = t2slo22 ^ (~t2slo23 & t2slo24)
                 s[45] = t2shi22 ^ (~t2shi23 & t2shi24)
@@ -50882,8 +50896,8 @@ Keccak.prototype.squeeze = function (length) {
                     return NodeError;
                 }(Base);
 
-  NodeError.prototype.name = Base.name;
-  NodeError.prototype.code = code;
+            NodeError.prototype.name = Base.name;
+            NodeError.prototype.code = code;
   codes[code] = NodeError;
 } // https://github.com/nodejs/node/blob/v10.8.0/lib/internal/errors.js
 
@@ -50948,15 +50962,15 @@ createErrorType('ERR_INVALID_ARG_TYPE', function (name, expected, actual) {
     determiner = 'must be';
   }
 
-  var msg;
+    var msg;
 
-  if (endsWith(name, ' argument')) {
-      // For cases like 'first argument'
-      msg = "The ".concat(name, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
-  } else {
-      var type = includes(name, '.') ? 'property' : 'argument';
-      msg = "The \"".concat(name, "\" ").concat(type, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
-  }
+    if (endsWith(name, ' argument')) {
+        // For cases like 'first argument'
+        msg = "The ".concat(name, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
+    } else {
+        var type = includes(name, '.') ? 'property' : 'argument';
+        msg = "The \"".concat(name, "\" ").concat(type, " ").concat(determiner, " ").concat(oneOf(expected, 'type'));
+    }
 
     msg += ". Received type ".concat(typeof actual);
     return msg;
@@ -53256,10 +53270,10 @@ Object.defineProperty(Writable.prototype, 'destroyed', {
                     value: value,
                     done: done
                 };
-}
+            }
 
-function readAndResolve(iter) {
-  var resolve = iter[kLastResolve];
+            function readAndResolve(iter) {
+                var resolve = iter[kLastResolve];
 
   if (resolve !== null) {
     var data = iter[kStream].read(); // we defer if data is null
@@ -53412,15 +53426,15 @@ var createReadableStreamAsyncIterator = function createReadableStreamAsyncIterat
   iterator[kLastPromise] = null;
   finished(stream, function (err) {
     if (err && err.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
-      var reject = iterator[kLastReject]; // reject if we are waiting for data in the Promise
-      // returned by next() and store the error
+        var reject = iterator[kLastReject]; // reject if we are waiting for data in the Promise
+        // returned by next() and store the error
 
-      if (reject !== null) {
-        iterator[kLastPromise] = null;
-        iterator[kLastResolve] = null;
-          iterator[kLastReject] = null;
-          reject(err);
-      }
+        if (reject !== null) {
+            iterator[kLastPromise] = null;
+            iterator[kLastResolve] = null;
+            iterator[kLastReject] = null;
+            reject(err);
+        }
 
         iterator[kError] = err;
         return;
@@ -53733,14 +53747,14 @@ function () {
                 } // if this is a duplex stream mark the writable part as destroyed as well
 
 
-  if (this._writableState) {
-    this._writableState.destroyed = true;
-  }
+                if (this._writableState) {
+                    this._writableState.destroyed = true;
+                }
 
-  this._destroy(err || null, function (err) {
-    if (!cb && err) {
-      if (!_this._writableState) {
-        process.nextTick(emitErrorAndCloseNT, _this, err);
+                this._destroy(err || null, function (err) {
+                    if (!cb && err) {
+                        if (!_this._writableState) {
+                            process.nextTick(emitErrorAndCloseNT, _this, err);
       } else if (!_this._writableState.errorEmitted) {
         _this._writableState.errorEmitted = true;
         process.nextTick(emitErrorAndCloseNT, _this, err);
@@ -54109,16 +54123,17 @@ function pipeline() {
             /**
              * Parse integers. Check if there is no leading zeros
              * @param v The value to parse
- * @param base The base to parse the integer into
- */
-function safeParseInt(v, base) {
-    if (v.slice(0, 2) === '00') {
-        throw new Error('invalid RLP: extra zeros');
-    }
-    return parseInt(v, base);
-}
-function encodeLength(len, offset) {
-    if (len < 56) {
+             * @param base The base to parse the integer into
+             */
+            function safeParseInt(v, base) {
+                if (v.slice(0, 2) === '00') {
+                    throw new Error('invalid RLP: extra zeros');
+                }
+                return parseInt(v, base);
+            }
+
+            function encodeLength(len, offset) {
+                if (len < 56) {
         return Buffer.from([len + offset]);
     }
     else {
@@ -54343,7 +54358,7 @@ function toBuffer(v) {
         SafeBuffer.prototype = Object.create(Buffer.prototype)
 
 // Copy static methods from Buffer
-copyProps(Buffer, SafeBuffer)
+        copyProps(Buffer, SafeBuffer)
 
 SafeBuffer.from = function (arg, encodingOrOffset, length) {
   if (typeof arg === 'number') {
@@ -54415,16 +54430,16 @@ SafeBuffer.allocUnsafe = function (size) {
              * }
              *
              * Derives a key from password and salt and calls callback
- * with derived key as the only argument.
- *
- * Calculations are interrupted with setImmediate (or zero setTimeout) at the
- * given interruptSteps to avoid freezing the browser. If it's undefined or zero,
- * the callback is called immediately after the calculation, avoiding setImmediate.
- *
- * Legacy way (only supports p = 1) to call this function is:
- *
- * scrypt(password, salt, logN, r, dkLen, [interruptStep], callback, [encoding])
- *
+             * with derived key as the only argument.
+             *
+             * Calculations are interrupted with setImmediate (or zero setTimeout) at the
+             * given interruptSteps to avoid freezing the browser. If it's undefined or zero,
+             * the callback is called immediately after the calculation, avoiding setImmediate.
+             *
+             * Legacy way (only supports p = 1) to call this function is:
+             *
+             * scrypt(password, salt, logN, r, dkLen, [interruptStep], callback, [encoding])
+             *
  * In legacy API, if interruptStep is not given, it defaults to 1000.
  * Pass 0 to have callback called immediately.
  *
@@ -55140,15 +55155,15 @@ exports.signatureImportLax = function (sig) {
   if (rlen & 0x80) {
     lenbyte = rlen - 0x80
     if (index + lenbyte > length) return
-    for (; lenbyte > 0 && sig[index] === 0x00; index += 1, lenbyte -= 1);
-    for (rlen = 0; lenbyte > 0; index += 1, lenbyte -= 1) rlen = (rlen << 8) + sig[index]
+      for (; lenbyte > 0 && sig[index] === 0x00; index += 1, lenbyte -= 1) ;
+      for (rlen = 0; lenbyte > 0; index += 1, lenbyte -= 1) rlen = (rlen << 8) + sig[index]
   }
-  if (rlen > length - index) return
-  var rindex = index
-  index += rlen
+    if (rlen > length - index) return
+    var rindex = index
+    index += rlen
 
-  // sequence tag byte for s
-  if (sig[index++] !== 0x02) return
+    // sequence tag byte for s
+    if (sig[index++] !== 0x02) return
 
     // length for s
     var slen = sig[index++]
@@ -55471,13 +55486,13 @@ exports.ecdh = function (publicKey, privateKey) {
                     assert.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID)
 
                     compressed = initCompressedValue(compressed, true)
-      var publicKey = secp256k1.privateKeyExport(privateKey, compressed)
+                    var publicKey = secp256k1.privateKeyExport(privateKey, compressed)
 
-      return der.privateKeyExport(privateKey, publicKey, compressed)
-    },
+                    return der.privateKeyExport(privateKey, publicKey, compressed)
+                },
 
-    privateKeyImport: function (privateKey) {
-      assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
+                privateKeyImport: function (privateKey) {
+                    assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID)
 
       privateKey = der.privateKeyImport(privateKey)
       if (privateKey && privateKey.length === 32 && secp256k1.privateKeyVerify(privateKey)) return privateKey
@@ -58437,13 +58452,13 @@ nacl.setPRNG = function(fn) {
                 };
 
                 util.encodeUTF8 = function (arr) {
-    var i, s = [];
-    for (i = 0; i < arr.length; i++) s.push(String.fromCharCode(arr[i]));
-    return decodeURIComponent(escape(s.join('')));
-  };
+                    var i, s = [];
+                    for (i = 0; i < arr.length; i++) s.push(String.fromCharCode(arr[i]));
+                    return decodeURIComponent(escape(s.join('')));
+                };
 
-  if (typeof atob === 'undefined') {
-    // Node.js
+                if (typeof atob === 'undefined') {
+                    // Node.js
 
     if (typeof Buffer.from !== 'undefined') {
        // Node v6 and later
@@ -58484,7 +58499,7 @@ nacl.setPRNG = function(fn) {
         return b;
     };
 
-  }
+                }
 
                 return util;
 
@@ -60920,16 +60935,16 @@ nacl.setPRNG = function(fn) {
             "abide",
             "abject",
             "ablaze",
-	"able",
-	"abner",
-	"abo",
-	"abode",
-	"abort",
-	"about",
-	"above",
-	"abrade",
-	"abram",
-	"absorb",
+            "able",
+            "abner",
+            "abo",
+            "abode",
+            "abort",
+            "about",
+            "above",
+            "abrade",
+            "abram",
+            "absorb",
 	"abuse",
 	"abut",
 	"abyss",
@@ -68631,16 +68646,16 @@ nacl.setPRNG = function(fn) {
 	"84th",
 	"85th",
 	"86th",
-	"87th",
-	"88th",
-	"89th",
-	"8th",
-	"90th",
-	"91st",
-	"92nd",
-	"93rd",
-	"94th",
-	"95th",
+            "87th",
+            "88th",
+            "89th",
+            "8th",
+            "90th",
+            "91st",
+            "92nd",
+            "93rd",
+            "94th",
+            "95th",
             "96th",
             "97th",
             "98th",
