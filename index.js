@@ -10,6 +10,7 @@ const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
 const wordList = require('./wordlist');
 
+
 let debug = false;
 
 let baseUrl = 'http://localhost:4000';
@@ -24,6 +25,7 @@ let mapShouldBeWorkingPollingForFunctionId = [];
 let browserKeyPair = undefined; // represents the browser temporary keypair while polling
 let recipientsEmailLinkKeyPair = null;
 let notificationObject = null;
+
 
 const newNonce = () => randomBytes(box.nonceLength);
 
