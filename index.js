@@ -149,6 +149,33 @@ function isValidAddress(address) {
     }
 }
 
+function hexStringToArrayBuffer(hexString) {
+    if (!/^0x[0-9a-fA-F]+$/.test(hexString)) {
+        return hexString;
+    }
+
+    // remove the leading 0x
+    hexString = hexString.replace(/^0x/, '');
+
+    // ensure even number of characters
+    if (hexString.length % 2 !== 0) {
+        hexString = "0" + hexString;
+    }
+
+    // split the string into pairs of octets
+    let pairs = hexString.match(/[\dA-F]{2}/gi);
+
+    // convert the octets to integers
+    let integers = pairs.map(function (s) {
+        return parseInt(s, 16);
+    });
+
+    let array = new Uint8Array(integers);
+    console.log(array);
+
+    return array.buffer;
+}
+
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
@@ -274,11 +301,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
 }
 
 function getHash(string) {
-    return `0x${keccak256(string)}`;
-}
-
-function getHashOld(string) {
-    return `0x${keccak256Old(string).toString('hex')}`;
+    return `0x${keccak256(hexStringToArrayBuffer(string))}`;
 }
 
 function getHashFromHashObject(hashObj) {
@@ -288,6 +311,7 @@ function getHashFromHashObject(hashObj) {
 function getUpdatedHashObj(string, hashObj = null) {
     if (isNullAny(hashObj)) {
         hashObj = keccak_256.create();
+        return hashObj.update(hexStringToArrayBuffer(string));
     }
 
     return hashObj.update(string);
@@ -672,7 +696,7 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
 
     let file = fileObj.file;
     let fileSizeBytes = file.size;
-    
+
     let offset = 0;
     let chunkId = 0;
     let dataId = null;
@@ -715,15 +739,15 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                         return resolve(uploadFile());
                     } else {
                         dataOriginalHash = RECHECK.getHashFromHashObject(dataHash),
-                        dataId = getHash(dataOriginalHash),
-                        dataHash = 0;
+                            dataId = getHash(dataOriginalHash),
+                            dataHash = 0;
                         offset = 0;
                         return resolve(uploadFile(false));
                     }
                 } else {
                     chunkId++;
                     chunkHash = getHash(chunkData);
-                    
+
                     let chunkObj = {
                         dataOriginalHash,
                         dataId,
@@ -734,18 +758,18 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                     }
 
                     fileUploadData = await getFileUploadData(
-                        { ...fileObj, ...chunkObj }, userChainId, userChainIdPubEncKey, trailExtraArgs
+                        {...fileObj, ...chunkObj}, userChainId, userChainIdPubEncKey, trailExtraArgs
                     );
 
                     const dataContentPostUrl = getEndpointUrl('data/content');
                     let result = (await axios.post(dataContentPostUrl, fileUploadData)).data;
 
-                    if (!result 
-                        || result.status !== "OK" 
-                        || !result.data 
-                        || result.data.dataId !== chunkObj.dataId 
+                    if (!result
+                        || result.status !== "OK"
+                        || !result.data
+                        || result.data.dataId !== chunkObj.dataId
                         || result.data.chunkId !== chunkObj.chunkId) {
-                            throw Error("Chunk upload fail!");
+                        throw Error("Chunk upload fail!");
                     }
 
                     // On success
@@ -755,15 +779,15 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                         // TODO: /data/create -> all as store w/o payload
                         const dataCreatePostUrl = getEndpointUrl('data/create');
                         delete fileUploadData.payload;
-                        let result = await axios.post(dataCreatePostUrl, { ...fileUploadData });
+                        let result = await axios.post(dataCreatePostUrl, {...fileUploadData});
                         console.log('Completed!', "dataId hash", result);
-                        response = { status: 'success' };
+                        response = {status: 'success'};
                         resolve();
                     }
                 }
             };
         });
-        
+
     }
 
     async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
@@ -885,7 +909,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
 
     function totalProgressCb(bytesRead) {
         totalBytesRead += bytesRead;
-        
+
         progressCb(Math.floor(((totalBytesRead / totalFileSizeBytes) * 100) / 2));
     }
 }
@@ -1269,7 +1293,7 @@ async function pollChunks(dataChainId, userChainId, receiverPubKey) {
         idb.init(`recheck-${userChainId}`);
 
         idb.insert(fileData);
-        
+
         await getDataAndDecrypt(receiverPubKey, putChunkToCache);
 
         function putChunkToCache(chunkPayload) {
@@ -1282,14 +1306,14 @@ async function pollChunks(dataChainId, userChainId, receiverPubKey) {
         // get -> data/content -> chunkId: 1, 
         const getUrl = getEndpointUrl('data/content', `dataId=${dataChainId}&chunkId=1`);
         const result = await axios.get(getUrl);
-    
+
         if (!result || result.status !== "OK" || !result.data) {
             throw Error('Error while gettings first chunk!');
         }
 
         const fileData = result.data;
         const chunksCount = fileData.chunksCount;
-        
+
         // loop chunkCount from result
         for (let i = 1; i <= chunksCount.length; i++) {
             // get chunk data
@@ -1303,8 +1327,8 @@ async function pollChunks(dataChainId, userChainId, receiverPubKey) {
             let decryptedFile = await processEncryptedFileInfo(result.data, receiverPubKey, browserKeyPair.secretEncKey);
 
             chunkCallback(decryptedFile);
-        }    
-    
+        }
+
         // after final chunk
         // ...
     }
@@ -1314,11 +1338,11 @@ async function pollChunks(dataChainId, userChainId, receiverPubKey) {
 
         init(dbName = 'recheck') {
             this.db = window.indexedDB.open(dbName);
-            
+
             this.db.onupgradeneeded = (e) => {
                 console.log(e)
                 this.db = e.target.result;
-                this.db.createObjectStore("files", { keyPath: "dataName" })
+                this.db.createObjectStore("files", {keyPath: "dataName"})
             }
 
             this.db.onsuccess = (e) => {
@@ -1337,10 +1361,10 @@ async function pollChunks(dataChainId, userChainId, receiverPubKey) {
             tx.onerror = e => alert(`Error! ${e.target.error}`);
 
             const files = tx.objectStore("files")
-            
+
             files.put(payload);
         },
-        
+
         update(payload, dataName = "") {
             const tx = this.db.transaction("files", "readwrite");
             tx.onerror = e => alert(`Error! ${e.target.error}`);
@@ -2044,7 +2068,6 @@ module.exports = {
     processEncryptedFileInfo: processEncryptedFileInfo,
     isNullAny: isNullAny,
     getHash: getHash,
-    getHashOld: getHashOld,
     getHashFromHashObject: getHashFromHashObject,
     getUpdatedHashObj: getUpdatedHashObj,
     getRequestHash: getRequestHash,
