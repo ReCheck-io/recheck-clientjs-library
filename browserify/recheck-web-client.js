@@ -781,18 +781,28 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                     if (offset < fileSizeBytes) {
                         return resolve(uploadFile(false));
                     } else {
-                        // TODO: /data/create -> all as store w/o payload
                         const dataCreatePostUrl = getEndpointUrl('data/create');
                         delete fileUploadData.payload;
-                        let result = await axios.post(dataCreatePostUrl, {...fileUploadData});
-                        console.log('Completed!', "dataId hash", result);
-                        response = {status: 'success'};
+                        let result = (await axios.post(dataCreatePostUrl, { ...fileUploadData })).data;
+
+                        if (!result
+                            || result.status !== "OK"
+                            || !result.data
+                            || result.data.dataId !== chunkObj.dataId) {
+                            throw Error("Data create failed!");
+                        }
+
+                        response = {
+                            ...result.data,
+                            dataId: fileUploadData.dataId,
+                            dataName: fileUploadData.dataName,
+                            dataExtension: fileUploadData.dataExtension,
+                        };
                         resolve();
                     }
                 }
             };
         });
-
     }
 
     async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
@@ -893,7 +903,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
     for (let i = 0; i < files.length; i++) {
         const currentFile = files[i];
 
-        storeLargeFiles(currentFile, userChainId, userChainIdPubEncKey, totalProgressCb, ...props)
+        await storeLargeFiles(currentFile, userChainId, userChainIdPubEncKey, totalProgressCb, ...props)
             .then((response) => {
                 results[i] = response;
             })
