@@ -171,7 +171,6 @@ function hexStringToArrayBuffer(hexString) {
     });
 
     let array = new Uint8Array(integers);
-    console.log(array);
 
     return array.buffer;
 }
@@ -273,6 +272,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
 
     let resultFileInfo = encryptedFileInfo;
     resultFileInfo.payload = decryptedFile;
+    console.log(resultFileInfo)
     delete resultFileInfo.encryption;
 
     return resultFileInfo;
@@ -925,24 +925,17 @@ async function open(dataChainId, userChainId, keyPair, isExternal = false, txPol
         throw new Error('Unable to decrypt file');
     }
 
-    //polling server for pass to decrypt message
-    let credentialsResult = await pollOpen(credentialsResponse);
-
-    await pollChunks(dataChainId, userChainId, keyPair.publicEncKey);
-
-    // Validate payload
-    // let validationResult = await validate(decryptedFile.payload, decryptedFile.userId, decryptedFile.dataId, txPolling, trailExtraArgs);
+    // polling server for pass to decrypt message
+    return pollOpen(credentialsResponse);
 }
 
-async function validate(fileContents, userId, dataId, isExternal = false, txPolling = false, trailExtraArgs = null) {
+async function validate(fileOriginalHash, userId, dataId, isExternal = false, txPolling = false, trailExtraArgs = null) {
 
     dataId = await processExternalId(dataId, userId, isExternal);
 
     let requestType = 'verify';
 
     let trailHash = getTrailHash(dataId, userId, requestType, userId, trailExtraArgs);
-
-    let fileHash = getHash(fileContents);
 
     let postObj = {
         userId: userId,
@@ -953,7 +946,7 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
         trailHash: trailHash,
         trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
         encryption: {
-            decrDataOrigHash: fileHash
+            decrDataOrigHash: fileOriginalHash
         }
     };
 
@@ -1220,6 +1213,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
 
+    
     let serverEncryptionInfo = (await axios.get(getUrl)).data;
     let serverEncryptionData = serverEncryptionInfo.data;
     log('Server responds to device with encryption info', serverEncryptionData);
@@ -1228,20 +1222,24 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     if (isNullAny(dataEncryption) || isNullAny(dataEncryption.pubKeyB)) {
         throw new Error('Unable to retrieve intermediate public key B.');
     }
-
+    
     let decryptedPassword = decryptDataWithPublicAndPrivateKey(dataEncryption.encryptedPassA, dataEncryption.pubKeyA, keyPair.secretEncKey);
     log('User device decrypts the sym password', decryptedPassword);
-
+    
     let syncPassHash = getHash(decryptedPassword);
-
+    
     let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, dataEncryption.pubKeyB, keyPair);
     log('User device reencrypts password for browser', reEncryptedPasswordInfo);
+    
+    let pubKeyBSign = signMessage(dataEncryption.pubKeyB, keyPair.secretKey);
 
     let devicePost = {
         dataId: dataChainId,
         userId: keyPair.address,
         encryption: {
+            pubKeyBSign: pubKeyBSign,
             syncPassHash: syncPassHash,
+            pubKeyB: dataEncryption.pubKeyB,
             encryptedPassB: reEncryptedPasswordInfo.payload
         }
     };
@@ -1257,7 +1255,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     return serverPostResponse.data;
 }
 
-async function pollOpen(credentialsResponse, isExternal = false) {
+async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false, trailExtraArgs = null) {
     let userId = credentialsResponse.userId;
     let dataId = credentialsResponse.dataId;
 
@@ -1278,111 +1276,166 @@ async function pollOpen(credentialsResponse, isExternal = false) {
             continue;
         }
 
-        log('Server responds to polling with', pollRes.data);
+        console.log('Server responds to polling with', pollRes.data);
 
-        return pollRes;
+        // poll and decrypt each chunk
+        let decryptedDataHash = await pollChunks(pollRes.data, receiverPubKey);
+        
+        console.log(decryptedDataHash);
+
+        // Validate payload
+        let validationResult = await validate(decryptedDataHash, userId, dataId, txPolling, trailExtraArgs);
+
+        // if (isNullAny(validationResult) || txPolling) {
+        //     return validationResult;
+        // } else {
+            // TODO: Get decrypted file from indexedDB
+            if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
+                return;
+            }
+            return decryptedDataHash;
+        // }
     }
 
     throw new Error('Polling timeout.');
 }
 
-async function pollChunks(dataChainId, userChainId, receiverPubKey) {
+async function pollChunks(encrInfo, receiverPubKey) {
+    // TODO: Handle open/decrypt by hammer
     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
-        // TODO: Handle open/decrypt by hammer
-    } else {
-        idb.init(`recheck-${userChainId}`);
-
-        idb.insert(fileData);
-
-        await getDataAndDecrypt(receiverPubKey, putChunkToCache);
-
-        function putChunkToCache(chunkPayload) {
-            idb.update(chunkPayload, chunkPayload.dataName);
-        }
+        throw Error("Error: Use browser!");
     }
+    
+    let decryptedDataHashObj = {};
+    let lastChunkHash = null;
+    let chunksCount = 2;
 
-    // loop and get other chunks
-    async function getDataAndDecrypt(dataChainId, receiverPubKey, chunkCallback = null) {
-        // get -> data/content -> chunkId: 1, 
-        const getUrl = getEndpointUrl('data/content', `dataId=${dataChainId}&chunkId=1`);
-        const result = await axios.get(getUrl);
-
+    for (let i = 1; i <= chunksCount; i++) {
+        let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
+        let previousChunkHashSign = signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
+        const getUrl = getEndpointUrl(
+            'data/content', `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`
+        );
+        const result = (await axios.get(getUrl)).data;
+        
         if (!result || result.status !== "OK" || !result.data) {
-            throw Error('Error while gettings first chunk!');
+            throw Error(`Error on getting chunk data with id ${i}`);
+        }
+        
+        let decryptedFileInfo = await processEncryptedFileInfo(
+            { ...encrInfo, payload: result.data.payload }, receiverPubKey.publicEncKey, browserKeyPair.secretEncKey
+        );
+
+        let decryptedChunk = decryptedFileInfo.payload
+        lastChunkHash = getHash(decryptedChunk);
+
+        if (i === 1) {
+            chunksCount = result.data.chunksCount;
+            decryptedDataHashObj = getUpdatedHashObj(decryptedChunk);
+        } else {
+            decryptedDataHashObj = getUpdatedHashObj(decryptedChunk, decryptedDataHashObj);
         }
 
-        const fileData = result.data;
-        const chunksCount = fileData.chunksCount;
-
-        // loop chunkCount from result
-        for (let i = 1; i <= chunksCount.length; i++) {
-            // get chunk data
-            let getUrl = getEndpointUrl('data/content', `dataId${dataChainId}&chunkId=${i + 1}`);
-            const result = await axios.get(getUrl);
-
-            if (!result || result.status !== "OK" || !result.data) {
-                throw Error(`Error on getting chunk data with id ${i + 1}`);
+        if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
+            // TODO: Handle decrypted data
+            return;
+        } else {
+            let chunkObj = {
+                chunksCount: result.data.chunksCount,
+                chunkId: result.data.chunkId,
+                payload: decryptedChunk 
             }
 
-            let decryptedFile = await processEncryptedFileInfo(result.data, receiverPubKey, browserKeyPair.secretEncKey);
-
-            chunkCallback(decryptedFile);
+            insertDB(result.data.dataId, chunkObj);
         }
-
-        // after final chunk
-        // ...
     }
+    
+    let decryptedDataHash = getHashFromHashObject(decryptedDataHashObj);
+    return decryptedDataHash;
 
-    const idb = {
-        db: null,
 
-        init(dbName = 'recheck') {
-            this.db = window.indexedDB.open(dbName);
-
-            this.db.onupgradeneeded = (e) => {
-                console.log(e)
-                this.db = e.target.result;
-                this.db.createObjectStore("files", {keyPath: "dataName"})
-            }
-
-            this.db.onsuccess = (e) => {
-                this.db = e.target.result;
-                console.log(e)
-            }
-
-            this.db.onerror = (e) => {
-                console.log(e)
-            }
-        },
-
-        add(payload) {
-            const tx = this.db.transaction("files", "readwrite");
-
+    function initDB(tableName = null, dbName = 'recheck') {
+        let IDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
+        let request = IDB.open(dbName);
+        let db = null;
+      
+        request.onupgradeneeded = (e) => {
+          db = e.target.result;
+          if (tableName) {
+            db.createObjectStore(tableName, { keyPath: "chunkId" })
+          }
+          console.log("on upgrade needed", db);
+        }
+      
+        request.onsuccess = (e) => {
+          db = e.target.result;
+        }
+      
+        request.onerror = (e) => {
+          console.log("on error", e);
+        }
+      
+        return request;
+    }
+      
+    function insertDB(tableName, data) {
+        let db = initDB(tableName);
+        
+        db.onupgradeneeded = (e) => {
+            if (tableName) {
+            e.target.result.createObjectStore(tableName, { keyPath: "chunkId" })
+            }      
+        }
+        
+        db.onsuccess = (e) => {
+            let d = e.target.result;
+            const tx = d.transaction(tableName, "readwrite");
+        
             tx.onerror = e => alert(`Error! ${e.target.error}`);
-
-            const files = tx.objectStore("files")
-
-            files.put(payload);
-        },
-
-        update(payload, dataName = "") {
-            const tx = this.db.transaction("files", "readwrite");
+        
+            const dataTable = tx.objectStore(tableName)
+        
+            dataTable.put(data);
+        }
+    }
+    
+    function getDBData(tableName, index) {
+        let db = initDB(tableName);
+        
+        db.onsuccess = (e) => {
+            let d = e.target.result;
+            const tx = d.transaction(tableName, "readwrite");
+        
             tx.onerror = e => alert(`Error! ${e.target.error}`);
+        
+            const dataTable = tx.objectStore(tableName)
+        
+            let data = dataTable.get(index);
+        
+            data.onsuccess = (e) => {
+            console.log(e.target.result);        
+            }
+        
+        
+        }
+    }
+    
+    function deleteDBTable(tableName) {
+        let db = initDB(tableName);
+        
+        db.onerror = (e) => {
+            console.log("Error deleting database.", e);
+        };
+        
+        db.onsuccess = (e) => {
+            let transaction = db.transaction([tableName], "readwrite");
+            let objectStore = transaction.objectStore(tableName);
 
-            const files = tx.objectStore("files")
+            let objectStoreRequest = objectStore.clear();
 
-            const request = files.get(dataName);
-
-            request.onsuccess = (e) => {
-                const matching = e.target.result;
-                if (matching !== undefined) {
-                    let data = matching.payload + payload;
-                    files.put(data);
-                } else {
-                    return; // No match was found.
-                }
+            objectStoreRequest.onsuccess = (event) => {
+                console.log('DB table cleare success!');
             };
-
         }
     }
 }
@@ -1896,7 +1949,7 @@ function verifyMessage(message, signature, pubKey) {
     }
 }
 
-async function registerHash(dataChainId, requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false, trailExtraArgs = null) {
+async function registerHash(requestType, targetUserId, keyPair, requestId = defaultRequestId, extraTrailHashes = [], txPolling = false, trailExtraArgs = null) {
     if (isNullAny(requestId)) {
         requestId = defaultRequestId;
     }
