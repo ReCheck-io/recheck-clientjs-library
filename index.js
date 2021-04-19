@@ -344,7 +344,6 @@ function getRequestHash(requestBodyOrUrl) {
         }
 
         let host = `${urlSplit[0]}//${urlSplit[2]}`;
-
         return url.replace(host, '');
     }
 }
@@ -830,6 +829,7 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
             trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
             dataName: fileObj.dataName,
             dataExtension: fileObj.dataExtension,
+            sizeBytes: fileSizeBytes,
             category: fileObj.category,
             keywords: fileObj.keywords,
             dataFolderId: fileObj.dataFolderId,
@@ -864,7 +864,7 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
 
             let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
             let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicEncKey);
-            console.log('encr File Data', encryptedFile);
+            log('encr File Data', encryptedFile);
 
             return {
                 payload: encryptedFile,
@@ -913,7 +913,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                 results[i] = response;
             })
             .catch((err) => {
-                console.log('file read error', err);
+                log('file read error', err);
                 results[i] = err;
             });
     }
@@ -1197,7 +1197,8 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
         dataId: dataChainId,
         userId: userChainId,
         encryption: {
-            pubKeyB: browserKeyPair.publicEncKey
+            pubSignKeyB: browserKeyPair.publicKey,
+            pubEncrKeyB: browserKeyPair.publicEncKey
         }
     };
     log('submit pubkey payload', browserPubKeySubmit);
@@ -1233,33 +1234,39 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
 
-    
+
     let serverEncryptionInfo = (await axios.get(getUrl)).data;
     let serverEncryptionData = serverEncryptionInfo.data;
     log('Server responds to device with encryption info', serverEncryptionData);
 
     let dataEncryption = serverEncryptionData.encryption;
-    if (isNullAny(dataEncryption) || isNullAny(dataEncryption.pubKeyB)) {
+    if (isNullAny(dataEncryption) || isNullAny(dataEncryption.pubKeysBInfo)
+        || isNullAny(dataEncryption.pubKeysBInfo.pubEncrKeyB, dataEncryption.pubKeysBInfo.pubSignKeyB)) {
         throw new Error('Unable to retrieve intermediate public key B.');
     }
-    
+
+    let pubKeysBInfo = dataEncryption.pubKeysBInfo;
+
     let decryptedPassword = decryptDataWithPublicAndPrivateKey(dataEncryption.encryptedPassA, dataEncryption.pubKeyA, keyPair.secretEncKey);
     log('User device decrypts the sym password', decryptedPassword);
-    
+
     let syncPassHash = getHash(decryptedPassword);
-    
-    let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, dataEncryption.pubKeyB, keyPair);
+
+    let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, pubKeysBInfo.pubEncrKeyB, keyPair);
     log('User device reencrypts password for browser', reEncryptedPasswordInfo);
-    
-    let pubKeyBSign = signMessage(dataEncryption.pubKeyB, keyPair.secretKey);
+
+    let pubSignKeyBSign = signMessage(pubKeysBInfo.pubSignKeyB, keyPair.secretKey);
+    let pubEncrKeyBSign = signMessage(pubKeysBInfo.pubEncrKeyB, keyPair.secretKey);
 
     let devicePost = {
         dataId: dataChainId,
         userId: keyPair.address,
         encryption: {
-            pubKeyBSign: pubKeyBSign,
+            pubSignKeyB: pubKeysBInfo.pubSignKeyB,
+            pubEncrKeyB: pubKeysBInfo.pubEncrKeyB,
+            pubSignKeyBSign: pubSignKeyBSign,
+            pubEncrKeyBSign: pubEncrKeyBSign,
             syncPassHash: syncPassHash,
-            pubKeyB: dataEncryption.pubKeyB,
             encryptedPassB: reEncryptedPasswordInfo.payload
         }
     };
@@ -1296,12 +1303,12 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
             continue;
         }
 
-        console.log('Server responds to polling with', pollRes.data);
+        log('Server responds to polling with', pollRes.data);
 
         // poll and decrypt each chunk
         let decryptedDataHash = await pollChunks(pollRes.data, receiverPubKey);
-        
-        console.log(decryptedDataHash);
+
+        log(decryptedDataHash);
 
         // Validate payload
         // let validationResult = await validate(decryptedDataHash, userId, dataId, txPolling, trailExtraArgs);
@@ -1325,7 +1332,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
         throw Error("Error: Use browser!");
     }
-    
+
     let decryptedDataHashObj = {};
     let lastChunkHash = null;
     let chunksCount = 2;
@@ -1334,17 +1341,25 @@ async function pollChunks(encrInfo, receiverPubKey) {
     for (let i = 1; i <= chunksCount; i++) {
         let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
         let previousChunkHashSign = signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
-        const getUrl = getEndpointUrl(
-            'data/content', `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`
-        );
+        let query = `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`;
+        let getUrl = getEndpointUrl('data/content', query);
+        if (i === chunksCount) {
+            let requestType = 'completed';
+            let trailHash = getTrailHash(encrInfo.dataId, encrInfo.userId, requestType, encrInfo.userId);
+            let trailHashSignatureHash = getHash(signMessage(trailHash, browserKeyPair.secretKey));
+
+            getUrl += `&requestType=${requestType}&requestId=${defaultRequestId}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
+            getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), browserKeyPair.secretKey));
+        }
+
         const result = (await axios.get(getUrl)).data;
-        
+
         if (!result || result.status !== "OK" || !result.data) {
             throw Error(`Error on getting chunk data with id ${i}`);
         }
-        
+
         let decryptedFileInfo = await processEncryptedFileInfo(
-            { ...encrInfo, payload: result.data.payload }, receiverPubKey, browserKeyPair.secretEncKey
+            {...encrInfo, payload: result.data.payload}, receiverPubKey, browserKeyPair.secretEncKey
         );
 
         let decryptedChunk = decryptedFileInfo.payload
@@ -1390,7 +1405,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
           if (tableName) {
             db.createObjectStore(tableName, { keyPath: "chunkId" })
           }
-          console.log("on upgrade needed", db);
+            log("on upgrade needed", db);
         }
       
         request.onsuccess = (e) => {
@@ -1398,7 +1413,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
         }
       
         request.onerror = (e) => {
-          console.log("on error", e);
+            log("on error", e);
         }
       
         return request;
@@ -1439,7 +1454,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
             let data = dataTable.get(index);
         
             data.onsuccess = (e) => {
-            console.log(e.target.result);        
+                log(e.target.result);
             }
         
         
@@ -1450,7 +1465,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
         let db = initDB(tableName);
         
         db.onerror = (e) => {
-            console.log("Error deleting database.", e);
+            log("Error deleting database.", e);
         };
         
         db.onsuccess = (e) => {
@@ -1460,7 +1475,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
             let objectStoreRequest = objectStore.clear();
 
             objectStoreRequest.onsuccess = (event) => {
-                console.log('DB table cleare success!');
+                log('DB table cleare success!');
             };
         }
     }
