@@ -1104,7 +1104,9 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         throw result;
     }
 
-    let shareUrl = await generateEmailShareUrl();
+    if (isEmailShare) {
+        result.shareUrl = await generateEmailShareUrl();
+    }
 
     if (!txPolling) {
         return result;
@@ -1113,7 +1115,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     result = await processTxPolling(dataId, userId, 'requestType', requestType);
     if (isEmailShare) {
         result.data = result;
-        result.shareUrl = shareUrl;
     }
 
     return result;
@@ -1155,7 +1156,6 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
         let fragment = Buffer.from(stringify(fragmentObj)).toString('base64');
         generatedShareUrl = `${generatedShareUrl}?q=${query}#${fragment}`;
-        result.shareUrl = generatedShareUrl;
 
         if (!isNullAny(execFileSelectionHash, emailSharePubKeys)) {
 
