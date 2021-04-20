@@ -11,7 +11,6 @@ const stringify = require('json-stable-stringify');
 const wordList = require('./wordlist');
 
 
-
 let debug = false;
 
 let baseUrl = 'http://localhost:4000';
@@ -723,9 +722,9 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
     async function uploadFile(shouldGetOnlyHash = true) {
         let nextSliceEnd = offset + chunkSizeBytes;
         nextSliceEnd = nextSliceEnd > fileSizeBytes ? fileSizeBytes : nextSliceEnd;
-        let chunkData = file.slice(offset, nextSliceEnd);
+        let currentChunk = file.slice(offset, nextSliceEnd);
 
-        reader.readAsBinaryString(chunkData);
+        reader.readAsArrayBuffer(currentChunk);
 
         return new Promise(function (resolve, reject) {
             reader.onloadend = async function (event) {
@@ -733,7 +732,7 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
 
                 offset += chunkSizeBytes;
                 if (progressCb) progressCb(event.target.result.length);
-                let chunkData = btoa(event.target.result);
+                let chunkData = event.target.result;
 
                 if (shouldGetOnlyHash) {
                     dataHash = getUpdatedHashObj(chunkData, dataHash);
@@ -741,15 +740,16 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                     if (offset < fileSizeBytes) {
                         return resolve(uploadFile());
                     } else {
-                        dataOriginalHash = RECHECK.getHashFromHashObject(dataHash),
-                            dataId = getHash(dataOriginalHash),
-                            dataHash = 0;
+                        dataOriginalHash = RECHECK.getHashFromHashObject(dataHash);
+                        dataId = getHash(dataOriginalHash);
+                        dataHash = 0;
                         offset = 0;
                         return resolve(uploadFile(false));
                     }
                 } else {
                     chunkId++;
                     chunkHash = getHash(chunkData);
+                    chunkData = arrayBufferToBase64(chunkData);
 
                     let chunkEncrObject = {
                         ...fileObj,
@@ -774,8 +774,19 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                     const dataContentPostUrl = getEndpointUrl('data/content');
                     let result = (await axios.post(dataContentPostUrl, chunkPayload)).data;
 
-                    if (!result || result.status !== "OK" || !result.data) {
-                        response = { status: "ERROR", message: "Chunk upload failed!" };
+                    if (!result || !result.data) {
+                        response = { 
+                            status: "ERROR",
+                            code: "ERROR",
+                            message: `(${file.name}) Chunk upload failed!`
+                        };
+                        return resolve();
+                    } else if (result.status !== "OK" && result.data) {
+                        response = {
+                            status: "ERROR", 
+                            code: result.data[0].code,
+                            message: `(${file.name}) ` + result.data[0].message.EN
+                        };
                         return resolve();
                     }
 
@@ -790,10 +801,18 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                         let result = (await axios.post(dataCreatePostUrl, fileUploadData)).data;
 
                         if (!result || !result.data) {
-                            response = { status: "ERROR", message: "Data create failed!" };
+                            response = { 
+                                status: "ERROR",
+                                code: "ERROR",
+                                message: `(${file.name}) Data create failed!`
+                            };
                             return resolve();
-                        } else if (result.status !== "OK" && result.data[0].code === "21-00-4-01") {
-                            response = { status: "ERROR", message: result.data[0].message.EN };
+                        } else if (result.status !== "OK" && result.data) {
+                            response = {
+                                status: "ERROR", 
+                                code: result.data[0].code,
+                                message: `(${file.name}) ` + result.data[0].message.EN
+                            };
                             return resolve();
                         }
 
@@ -893,6 +912,17 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                 return encodeBase64(fullMessage);//base64FullMessage
             }
         }
+    }
+
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        let bytes = new Uint8Array(buffer);
+        let len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+
+        return window.btoa(binary);
     }
 }
 
@@ -1330,7 +1360,7 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 }
 
 async function pollChunks(encrInfo, receiverPubKey) {
-    // TODO: Handle open/decrypt by hammer
+    // TODO: Handle open/decrypt data for non browser environments
     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
         throw Error("Error: Use browser!");
     }
@@ -1365,8 +1395,12 @@ async function pollChunks(encrInfo, receiverPubKey) {
             {...encrInfo, payload: result.data.payload}, receiverPubKey, browserKeyPair.secretEncKey
         );
 
-        let decryptedChunk = decryptedFileInfo.payload
+        let decryptedChunk = decryptedFileInfo.payload;
+        decryptedChunk = base64ToArrayBuffer(decryptedChunk);
         lastChunkHash = getHash(decryptedChunk);
+        
+        // Concat array buffers converting them on Uint8Array and create final new Uint8Array
+        file = new Uint8Array([...new Uint8Array(file), ...new Uint8Array(decryptedChunk)]);
 
         if (i === 1) {
             chunksCount = result.data.chunksCount;
@@ -1374,37 +1408,31 @@ async function pollChunks(encrInfo, receiverPubKey) {
         } else {
             decryptedDataHashObj = getUpdatedHashObj(decryptedChunk, decryptedDataHashObj);
         }
-
-        if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
-            // TODO: Handle decrypted data
-            return;
-        } else {
-            file += atob(decryptedChunk);
-        }
     }
-    
+
     let decryptedDataHash = getHashFromHashObject(decryptedDataHashObj);
 
     return {
+        payload: file,
         dataId: encrInfo.dataId,
-        payload: parseContent(file),
         sizeBytes: encrInfo.sizeBytes,
         category: encrInfo.category,
         keywords: encrInfo.keywords,
         dataName: encrInfo.dataName,
         dataExtension: encrInfo.dataExtension,
         dataOriginalHash: decryptedDataHash,
-        objectURL: window.URL.createObjectURL(new Blob([parseContent(file)])),
+        objectURL: window.URL.createObjectURL(new Blob([file])),
     };
 
-    function parseContent(payload) {
-        const byteNumbers = new Array(payload.length);
-        for (let i = 0; i < payload.length; i++) {
-          byteNumbers[i] = payload.charCodeAt(i);
+    function base64ToArrayBuffer(base64) {
+        let binary_string = window.atob(base64);
+        let len = binary_string.length;
+        let bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
         }
-      
-        return new Uint8Array(byteNumbers);
-      }
+        return bytes.buffer;
+    }
 }
 
 async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
