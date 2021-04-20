@@ -11,6 +11,7 @@ const stringify = require('json-stable-stringify');
 const wordList = require('./wordlist');
 
 
+
 let debug = false;
 
 let baseUrl = 'http://localhost:4000';
