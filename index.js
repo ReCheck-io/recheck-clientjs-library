@@ -3,7 +3,6 @@ const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-
 const diceware = require('diceware');
 const session25519 = require('session25519');
 const {keccak256, keccak_256} = require('js-sha3');
-const keccak256Old = require('keccak256');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
