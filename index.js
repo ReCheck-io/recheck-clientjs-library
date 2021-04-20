@@ -638,7 +638,8 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
                 pubKeyA: encryptedFile.credentials.encryptingPubKey
             }
         };
-
+        console.log(fileUploadData);
+        return;
         //TODO signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
         fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
@@ -735,8 +736,9 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                 let chunkData = btoa(event.target.result);
 
                 if (shouldGetOnlyHash) {
+                    dataHash = getUpdatedHashObj(chunkData, dataHash);
+                    
                     if (offset < fileSizeBytes) {
-                        dataHash = getUpdatedHashObj(chunkData, dataHash);
                         return resolve(uploadFile());
                     } else {
                         dataOriginalHash = RECHECK.getHashFromHashObject(dataHash),
@@ -1306,22 +1308,22 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
         log('Server responds to polling with', pollRes.data);
 
         // poll and decrypt each chunk
-        let decryptedDataHash = await pollChunks(pollRes.data, receiverPubKey);
+        let fileData = await pollChunks(pollRes.data, receiverPubKey);
 
-        log(decryptedDataHash);
+        console.log(fileData);
 
         // Validate payload
-        // let validationResult = await validate(decryptedDataHash, userId, dataId, txPolling, trailExtraArgs);
+        let validationResult = await validate(fileData.dataOriginalHash, userId, dataId, txPolling, trailExtraArgs);
+        console.log(validationResult);
 
         // if (isNullAny(validationResult) || txPolling) {
         //     return validationResult;
         // } else {
-            // TODO: Get decrypted file from indexedDB
-            if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
-                return;
-            }
-            return decryptedDataHash;
+        //     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
+        //         return;
+        //     }
         // }
+        return fileData;
     }
 
     throw new Error('Polling timeout.');
@@ -1336,13 +1338,14 @@ async function pollChunks(encrInfo, receiverPubKey) {
     let decryptedDataHashObj = {};
     let lastChunkHash = null;
     let chunksCount = 2;
-    let finalBlob = new Blob([]);
+    let file = "";
 
     for (let i = 1; i <= chunksCount; i++) {
         let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
         let previousChunkHashSign = signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
         let query = `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`;
         let getUrl = getEndpointUrl('data/content', query);
+
         if (i === chunksCount) {
             let requestType = 'completed';
             let trailHash = getTrailHash(encrInfo.dataId, encrInfo.userId, requestType, encrInfo.userId);
@@ -1376,109 +1379,32 @@ async function pollChunks(encrInfo, receiverPubKey) {
             // TODO: Handle decrypted data
             return;
         } else {
-            let chunkObj = {
-                chunksCount: result.data.chunksCount,
-                chunkId: result.data.chunkId,
-                payload: decryptedChunk 
-            }
-
-            finalBlob = new Blob([finalBlob, decryptedChunk]);
-
-            // insertDB(result.data.dataId, chunkObj);
+            file += atob(decryptedChunk);
         }
     }
     
     let decryptedDataHash = getHashFromHashObject(decryptedDataHashObj);
+
     return {
-        decryptedDataHash,
-        finalBlob: window.URL.createObjectURL(finalBlob),
+        dataId: encrInfo.dataId,
+        payload: parseContent(file),
+        sizeBytes: encrInfo.sizeBytes,
+        category: encrInfo.category,
+        keywords: encrInfo.keywords,
+        dataName: encrInfo.dataName,
+        dataExtension: encrInfo.dataExtension,
+        dataOriginalHash: decryptedDataHash,
+        objectURL: window.URL.createObjectURL(new Blob([parseContent(file)])),
     };
 
-
-    function initDB(tableName = null, dbName = 'recheck') {
-        let IDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
-        let request = IDB.open(dbName);
-        let db = null;
-      
-        request.onupgradeneeded = (e) => {
-          db = e.target.result;
-          if (tableName) {
-            db.createObjectStore(tableName, { keyPath: "chunkId" })
-          }
-            log("on upgrade needed", db);
+    function parseContent(payload) {
+        const byteNumbers = new Array(payload.length);
+        for (let i = 0; i < payload.length; i++) {
+          byteNumbers[i] = payload.charCodeAt(i);
         }
       
-        request.onsuccess = (e) => {
-          db = e.target.result;
-        }
-      
-        request.onerror = (e) => {
-            log("on error", e);
-        }
-      
-        return request;
-    }
-      
-    function insertDB(tableName, data) {
-        let db = initDB(tableName);
-        
-        db.onupgradeneeded = (e) => {
-            if (tableName) {
-            e.target.result.createObjectStore(tableName, { keyPath: "chunkId" })
-            }      
-        }
-        
-        db.onsuccess = (e) => {
-            let d = e.target.result;
-            const tx = d.transaction(tableName, "readwrite");
-        
-            tx.onerror = e => alert(`Error! ${e.target.error}`);
-        
-            const dataTable = tx.objectStore(tableName)
-        
-            dataTable.put(data);
-        }
-    }
-    
-    function getDBData(tableName, index) {
-        let db = initDB(tableName);
-        
-        db.onsuccess = (e) => {
-            let d = e.target.result;
-            const tx = d.transaction(tableName, "readwrite");
-        
-            tx.onerror = e => alert(`Error! ${e.target.error}`);
-        
-            const dataTable = tx.objectStore(tableName)
-        
-            let data = dataTable.get(index);
-        
-            data.onsuccess = (e) => {
-                log(e.target.result);
-            }
-        
-        
-        }
-    }
-    
-    function deleteDBTable(tableName) {
-        let db = initDB(tableName);
-        
-        db.onerror = (e) => {
-            log("Error deleting database.", e);
-        };
-        
-        db.onsuccess = (e) => {
-            let transaction = db.transaction([tableName], "readwrite");
-            let objectStore = transaction.objectStore(tableName);
-
-            let objectStoreRequest = objectStore.clear();
-
-            objectStoreRequest.onsuccess = (event) => {
-                log('DB table cleare success!');
-            };
-        }
-    }
+        return new Uint8Array(byteNumbers);
+      }
 }
 
 async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
