@@ -731,8 +731,8 @@ async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progr
                 if (event.target.readyState !== FileReader.DONE) reject();
 
                 offset += chunkSizeBytes;
-                if (progressCb) progressCb(event.target.result.length);
                 let chunkData = event.target.result;
+                if (progressCb) progressCb(chunkData.byteLength);
 
                 if (shouldGetOnlyHash) {
                     dataHash = getUpdatedHashObj(chunkData, dataHash);
@@ -961,7 +961,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
 
     function totalProgressCb(bytesRead) {
         totalBytesRead += bytesRead;
-
+        
         progressCb(Math.floor(((totalBytesRead / totalFileSizeBytes) * 100) / 2));
     }
 }
