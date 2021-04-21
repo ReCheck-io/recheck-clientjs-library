@@ -1324,7 +1324,12 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 
     dataId = await processExternalId(dataId, userId, isExternal);
 
-    let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}`);
+    let requestType = "credentials";
+    let trailHash = getTrailHash(dataId, userId, requestType, userId);
+    let trailHashSignatureHash = getHash(signMessage(trailHash, browserKeyPair.secretKey));
+
+    let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`);
+    pollUrl = pollUrl.replace('NULL', signMessage(getRequestHash(pollUrl), browserKeyPair.secretKey));
 
     for (let i = 0; i < pollingTime; i++) {
         let pollRes = (await axios.get(pollUrl)).data;
