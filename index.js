@@ -1,8 +1,8 @@
-const {box, secretbox, randomBytes} = require('tweetnacl');
-const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-util');
+const { box, secretbox, randomBytes } = require('tweetnacl');
+const { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } = require('tweetnacl-util');
 const diceware = require('diceware');
 const session25519 = require('session25519');
-const {keccak256, keccak_256} = require('js-sha3');
+const { keccak256, keccak_256 } = require('js-sha3');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
@@ -10,6 +10,11 @@ const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
 const wordList = require('./wordlist');
 
+let streamSaver = null;
+
+if (typeof window !== 'undefined') {
+    streamSaver = require('streamsaver');
+}
 
 let debug = false;
 
@@ -578,354 +583,6 @@ async function newKeyPair(passPhrase) {
     }
 }
 
-async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = null, txPolling = false, trailExtraArgs = null) {
-
-    log('Browser encrypts to receiver', fileObj, userChainId);
-
-    let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs);
-    log('Browser submits encrypted data to API', fileUploadData);
-
-    if (!isNullAny(externalId)) {
-        await saveExternalId(externalId, userChainId, fileUploadData.encryption.dataOriginalHash);
-    }
-
-    let submitUrl = getEndpointUrl('data/create');
-    log('store post', submitUrl);
-
-    let submitRes = (await axios.post(submitUrl, fileUploadData)).data;
-    log('Server returns result', submitRes.data);
-
-    if (submitRes.status === "ERROR") {
-        throw submitRes.data;
-    }
-
-    if (!txPolling) {
-        return submitRes.data;
-    }
-
-    return await processTxPolling(getHash(fileObj.payload), userChainId, 'requestType', 'upload');
-
-    async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
-        let fileContents = fileObj.payload;
-        let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubEncKey);
-        let syncPassHash = getHash(encryptedFile.credentials.syncPass);
-        let dataOriginalHash = getHash(fileContents);
-        let dataChainId = getHash(dataOriginalHash);
-        let requestType = 'upload';
-
-        let trailHash = getTrailHash(dataChainId, userChainId, requestType, userChainId, trailExtraArgs);
-
-        let fileUploadData = {
-            userId: userChainId,
-            dataId: dataChainId,
-            requestId: defaultRequestId,
-            requestType: requestType,
-            requestBodyHashSignature: 'NULL',
-            trailHash: trailHash,
-            trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-            dataName: fileObj.dataName,
-            dataExtension: fileObj.dataExtension,
-            category: fileObj.category,
-            keywords: fileObj.keywords,
-            dataFolderId: fileObj.dataFolderId,
-            payload: encryptedFile.payload,
-            encryption: {
-                dataOriginalHash: dataOriginalHash,
-                salt: encryptedFile.credentials.salt,
-                passHash: syncPassHash,
-                encryptedPassA: encryptedFile.credentials.encryptedPass,
-                pubKeyA: encryptedFile.credentials.encryptingPubKey
-            }
-        };
-        console.log(fileUploadData);
-        return;
-        //TODO signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
-        fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
-
-        return fileUploadData;
-
-
-        async function encryptFileToPublicKey(fileData, dstPublicEncKey) {
-            let fileKey = generateKey();
-            let saltKey = generateKey();
-            log('fileKey', fileKey);
-            log('saltKey', saltKey);
-
-            let symKey = encodeBase64(hexStringToByte(keccak256(fileKey + saltKey)));
-            log('symKey', symKey);
-            log('fileData', fileData);
-
-            let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-            let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicEncKey);
-
-            return {
-                payload: encryptedFile,
-                credentials: {
-                    syncPass: fileKey,
-                    salt: saltKey,
-                    encryptedPass: encryptedPass.payload,
-                    encryptingPubKey: encryptedPass.srcPublicEncKey
-                }
-            };
-
-
-            function encryptDataWithSymmetricKey(data, key) {
-                const keyUint8Array = decodeBase64(key);
-
-                const nonce = newNonce();
-                log('data', data);
-                const messageUint8 = decodeUTF8(data);
-                const box = secretbox(messageUint8, nonce, keyUint8Array);
-
-                const fullMessage = new Uint8Array(nonce.length + box.length);
-                fullMessage.set(nonce);
-                fullMessage.set(box, nonce.length);
-
-                return encodeBase64(fullMessage);//base64FullMessage
-            }
-        }
-    }
-}
-
-async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progressCb = null, trailExtraArgs = null) {
-    if (isNullAny(fileObj) || isNullAny(fileObj.file) || isNullAny(userChainId) || isNullAny(userChainIdPubEncKey)) {
-        throw Error('Missing file object and/or file content!');
-    }
-
-    let file = fileObj.file;
-    let fileSizeBytes = file.size;
-
-    let fileKey = null;
-    let saltKey = null;
-
-    let offset = 0;
-    let chunkId = 0;
-    let dataId = null;
-    let dataOriginalHash = null;
-    let dataHash = null;
-    let chunkHash = null;
-    let fileUploadData = null;
-
-    let chunkSizeBytes = fileObj.maxChunkSizeKB * 1024;
-    let chunksCount = Math.ceil(fileSizeBytes / chunkSizeBytes);
-
-    chunksCount = chunksCount < 2 ? 2 : chunksCount;
-    chunkSizeBytes = Math.ceil(fileSizeBytes / chunksCount);
-
-    let reader = new FileReader();
-    let response = null;
-
-    await uploadFile();
-
-    return response;
-
-    async function uploadFile(shouldGetOnlyHash = true) {
-        let nextSliceEnd = offset + chunkSizeBytes;
-        nextSliceEnd = nextSliceEnd > fileSizeBytes ? fileSizeBytes : nextSliceEnd;
-        let currentChunk = file.slice(offset, nextSliceEnd);
-
-        reader.readAsArrayBuffer(currentChunk);
-
-        return new Promise(function (resolve, reject) {
-            reader.onloadend = async function (event) {
-                if (event.target.readyState !== FileReader.DONE) reject();
-
-                offset += chunkSizeBytes;
-                let chunkData = event.target.result;
-                if (progressCb) progressCb(chunkData.byteLength);
-
-                if (shouldGetOnlyHash) {
-                    dataHash = getUpdatedHashObj(chunkData, dataHash);
-                    
-                    if (offset < fileSizeBytes) {
-                        return resolve(uploadFile());
-                    } else {
-                        dataOriginalHash = RECHECK.getHashFromHashObject(dataHash);
-                        dataId = getHash(dataOriginalHash);
-                        dataHash = 0;
-                        offset = 0;
-                        return resolve(uploadFile(false));
-                    }
-                } else {
-                    chunkId++;
-                    chunkHash = getHash(chunkData);
-                    chunkData = arrayBufferToBase64(chunkData);
-
-                    let chunkEncrObject = {
-                        ...fileObj,
-                        dataOriginalHash,
-                        dataId,
-                        chunkId,
-                        chunkHash,
-                        chunksCount,
-                        payload: chunkData,
-                    }
-
-                    fileUploadData = await getFileUploadData(chunkEncrObject, userChainId, userChainIdPubEncKey, trailExtraArgs);
-
-                    let chunkPayload = {
-                        payload: fileUploadData.payload,
-                        dataId: fileUploadData.dataId,
-                        chunkId: fileUploadData.chunkId,
-                        chunkHash: fileUploadData.chunkHash,
-                        chunksCount: fileUploadData.chunksCount,
-                    }
-
-                    const dataContentPostUrl = getEndpointUrl('data/content');
-                    let result = (await axios.post(dataContentPostUrl, chunkPayload)).data;
-
-                    if (!result || !result.data) {
-                        response = { 
-                            status: "ERROR",
-                            code: "ERROR",
-                            message: `(${file.name}) Chunk upload failed!`
-                        };
-                        return resolve();
-                    } else if (result.status !== "OK" && result.data) {
-                        response = {
-                            status: "ERROR", 
-                            code: result.data[0].code,
-                            message: `(${file.name}) ` + result.data[0].message.EN
-                        };
-                        return resolve();
-                    }
-
-                    // On success
-                    if (offset < fileSizeBytes) {
-                        return resolve(uploadFile(false));
-                    } else {
-                        fileKey = null;
-                        saltKey = null;
-                        delete fileUploadData.payload;
-                        const dataCreatePostUrl = getEndpointUrl('data/create');
-                        let result = (await axios.post(dataCreatePostUrl, fileUploadData)).data;
-
-                        if (!result || !result.data) {
-                            response = { 
-                                status: "ERROR",
-                                code: "ERROR",
-                                message: `(${file.name}) Data create failed!`
-                            };
-                            return resolve();
-                        } else if (result.status !== "OK" && result.data) {
-                            response = {
-                                status: "ERROR", 
-                                code: result.data[0].code,
-                                message: `(${file.name}) ` + result.data[0].message.EN
-                            };
-                            return resolve();
-                        }
-
-                        response = {
-                            ...result.data,
-                            dataId: fileUploadData.dataId,
-                            dataName: fileUploadData.dataName,
-                            dataExtension: fileUploadData.dataExtension,
-                        };
-                        resolve();
-                    }
-                }
-            };
-        });
-    }
-
-    async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
-        let fileContents = fileObj.payload;
-        let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubEncKey);
-        let syncPassHash = getHash(encryptedFile.credentials.syncPass);
-        let requestType = 'upload';
-
-        let trailHash = getTrailHash(fileObj.dataId, userChainId, requestType, userChainId, trailExtraArgs);
-
-        let fileUploadData = {
-            chunkId: fileObj.chunkId,
-            chunkHash: fileObj.chunkHash,
-            chunksCount: fileObj.chunksCount,
-            userId: userChainId,
-            dataId: fileObj.dataId,
-            requestId: defaultRequestId,
-            requestType: requestType,
-            requestBodyHashSignature: 'NULL',
-            trailHash: trailHash,
-            trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
-            dataName: fileObj.dataName,
-            dataExtension: fileObj.dataExtension,
-            sizeBytes: fileSizeBytes,
-            category: fileObj.category,
-            keywords: fileObj.keywords,
-            dataFolderId: fileObj.dataFolderId,
-            payload: encryptedFile.payload,
-            encryption: {
-                dataOriginalHash: fileObj.dataOriginalHash,
-                salt: encryptedFile.credentials.salt,
-                passHash: syncPassHash,
-                encryptedPassA: encryptedFile.credentials.encryptedPass,
-                pubKeyA: encryptedFile.credentials.encryptingPubKey
-            }
-        };
-
-        // TODO: signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
-        fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
-
-        return fileUploadData;
-
-        async function encryptFileToPublicKey(fileData, dstPublicEncKey) {
-            
-            if (!fileKey || !saltKey) {
-                fileKey = generateKey();
-                saltKey = generateKey();
-            }
-
-            log('fileKey', fileKey);
-            log('saltKey', saltKey);
-            
-            let symKey = encodeBase64(hexStringToByte(keccak256(fileKey + saltKey)));
-            log('symKey', symKey);
-            log('fileData', fileData);
-
-            let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
-            let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicEncKey);
-            log('encr File Data', encryptedFile);
-
-            return {
-                payload: encryptedFile,
-                credentials: {
-                    syncPass: fileKey,
-                    salt: saltKey,
-                    encryptedPass: encryptedPass.payload,
-                    encryptingPubKey: encryptedPass.srcPublicEncKey
-                }
-            };
-
-            function encryptDataWithSymmetricKey(data, key) {
-                const keyUint8Array = decodeBase64(key);
-
-                const nonce = newNonce();
-                log('data', data);
-                const messageUint8 = decodeUTF8(data);
-                const box = secretbox(messageUint8, nonce, keyUint8Array);
-
-                const fullMessage = new Uint8Array(nonce.length + box.length);
-                fullMessage.set(nonce);
-                fullMessage.set(box, nonce.length);
-
-                return encodeBase64(fullMessage);//base64FullMessage
-            }
-        }
-    }
-
-    function arrayBufferToBase64(buffer) {
-        let binary = '';
-        let bytes = new Uint8Array(buffer);
-        let len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-
-        return window.btoa(binary);
-    }
-}
-
 async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = null, ...props) {
     if (isNullAny(files)) {
         throw Error("Missing files!");
@@ -963,6 +620,245 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
         totalBytesRead += bytesRead;
         
         progressCb(Math.floor(((totalBytesRead / totalFileSizeBytes) * 100) / 2));
+    }
+
+    async function storeLargeFiles(fileObj, userChainId, userChainIdPubEncKey, progressCb = null, trailExtraArgs = null) {
+        if (isNullAny(fileObj) || isNullAny(fileObj.file) || isNullAny(userChainId) || isNullAny(userChainIdPubEncKey)) {
+            throw Error('Missing file object and/or file content!');
+        }
+    
+        let file = fileObj.file;
+        let fileSizeBytes = file.size;
+    
+        let fileKey = null;
+        let saltKey = null;
+    
+        let offset = 0;
+        let chunkId = 0;
+        let dataId = null;
+        let dataOriginalHash = null;
+        let dataHash = null;
+        let chunkHash = null;
+        let fileUploadData = null;
+    
+        let chunkSizeBytes = fileObj.maxChunkSizeKB * 1024;
+        let chunksCount = Math.ceil(fileSizeBytes / chunkSizeBytes);
+    
+        chunksCount = chunksCount < 2 ? 2 : chunksCount;
+        chunkSizeBytes = Math.ceil(fileSizeBytes / chunksCount);
+    
+        let reader = new FileReader();
+        let response = null;
+    
+        await uploadFile();
+    
+        return response;
+    
+        async function uploadFile(shouldGetOnlyHash = true) {
+            let nextSliceEnd = offset + chunkSizeBytes;
+            nextSliceEnd = nextSliceEnd > fileSizeBytes ? fileSizeBytes : nextSliceEnd;
+            let currentChunk = file.slice(offset, nextSliceEnd);
+    
+            reader.readAsArrayBuffer(currentChunk);
+    
+            return new Promise(function (resolve, reject) {
+                reader.onloadend = async function (event) {
+                    if (event.target.readyState !== FileReader.DONE) reject();
+    
+                    offset += chunkSizeBytes;
+                    let chunkData = event.target.result;
+                    if (progressCb) progressCb(chunkData.byteLength);
+    
+                    if (shouldGetOnlyHash) {
+                        dataHash = getUpdatedHashObj(chunkData, dataHash);
+                        
+                        if (offset < fileSizeBytes) {
+                            return resolve(uploadFile());
+                        } else {
+                            dataOriginalHash = RECHECK.getHashFromHashObject(dataHash);
+                            dataId = getHash(dataOriginalHash);
+                            dataHash = 0;
+                            offset = 0;
+                            return resolve(uploadFile(false));
+                        }
+                    } else {
+                        chunkId++;
+                        chunkHash = getHash(chunkData);
+                        chunkData = arrayBufferToBase64(chunkData);
+    
+                        let chunkEncrObject = {
+                            ...fileObj,
+                            dataOriginalHash,
+                            dataId,
+                            chunkId,
+                            chunkHash,
+                            chunksCount,
+                            payload: chunkData,
+                        }
+    
+                        fileUploadData = await getFileUploadData(chunkEncrObject, userChainId, userChainIdPubEncKey, trailExtraArgs);
+    
+                        let chunkPayload = {
+                            payload: fileUploadData.payload,
+                            dataId: fileUploadData.dataId,
+                            chunkId: fileUploadData.chunkId,
+                            chunkHash: fileUploadData.chunkHash,
+                            chunksCount: fileUploadData.chunksCount,
+                        }
+    
+                        const dataContentPostUrl = getEndpointUrl('data/content');
+                        let result = (await axios.post(dataContentPostUrl, chunkPayload)).data;
+    
+                        if (!result || !result.data) {
+                            response = { 
+                                status: "ERROR",
+                                code: "ERROR",
+                                message: `(${file.name}) Chunk upload failed!`
+                            };
+                            return resolve();
+                        } else if (result.status !== "OK" && result.data) {
+                            response = {
+                                status: "ERROR", 
+                                code: result.data[0].code,
+                                message: `(${file.name}) ` + result.data[0].message.EN
+                            };
+                            return resolve();
+                        }
+    
+                        // On success
+                        if (offset < fileSizeBytes) {
+                            return resolve(uploadFile(false));
+                        } else {
+                            fileKey = null;
+                            saltKey = null;
+                            delete fileUploadData.payload;
+                            const dataCreatePostUrl = getEndpointUrl('data/create');
+                            let result = (await axios.post(dataCreatePostUrl, fileUploadData)).data;
+    
+                            if (!result || !result.data) {
+                                response = { 
+                                    status: "ERROR",
+                                    code: "ERROR",
+                                    message: `(${file.name}) Data create failed!`
+                                };
+                                return resolve();
+                            } else if (result.status !== "OK" && result.data) {
+                                response = {
+                                    status: "ERROR", 
+                                    code: result.data[0].code,
+                                    message: `(${file.name}) ` + result.data[0].message.EN
+                                };
+                                return resolve();
+                            }
+    
+                            response = {
+                                ...result.data,
+                                dataId: fileUploadData.dataId,
+                                dataName: fileUploadData.dataName,
+                                dataExtension: fileUploadData.dataExtension,
+                            };
+                            resolve();
+                        }
+                    }
+                };
+            });
+        }
+    
+        async function getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs = null) {
+            let fileContents = fileObj.payload;
+            let encryptedFile = await encryptFileToPublicKey(fileContents, userChainIdPubEncKey);
+            let syncPassHash = getHash(encryptedFile.credentials.syncPass);
+            let requestType = 'upload';
+    
+            let trailHash = getTrailHash(fileObj.dataId, userChainId, requestType, userChainId, trailExtraArgs);
+    
+            let fileUploadData = {
+                chunkId: fileObj.chunkId,
+                chunkHash: fileObj.chunkHash,
+                chunksCount: fileObj.chunksCount,
+                userId: userChainId,
+                dataId: fileObj.dataId,
+                requestId: defaultRequestId,
+                requestType: requestType,
+                requestBodyHashSignature: 'NULL',
+                trailHash: trailHash,
+                trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
+                dataName: fileObj.dataName,
+                dataExtension: fileObj.dataExtension,
+                sizeBytes: fileSizeBytes,
+                category: fileObj.category,
+                keywords: fileObj.keywords,
+                dataFolderId: fileObj.dataFolderId,
+                payload: encryptedFile.payload,
+                encryption: {
+                    dataOriginalHash: fileObj.dataOriginalHash,
+                    salt: encryptedFile.credentials.salt,
+                    passHash: syncPassHash,
+                    encryptedPassA: encryptedFile.credentials.encryptedPass,
+                    pubKeyA: encryptedFile.credentials.encryptingPubKey
+                }
+            };
+    
+            // TODO: signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
+            fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
+    
+            return fileUploadData;
+    
+            async function encryptFileToPublicKey(fileData, dstPublicEncKey) {
+                
+                if (!fileKey || !saltKey) {
+                    fileKey = generateKey();
+                    saltKey = generateKey();
+                }
+    
+                log('fileKey', fileKey);
+                log('saltKey', saltKey);
+                
+                let symKey = encodeBase64(hexStringToByte(keccak256(fileKey + saltKey)));
+                log('symKey', symKey);
+                log('fileData', fileData);
+    
+                let encryptedFile = encryptDataWithSymmetricKey(fileData, symKey);
+                let encryptedPass = await encryptDataToPublicKeyWithKeyPair(fileKey, dstPublicEncKey);
+                log('encr File Data', encryptedFile);
+    
+                return {
+                    payload: encryptedFile,
+                    credentials: {
+                        syncPass: fileKey,
+                        salt: saltKey,
+                        encryptedPass: encryptedPass.payload,
+                        encryptingPubKey: encryptedPass.srcPublicEncKey
+                    }
+                };
+    
+                function encryptDataWithSymmetricKey(data, key) {
+                    const keyUint8Array = decodeBase64(key);
+    
+                    const nonce = newNonce();
+                    log('data', data);
+                    const messageUint8 = decodeUTF8(data);
+                    const box = secretbox(messageUint8, nonce, keyUint8Array);
+    
+                    const fullMessage = new Uint8Array(nonce.length + box.length);
+                    fullMessage.set(nonce);
+                    fullMessage.set(box, nonce.length);
+    
+                    return encodeBase64(fullMessage);//base64FullMessage
+                }
+            }
+        }
+    
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            let bytes = new Uint8Array(buffer);
+            let len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+    
+            return window.btoa(binary);
+        }
     }
 }
 
@@ -1010,7 +906,7 @@ async function validate(fileOriginalHash, userId, dataId, isExternal = false, tx
     let result = (await axios.post(validateUrl, postObj)).data;
 
     if (!txPolling) {
-        return result.data;
+        return result;
     }
 
     return await processTxPolling(dataId, userId, 'requestType', 'verify');
@@ -1314,7 +1210,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     return serverPostResponse.data;
 }
 
-async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false, trailExtraArgs = null) {
+async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false, txPolling = false, trailExtraArgs = null, downloadOnly) {
     let userId = credentialsResponse.userId;
     let dataId = credentialsResponse.dataId;
 
@@ -1343,37 +1239,46 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
         log('Server responds to polling with', pollRes.data);
 
         // poll and decrypt each chunk
-        let fileData = await pollChunks(pollRes.data, receiverPubKey);
-
-        console.log(fileData);
+        let fileData = await pollChunks(pollRes.data, receiverPubKey, downloadOnly);
 
         // Validate payload
         let validationResult = await validate(fileData.dataOriginalHash, userId, dataId, txPolling, trailExtraArgs);
-        console.log(validationResult);
 
-        // if (isNullAny(validationResult) || txPolling) {
-        //     return validationResult;
-        // } else {
-        //     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
-        //         return;
-        //     }
-        // }
-        return fileData;
+        if (txPolling) {
+            return validationResult;
+        } else if (isNullAny(validationResult) || validationResult.status !== "OK") {
+            return validationResult.data;
+        } else {
+            return fileData;
+        }
     }
 
     throw new Error('Polling timeout.');
 }
 
-async function pollChunks(encrInfo, receiverPubKey) {
+async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
     // TODO: Handle open/decrypt data for non browser environments
     if (window === 'undefined' || defaultRequestId === "ReCheckHAMMER") {
         throw Error("Error: Use browser!");
     }
 
+    let fileStream = null;
+    let writer = null;
+
+    if (downloadOnly) {
+        fileStream = streamSaver.createWriteStream(
+            'new-' + encrInfo.dataName + encrInfo.dataExtension, 
+            {
+                size: encrInfo.sizeBytes
+            }
+        );
+        writer = fileStream.getWriter();
+    }
+
     let decryptedDataHashObj = {};
     let lastChunkHash = null;
     let chunksCount = 2;
-    let file = "";
+    let file = new Uint8Array([]);
 
     for (let i = 1; i <= chunksCount; i++) {
         let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
@@ -1404,8 +1309,18 @@ async function pollChunks(encrInfo, receiverPubKey) {
         decryptedChunk = base64ToArrayBuffer(decryptedChunk);
         lastChunkHash = getHash(decryptedChunk);
         
-        // Concat array buffers converting them on Uint8Array and create final new Uint8Array
-        file = new Uint8Array([...new Uint8Array(file), ...new Uint8Array(decryptedChunk)]);
+        if (downloadOnly) {
+            writer.write(decryptedChunk);
+            window.downloadStarted = true;
+
+            if (i === chunksCount) {
+                writer.close();
+            }
+
+        } else {
+            // Concat array buffers converting them on Uint8Array and create final new Uint8Array
+            file = appendBuffer(file, decryptedChunk);
+        }
 
         if (i === 1) {
             chunksCount = result.data.chunksCount;
@@ -1417,8 +1332,7 @@ async function pollChunks(encrInfo, receiverPubKey) {
 
     let decryptedDataHash = getHashFromHashObject(decryptedDataHashObj);
 
-    return {
-        payload: file,
+    let resultObject = {
         dataId: encrInfo.dataId,
         sizeBytes: encrInfo.sizeBytes,
         category: encrInfo.category,
@@ -1426,8 +1340,14 @@ async function pollChunks(encrInfo, receiverPubKey) {
         dataName: encrInfo.dataName,
         dataExtension: encrInfo.dataExtension,
         dataOriginalHash: decryptedDataHash,
-        objectURL: window.URL.createObjectURL(new Blob([file])),
     };
+
+    if (!downloadOnly) {
+        resultObject.paylod = file;
+        resultObject.objectURL = window.URL.createObjectURL(new Blob([file]));
+    }
+
+    return resultObject;
 
     function base64ToArrayBuffer(base64) {
         let binary_string = window.atob(base64);
@@ -1436,8 +1356,15 @@ async function pollChunks(encrInfo, receiverPubKey) {
         for (let i = 0; i < len; i++) {
             bytes[i] = binary_string.charCodeAt(i);
         }
-        return bytes.buffer;
+        return bytes;
     }
+
+    function appendBuffer(buffer1, buffer2) {
+        let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+        tmp.set(new Uint8Array(buffer1), 0);
+        tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+        return tmp;
+    };
 }
 
 async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
@@ -1720,9 +1647,9 @@ async function prepareSelection(selection, keyPair) {
     return result;
 }
 
-async function execSelection(selection, keyPair, txPolling = false, trailExtraArgs = null) {
+async function execSelection(selection, keyPair, txPolling = false, trailExtraArgs = null, downloadOnly = false) {
     this.isWorkingExecReEncr = false;
-
+    
     if (selection.indexOf(':') <= 0) {// check if we have a selection or an id
         throw new Error('Missing selection operation code.');
     }
@@ -1810,7 +1737,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
                         }
 
                         try {
-                            fileObj.data = await pollOpen(credentialsResponse, keyPair.publicEncKey, txPolling, trailExtraArgs);
+                            fileObj.data = await pollOpen(credentialsResponse, keyPair.publicEncKey, false, txPolling, trailExtraArgs, downloadOnly);
                         } catch (error) {
                             fileObj.data = error.message ? error.message : error;
                             fileObj.status = "ERROR";
@@ -2144,10 +2071,8 @@ module.exports = {
     newKeyPair: newKeyPair,
 
     /* Encrypt, upload and register a file or any data */
-    //upload new file
-    store: store,
+    // upload new file
     storeData: storeData,
-    storeLargeFiles: storeLargeFiles,
     /* Retrieve fle - used in case of client interaction */
     // node hammer open 0x...(dataId) 0 (this account, different number = different account)
     // node hammer open 0x..(dataId) 1 (user's credentials) 1 (user's credentials API)
@@ -2163,7 +2088,7 @@ module.exports = {
     // browser poll for sharing
     pollShare: pollShare,
     // browser poll for email sharing
-    pollEmail: pollEmail,
+    // pollEmail: pollEmail,
 
     sign: sign,
     // browser poll for signing
