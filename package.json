@@ -3,6 +3,9 @@
   "version": "1.0.22-beta.5",
   "description": "Encryption library that uses two PKI key pairs. ",
   "author": "ReCheck BV <info@recheck.io>",
+  "scripts": {
+    "browserify": "browserify ../recheck-clientjs-library/bundle.js -o ../recheck-clientjs-library/browserify/recheck-web-client.js && rm ../recheck-gui/html/js/recheck/recheck-web-client.js; cp ../recheck-clientjs-library/browserify/recheck-web-client.js ../recheck-gui/html/js/recheck/recheck-web-client.js"
+  },
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
@@ -16,11 +19,12 @@
     "eth-crypto": "^1.5.2",
     "js-sha3": "^0.8.0",
     "json-stable-stringify": "latest",
-    "keccak256": "^1.0.0",
     "secp256k1": "^3.8.0",
     "session25519": "^1.1.0",
+    "streamsaver": "^2.0.5",
     "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.0"
+    "tweetnacl-util": "^0.15.0",
+    "web-streams-polyfill": "^3.0.3"
   },
   "repository": {
     "type": "git",
@@ -35,5 +39,8 @@
     "npm",
     "blockchain",
     "PKI"
-  ]
+  ],
+  "devDependencies": {
+    "browserify": "^17.0.0"
+  }
 }
