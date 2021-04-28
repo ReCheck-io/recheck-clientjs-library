@@ -4,6 +4,7 @@
   "description": "Encryption library that uses two PKI key pairs. ",
   "author": "ReCheck BV <info@recheck.io>",
   "scripts": {
+    "build": "browserify ./bundle.js -o ./browserify/recheck-web-client.js",
     "browserify": "browserify ../recheck-clientjs-library/bundle.js -o ../recheck-clientjs-library/browserify/recheck-web-client.js && rm ../recheck-gui/html/js/recheck/recheck-web-client.js; cp ../recheck-clientjs-library/browserify/recheck-web-client.js ../recheck-gui/html/js/recheck/recheck-web-client.js"
   },
   "main": "index.js",
