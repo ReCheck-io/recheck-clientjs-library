@@ -1316,7 +1316,6 @@ async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
             if (i === chunksCount) {
                 writer.close();
             }
-
         } else {
             // Concat array buffers converting them on Uint8Array and create final new Uint8Array
             file = appendBuffer(file, decryptedChunk);
@@ -1343,8 +1342,8 @@ async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
     };
 
     if (!downloadOnly) {
-        resultObject.paylod = file;
-        resultObject.objectURL = window.URL.createObjectURL(new Blob([file]));
+        resultObject.payload = new Blob([file]);
+        resultObject.objectURL = window.URL.createObjectURL(resultObject.payload);
     }
 
     return resultObject;
