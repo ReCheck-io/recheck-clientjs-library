@@ -5,6 +5,12 @@
   "author": "ReCheck BV <info@recheck.io>",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "build": "browserify ./bundle.js -o ./browserify/recheck-web-client.js",
+    "copy": "cp ./browserify/recheck-web-client.js ../recheck-gui/html/js/recheck/recheck-web-client.js",
+    "rm": "rm ../recheck-gui/html/js/recheck/recheck-web-client.js",
+    "browserify": "npm run build && npm run rm && npm run copy"
+  },
   "dependencies": {
     "aes256": "^1.0.4",
     "atob": "^2.1.2",
@@ -34,5 +40,8 @@
     "npm",
     "blockchain",
     "PKI"
-  ]
+  ],
+  "devDependencies": {
+    "browserify": "^17.0.0"
+  }
 }
