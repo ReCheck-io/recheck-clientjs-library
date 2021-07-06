@@ -14,7 +14,7 @@ let debug = false;
 
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "eth"; //ae,eth
+let network = "ae"; //ae,eth
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
