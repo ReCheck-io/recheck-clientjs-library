@@ -147,6 +147,10 @@ function isValidAddress(address) {
 }
 
 async function validateTokenForUserId(userChainId) {
+    if (typeof window !== 'undefined' && window) {
+        return;
+    }
+
     if (isNullAny(token)) {
         throw new Error("missing authorization token");
     }
