@@ -163,7 +163,10 @@ async function validateTokenForUserId(userChainId) {
         throw serverResponse.data;
     }
 
-    if (serverResponse.data.userId !== userChainId) {
+    if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.data)
+        || isNullAny(serverResponse.data.data.userId)) {
+        throw new Error("not able to retrieve user id from token");
+    } else if (serverResponse.data.data.userId !== userChainId) {
         throw new Error("user id is different from last logged in user");
     }
 }
