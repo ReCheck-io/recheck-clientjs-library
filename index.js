@@ -146,6 +146,28 @@ function isValidAddress(address) {
     }
 }
 
+async function validateTokenForUserId(userChainId) {
+    if (isNullAny(token)) {
+        throw new Error("missing authorization token");
+    }
+
+    let getUrl = getEndpointUrl('user/info');
+
+    let serverResponse = await axios.get(getUrl);
+
+    if (isNullAny(serverResponse)) {
+        throw new Error('Unable to connect to server.');
+    }
+
+    if (serverResponse.status === 'ERROR') {
+        throw serverResponse.data;
+    }
+
+    if (serverResponse.data.userId !== userChainId) {
+        throw new Error("user id is different from last logged in user");
+    }
+}
+
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
@@ -500,6 +522,8 @@ async function newKeyPair(passPhrase) {
 
 async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = null, txPolling = false, trailExtraArgs = null) {
 
+    await validateTokenForUserId(userChainId);
+
     log('Browser encrypts to receiver', fileObj, userChainId);
 
     let fileUploadData = await getFileUploadData(fileObj, userChainId, userChainIdPubEncKey, trailExtraArgs);
@@ -607,6 +631,8 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
 }
 
 async function open(dataChainId, userChainId, keyPair, isExternal = false, txPolling = false, trailExtraArgs = null) {
+
+    await validateTokenForUserId(userChainId);
 
     dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
 
@@ -859,6 +885,8 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
 }
 
 async function prepare(dataChainId, userChainId, isExternal = false) {
+
+    await validateTokenForUserId(userChainId);
 
     dataChainId = await processExternalId(dataChainId, userChainId, isExternal);
 
@@ -1557,6 +1585,8 @@ async function checkHash(dataChainId, userId, requestId = null, isExternal = fal
 }
 
 async function saveExternalId(externalId, userChainId, dataOriginalHash = null) {
+
+    await validateTokenForUserId(userChainId);
 
     let body = {
         externalId: externalId,
