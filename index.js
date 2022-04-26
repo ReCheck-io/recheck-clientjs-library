@@ -14,7 +14,7 @@ let debug = false;
 
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "eth"; //ae,eth
+let network = "poly"; //ae,eth,poly
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -138,6 +138,8 @@ function isValidEmail(emailAddress) {
 function isValidAddress(address) {
     switch (network) {
         case'eth':
+            return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
+        case'poly':
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
             return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
@@ -515,6 +517,20 @@ async function newKeyPair(passPhrase) {
                 phrase: passPhrase
             };
 
+        case "poly":
+            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
+            let secretSignKeyPoly = `0x${secretSignBuffer.toString('hex')}`;
+            let publicSignKeyPoly = ethCrypto.publicKeyByPrivateKey(secretSignKeyPoly);
+            let publicAddressPoly = ethCrypto.publicKey.toAddress(publicSignKeyPoly);
+
+            return {
+                address: publicAddressPoly,
+                publicKey: publicSignKeyPoly,
+                secretKey: secretSignKeyPoly,
+                publicEncKey: publicEncBufferEncoded,
+                secretEncKey: secretEncBufferHex,
+                phrase: passPhrase
+            };
         default:
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
@@ -1483,6 +1499,16 @@ function signMessage(message, secretKey) {
                     secretKey,
                     messageHash
                 );// signature;
+
+            case "poly":
+                const messageHashPoly = ethCrypto.hash.keccak256(message);
+
+                return ethCrypto.sign(
+                    secretKey,
+                    messageHashPoly
+                );// signature;
+            default:
+                throw new Error("Unknown chain network");
         }
     } catch (ignored) {
         return false;
@@ -1519,6 +1545,15 @@ function verifyMessage(message, signature, pubKey) {
                     signature,
                     ethCrypto.hash.keccak256(message)
                 ); //signer;
+
+            case "poly":
+                return ethCrypto.recover(
+                    signature,
+                    ethCrypto.hash.keccak256(message)
+                ); //signer;
+
+            default:
+                throw new Error("Unknown chain network");
         }
     } catch (ignored) {
         return false;
