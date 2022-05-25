@@ -19,7 +19,7 @@ let debug = false;
 
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "poly"; //ae,eth,poly
+let network = "avax"; //ae,eth,poly,avax
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -145,6 +145,8 @@ function isValidAddress(address) {
         case'eth':
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'poly':
+            return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
+        case'avax':
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
             return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
@@ -532,6 +534,21 @@ async function newKeyPair(passPhrase) {
                 address: publicAddressPoly,
                 publicKey: publicSignKeyPoly,
                 secretKey: secretSignKeyPoly,
+                publicEncKey: publicEncBufferEncoded,
+                secretEncKey: secretEncBufferHex,
+                phrase: passPhrase
+            };
+
+        case "avax":
+            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
+            let secretSignKeyAvax = `0x${secretSignBuffer.toString('hex')}`;
+            let publicSignKeyAvax = ethCrypto.publicKeyByPrivateKey(secretSignKeyAvax);
+            let publicAddressAvax = ethCrypto.publicKey.toAddress(publicSignKeyAvax);
+
+            return {
+                address: publicAddressAvax,
+                publicKey: publicSignKeyAvax,
+                secretKey: secretSignKeyAvax,
                 publicEncKey: publicEncBufferEncoded,
                 secretEncKey: secretEncBufferHex,
                 phrase: passPhrase
@@ -1512,6 +1529,15 @@ function signMessage(message, secretKey) {
                     secretKey,
                     messageHashPoly
                 );// signature;
+
+            case "avax":
+                const messageHashAvax = ethCrypto.hash.keccak256(message);
+
+                return ethCrypto.sign(
+                    secretKey,
+                    messageHashAvax
+                );// signature;
+
             default:
                 throw new Error("Unknown chain network");
         }
@@ -1552,6 +1578,12 @@ function verifyMessage(message, signature, pubKey) {
                 ); //signer;
 
             case "poly":
+                return ethCrypto.recover(
+                    signature,
+                    ethCrypto.hash.keccak256(message)
+                ); //signer;
+
+            case "avax":
                 return ethCrypto.recover(
                     signature,
                     ethCrypto.hash.keccak256(message)
