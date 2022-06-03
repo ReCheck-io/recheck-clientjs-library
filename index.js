@@ -73,7 +73,7 @@ async function getEndpointUrl(action, appendix) {
         await sleep(10);
         return getEndpointUrl(action, appendix);
     }
-    
+
     let url = `${baseUrl}/${action}?noapi=1`;
 
     if (!isNullAny(token)) {
@@ -2053,16 +2053,17 @@ function setNotificationObject(selectionActionHash, challenge = null) {
 }
 
 function sendNotification() {
-    let notificationUrl = await getEndpointUrl('user/notification');
+    getEndpointUrl('user/notification').then(notificationUrl => {
+        if (!isNullAny(notificationObject)) {
+            axios.post(notificationUrl, notificationObject)
+                .then((result) => {
+                    logDebug('notification', result)
+                });
+        }
+    
+        notificationObject = null;
+    });
 
-    if (!isNullAny(notificationObject)) {
-        axios.post(notificationUrl, notificationObject)
-            .then((result) => {
-                logDebug('notification', result)
-            });
-    }
-
-    notificationObject = null;
 }
 
 function getConfig() {
