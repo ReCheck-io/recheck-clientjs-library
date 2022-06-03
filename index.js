@@ -190,16 +190,15 @@ function hexStringToArrayBuffer(hexString) {
         && window.location.origin) {
         const url = window.location.origin;
         if (isNullAny(url)) {
-            return init(url);
+            return init(baseUrl);
         }
 
-        axios.get(`${url}/login/challenge?noapi=1`).then((result) => {
-            if (isNullAny(result) || isNullAny(result.data)
-                || isNullAny(result.data.blockchain) || typeof result.data.blockchain !== "string") {
+        getServerInfo().then((result) => {
+            if (isNullAny(result) || isNullAny(result.blockchain) || typeof result.blockchain !== "string") {
                 return init(url);
             }
 
-            return init(url, result.data.blockchain.toLowerCase());
+            return init(url, result.blockchain.toLowerCase());
         }).catch((ignored) => {
             console.log(ignored);
             return init(url);
@@ -444,7 +443,7 @@ const setDefaultRequestId = (requestId) => {
     }
 }
 
-function init(sourceBaseUrl, sourceNetwork = network, sourceToken = token) {
+function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token) {
     baseUrl = sourceBaseUrl;
 
     if (!isNullAny(sourceToken)) {
