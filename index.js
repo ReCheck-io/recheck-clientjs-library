@@ -18,6 +18,7 @@ if (typeof window !== 'undefined') {
 
 let debug = false;
 
+let hasIntialized = false;
 let baseUrl = 'http://localhost:4000';
 let token = null;
 let network = "ae"; //ae,eth
@@ -67,7 +68,12 @@ async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getEndpointUrl(action, appendix) {
+async function getEndpointUrl(action, appendix) {
+    if (!hasIntialized) {
+        await sleep(10);
+        return getEndpointUrl(action, appendix);
+    }
+    
     let url = `${baseUrl}/${action}?noapi=1`;
 
     if (!isNullAny(token)) {
@@ -184,6 +190,8 @@ function hexStringToArrayBuffer(hexString) {
 ////////////////////////////////////////////////////////////
 
 (function setOrigin() {
+    hasIntialized = false;
+
     if (typeof window !== 'undefined'
         && window
         && window.location
@@ -454,10 +462,12 @@ function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = to
     if (!isNullAny(sourceNetwork)) {
         network = sourceNetwork;
     }
+
+    hasIntialized = true;
 }
 
 async function getServerInfo() {
-    let getUrl = getEndpointUrl('login/check');
+    let getUrl = await getEndpointUrl('login/check');
 
     let serverResponse = (await axios.get(getUrl)).data;
 
@@ -478,7 +488,7 @@ async function getLoginChallenge(returnObj = {}) {
         appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
     }
 
-    let getChallengeUrl = getEndpointUrl('login/challenge', appendix);
+    let getChallengeUrl = await getEndpointUrl('login/challenge', appendix);
 
     let challengeResponse = (await axios.get(getChallengeUrl)).data;
 
@@ -509,7 +519,7 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
         loginDevice: loginDevice,
     };
 
-    let loginUrl = getEndpointUrl('login/mobile');
+    let loginUrl = await getEndpointUrl('login/mobile');
 
     let loginPostResult = (await axios.post(loginUrl, payload)).data;
 
@@ -721,7 +731,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                             chunksCount: fileUploadData.chunksCount,
                         }
 
-                        const dataContentPostUrl = getEndpointUrl('data/content');
+                        const dataContentPostUrl = await getEndpointUrl('data/content');
                         let result = (await axios.post(dataContentPostUrl, chunkPayload)).data;
 
                         if (!result || !result.data) {
@@ -747,7 +757,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                             fileKey = null;
                             saltKey = null;
                             delete fileUploadData.payload;
-                            const dataCreatePostUrl = getEndpointUrl('data/create');
+                            const dataCreatePostUrl = await getEndpointUrl('data/create');
                             let result = (await axios.post(dataCreatePostUrl, fileUploadData)).data;
 
                             if (!result || !result.data) {
@@ -916,7 +926,7 @@ async function validate(fileOriginalHash, userId, dataId, isExternal = false, tx
     //TODO signature signMessage(getRequestHash(postObj), keyPair.secretKey)
     postObj.requestBodyHashSignature = getRequestHash(postObj);
 
-    let validateUrl = getEndpointUrl('credentials/validate');
+    let validateUrl = await getEndpointUrl('credentials/validate');
 
     let result = (await axios.post(validateUrl, postObj)).data;
 
@@ -946,7 +956,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         isEmailShare = true;
     }
 
-    let getUrl = getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
+    let getUrl = await getEndpointUrl('share/credentials', `&dataId=${dataId}&${recipientType}=${recipient}`);
     log('shareencrypted get request', getUrl);
 
     let getShareResponse = (await axios.get(getUrl)).data;
@@ -1004,7 +1014,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
 
-    let postUrl = getEndpointUrl('share/create');
+    let postUrl = await getEndpointUrl('share/create');
 
     let serverPostResponse = (await axios.post(postUrl, createShare)).data;
     log('Share POST to server encryption info', createShare);
@@ -1078,7 +1088,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
                 encryptedUrl: encryptedShareUrl.payload,
             };
 
-            let submitUrl = getEndpointUrl('email/share/create');
+            let submitUrl = await getEndpointUrl('email/share/create');
             let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
             log('Server returns result', submitRes.data);
             if (submitRes.status === "ERROR") {
@@ -1114,7 +1124,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
 
     signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj), userSecretKey);
 
-    let postUrl = getEndpointUrl('signature/create');
+    let postUrl = await getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
 
     let serverPostResponse = (await axios.post(postUrl, signObj)).data;
@@ -1146,7 +1156,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     };
     log('submit pubkey payload', browserPubKeySubmit);
 
-    let browserPubKeySubmitUrl = getEndpointUrl('credentials/create/pubkeyb');
+    let browserPubKeySubmitUrl = await getEndpointUrl('credentials/create/pubkeyb');
     log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
 
     let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, browserPubKeySubmit)).data;
@@ -1173,7 +1183,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
     let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
-    let getUrl = getEndpointUrl('credentials/info', query);
+    let getUrl = await getEndpointUrl('credentials/info', query);
     getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
 
@@ -1215,7 +1225,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     };
     log('devicePost', devicePost);
 
-    let postUrl = getEndpointUrl('credentials/create/passb');
+    let postUrl = await getEndpointUrl('credentials/create/passb');
     log('decrypt post', postUrl);
 
     let serverPostResponse = (await axios.post(postUrl, devicePost)).data;
@@ -1239,7 +1249,7 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
     let trailHash = getTrailHash(dataId, userId, requestType, userId);
     let trailHashSignatureHash = getHash(signMessage(trailHash, browserKeyPair.secretKey));
 
-    let pollUrl = getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`);
+    let pollUrl = await getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`);
     pollUrl = pollUrl.replace('NULL', signMessage(getRequestHash(pollUrl), browserKeyPair.secretKey));
 
     for (let i = 0; i < pollingTime; i++) {
@@ -1299,7 +1309,7 @@ async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
         let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
         let previousChunkHashSign = signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
         let query = `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`;
-        let getUrl = getEndpointUrl('data/content', query);
+        let getUrl = await getEndpointUrl('data/content', query);
 
         if (i === chunksCount) {
             let requestType = 'completed';
@@ -1418,7 +1428,7 @@ async function pollShare(dataIds, recipients, userId, isExternal = false, functi
                 return false;
             }
 
-            let pollUrl = getEndpointUrl('share/info', `&${recipientType}=${recipients[j]}&dataId=${dataIds[j]}`);
+            let pollUrl = await getEndpointUrl('share/info', `&${recipientType}=${recipients[j]}&dataId=${dataIds[j]}`);
 
             let pollRes = (await axios.get(pollUrl)).data;
 
@@ -1460,7 +1470,7 @@ async function pollEmail(selectionHash, functionId = '') {
         setShouldWorkPollingForFunctionId(functionId, true);
     }
 
-    let pollUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+    let pollUrl = await getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
 
     let hasSendNotification = false;
     for (let i = 0; i < pollingTime; i++) {
@@ -1516,7 +1526,7 @@ async function pollSign(dataIds, userId, isExternal = false, functionId = '') {
                 return false;
             }
 
-            let pollUrl = getEndpointUrl('signature/info', `&userId=${userId}&dataId=${dataIds[j]}`);
+            let pollUrl = await getEndpointUrl('signature/info', `&userId=${userId}&dataId=${dataIds[j]}`);
 
             let pollRes = (await axios.get(pollUrl)).data;
 
@@ -1563,7 +1573,7 @@ async function select(files, recipients, emailShareCommPubKeys = null, isExterna
 
     files = await processExternalId(files, null, isExternal);
 
-    let validateUrl = getEndpointUrl('selection/create');
+    let validateUrl = await getEndpointUrl('selection/create');
 
     let postBody;
     if (recipients.some(r => !isValidEmail(r))) {
@@ -1608,7 +1618,7 @@ async function select(files, recipients, emailShareCommPubKeys = null, isExterna
 }
 
 async function getSelected(selectionHash) {
-    let getUrl = getEndpointUrl('selection/info', `&selectionHash=${selectionHash}`);
+    let getUrl = await getEndpointUrl('selection/info', `&selectionHash=${selectionHash}`);
     log('getSelected get request', getUrl);
 
     let selectionResponse = (await axios.get(getUrl)).data;
@@ -1691,7 +1701,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
             recipients = selectionResult.usersEmails;
             recipientsEmailLinkKeyPair = await newKeyPair(null);
 
-            let getUrl = getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
+            let getUrl = await getEndpointUrl('email/info', `&selectionHash=${selectionHash}`);
             let serverResponse = (await axios.get(getUrl)).data;
 
             if (serverResponse.status === 'ERROR') {
@@ -1920,7 +1930,7 @@ async function registerHash(requestType, targetUserId, keyPair, requestId = defa
 
     body.requestBodyHashSignature = signMessage(getRequestHash(body), keyPair.secretKey);
 
-    let postUrl = getEndpointUrl('tx/create');
+    let postUrl = await getEndpointUrl('tx/create');
     log('registerHash, ', body);
 
     let serverPostResponse = (await axios.post(postUrl, body)).data;
@@ -1947,7 +1957,7 @@ async function checkHash(dataChainId, userId, requestId = null, isExternal = fal
         query += `&requestId=${requestId}`;
     }
 
-    let getUrl = getEndpointUrl('tx/info', query);
+    let getUrl = await getEndpointUrl('tx/info', query);
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
@@ -1964,7 +1974,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
         dataOriginalHash: dataOriginalHash,
     };
 
-    let postUrl = getEndpointUrl('data/id/create');
+    let postUrl = await getEndpointUrl('data/id/create');
     log('saveExternalId, ', body);
 
     let serverPostResponse = (await axios.post(postUrl, body)).data;
@@ -1980,7 +1990,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
 async function convertExternalId(externalId, userId) {
     let query = `&userId=${userId}&externalId=${externalId}`;
 
-    let getUrl = getEndpointUrl('data/id/info', query);
+    let getUrl = await getEndpointUrl('data/id/info', query);
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
@@ -2007,7 +2017,7 @@ async function createShortQueryUrl(url) {
         longQuery: pathQuery,
     };
 
-    let postUrl = getEndpointUrl('email/share/url/create');
+    let postUrl = await getEndpointUrl('email/share/url/create');
     log('createShortUrl, ', body);
 
     let serverPostResponse = (await axios.post(postUrl, body)).data;
@@ -2024,7 +2034,7 @@ async function createShortQueryUrl(url) {
 async function getLongQueryUrl(queryHash) {
     let query = `&queryHash=${queryHash}`;
 
-    let getUrl = getEndpointUrl('email/share/url/info', query);
+    let getUrl = await getEndpointUrl('email/share/url/info', query);
     log('query URL', getUrl);
 
     let serverResponse = (await axios.get(getUrl)).data;
@@ -2043,7 +2053,7 @@ function setNotificationObject(selectionActionHash, challenge = null) {
 }
 
 function sendNotification() {
-    let notificationUrl = getEndpointUrl('user/notification');
+    let notificationUrl = await getEndpointUrl('user/notification');
 
     if (!isNullAny(notificationObject)) {
         axios.post(notificationUrl, notificationObject)
