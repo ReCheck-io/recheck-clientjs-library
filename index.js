@@ -193,12 +193,13 @@ function hexStringToArrayBuffer(hexString) {
             return init(baseUrl);
         }
 
-        getServerInfo().then((result) => {
-            if (isNullAny(result) || isNullAny(result.blockchain) || typeof result.blockchain !== "string") {
+        axios.get(`${url}/login/challenge?noapi=1`).then((result) => {
+            if (isNullAny(result) || isNullAny(result.data)
+                || isNullAny(result.data.blockchain) || typeof result.data.blockchain !== "string") {
                 return init(url);
             }
 
-            return init(url, result.blockchain.toLowerCase());
+            return init(url, result.data.blockchain.toLowerCase());
         }).catch((ignored) => {
             console.log(ignored);
             return init(url);
