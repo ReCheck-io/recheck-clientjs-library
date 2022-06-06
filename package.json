@@ -22,7 +22,7 @@
     "json-stable-stringify": "latest",
     "secp256k1": "^3.8.0",
     "session25519": "^1.1.0",
-    "streamsaver": "^2.0.5",
+    "streamsaver": "^2.0.6",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.0",
     "web-streams-polyfill": "^3.0.3"
