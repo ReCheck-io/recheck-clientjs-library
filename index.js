@@ -404,7 +404,7 @@ function isNullAny(...args) {
             return true;
         }
 
-        if (typeof current !== "number") {
+        if (isNaN(current)) {
             try {
                 if (+new Date(current) === 0) {
                     // is not a number and can be parsed as null date 1970
