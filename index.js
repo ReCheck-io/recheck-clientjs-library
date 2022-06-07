@@ -198,19 +198,19 @@ function hexStringToArrayBuffer(hexString) {
         && window.location.origin) {
         const url = window.location.origin;
         if (isNullAny(url)) {
-            return init(baseUrl);
+            return init(baseUrl, network, token, true);
         }
 
         axios.get(`${url}/login/challenge?noapi=1`).then((result) => {
             if (isNullAny(result) || isNullAny(result.data)
                 || isNullAny(result.data.blockchain) || typeof result.data.blockchain !== "string") {
-                return init(url);
+                return init(url, network, token, true);
             }
 
-            return init(url, result.data.blockchain.toLowerCase());
+            return init(url, result.data.blockchain.toLowerCase(), token, true);
         }).catch((ignored) => {
             console.log(ignored);
-            return init(url);
+            return init(url, network, token, true);
         });
     }
 }());
@@ -452,7 +452,13 @@ const setDefaultRequestId = (requestId) => {
     }
 }
 
-function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token) {
+function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token, isAutoCall = false) {
+    if (!isAutoCall && !hasIntialized) {
+        return setTimeout(() => {
+            return init(sourceBaseUrl, sourceNetwork, sourceToken, isAutoCall);
+        }, 10);
+    }
+
     baseUrl = sourceBaseUrl;
 
     if (!isNullAny(sourceToken)) {
@@ -2060,7 +2066,7 @@ function sendNotification() {
                     logDebug('notification', result)
                 });
         }
-    
+
         notificationObject = null;
     });
 
