@@ -2066,7 +2066,7 @@ function sendNotification() {
                     logDebug('notification', result)
                 });
         }
-
+    
         notificationObject = null;
     });
 
