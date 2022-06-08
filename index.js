@@ -189,7 +189,7 @@ function hexStringToArrayBuffer(hexString) {
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
 
-(function setOrigin() {
+function setOrigin() {
     hasIntialized = false;
 
     if (typeof window !== 'undefined'
@@ -210,10 +210,10 @@ function hexStringToArrayBuffer(hexString) {
             return init(url, result.data.blockchain.toLowerCase(), token, true);
         }).catch((ignored) => {
             console.log(ignored);
-            return init(url, network, token, true);
+            return init(baseUrl, network, token, true);
         });
     }
-}());
+};
 
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
     if (isNullAny(srcAkPair)) {
@@ -486,6 +486,18 @@ async function getServerInfo() {
         blockchain: serverResponse.blockchain,
         contractAddress: serverResponse.contractAddress
     };
+}
+
+async function getCurrentUserInfo() {
+    let getUrl = await getEndpointUrl('user/info');
+
+    let serverResponse = (await axios.get(getUrl)).data;
+
+    if (isNullAny(serverResponse)) {
+        throw new Error('Unable to connect to server.');
+    }
+
+    return serverResponse;
 }
 
 async function getLoginChallenge(returnObj = {}) {
@@ -2081,7 +2093,99 @@ function getConfig() {
 }
 
 
+function serializeQuery(params, prefix = '') {
+    const query = Object.keys(params).map((key) => {
+        const value = params[key];
+
+        if (params.constructor === Array) key = `${prefix}[]`;
+        else if (params.constructor === Object)
+        key = prefix ? `${prefix}[${key}]` : key;
+
+        if (typeof value === 'object') return serializeQuery(value, key);
+        return `${key}=${encodeURIComponent(value)}`;
+    });
+
+    return [...query].join('&');
+};
+
+////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////// NiftyFolder specific functions (higher level)
+////////////////////////////////////////////////////////////
+
+// let payload = {type, name, parentFolderId, keywords, category, nftContractAddress:null, nftNetwork:null, nftTokenId:null}
+
+async function createFolder(payloadObj) {
+    if (!payloadObj || !payloadObj.type || !payloadObj.name || !payloadObj.parentFolderId) {
+        throw new Error('Missing params!');
+    }
+
+    const isNFT = payloadObj.type.toLowerCase() === 'nft';
+
+    const folderPayload = {
+        folderType: payloadObj.type,
+        folderName: payloadObj.name,
+        keywords: payloadObj.keywords || "",
+        category: isNFT ? 'NFT' : payloadObj.category || "OTHER",
+        parentFolderId: payloadObj.parentFolderId,
+    }
+
+    if (isNFT && (!payloadObj.nftNetwork || !payloadObj.nftTokenId || !payloadObj.nftContractAddress || !payloadObj.metadata)) {
+        throw new Error('Missing NFT Params!');
+    } else {
+        folderPayload.metadata = payloadObj.metadata;
+        folderPayload.nftNetwork = payloadObj.nftNetwork;
+        folderPayload.nftTokenId = payloadObj.nftTokenId;
+        folderPayload.nftContractAddress = payloadObj.nftContractAddress;
+    }
+
+    let postDataUrl = await getEndpointUrl('data/folder/create');
+
+    const result = (await axios.post(postDataUrl, folderPayload)).data
+
+    console.log('createFolder', result);
+
+    return result
+}
+
+async function getData(parentFolderId, type, rowCount, search = "", category = "") {
+    if (!type) type = 'RECHECK';
+
+    const isFoldersOnly = ['recheck', 'asset', 'nft'].includes(type.toLowerCase());
+
+    const queryObject = {
+        draw: "1",
+        rowsStart: 0,
+        rowsLength: !isFoldersOnly ? rowCount : 0,
+        folderRowsStart: 0,
+        folderRowsLength: isFoldersOnly ? rowCount : 0,
+        searchedCategory: category,
+        search: { value: search },
+        parentFolderId,
+        dateRange: ["2000-12-31", "2099-12-31"],
+        order: [{column: "3", dir: "DESC"}],
+    };
+
+    const params = serializeQuery(queryObject);
+
+    let getDataUrl = await getEndpointUrl('data/created', `&${params}`);
+
+    const result = (await axios.get(getDataUrl)).data
+
+    console.log('getData', result);
+
+    return result;
+}
+
+
+
 module.exports = {
+    createFolder,
+    getData,
+
+    getCurrentUserInfo,
+
+    /////////////////////////////////////////////////////////////////////
+
     encryptDataToPublicKeyWithKeyPair: encryptDataToPublicKeyWithKeyPair,
     decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
     processEncryptedFileInfo: processEncryptedFileInfo,
