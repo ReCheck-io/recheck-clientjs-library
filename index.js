@@ -718,7 +718,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                         if (offset < fileSizeBytes) {
                             return resolve(uploadFile());
                         } else {
-                            dataOriginalHash = RECHECK.getHashFromHashObject(dataHash);
+                            dataOriginalHash = getHashFromHashObject(dataHash);
                             dataId = getHash(dataOriginalHash);
                             dataHash = 0;
                             offset = 0;
