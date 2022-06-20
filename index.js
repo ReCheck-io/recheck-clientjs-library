@@ -189,7 +189,7 @@ function hexStringToArrayBuffer(hexString) {
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
 
-function setOrigin() {
+(function setOrigin() {
     hasIntialized = false;
 
     if (typeof window !== 'undefined'
@@ -213,7 +213,7 @@ function setOrigin() {
             return init(baseUrl, network, token, true);
         });
     }
-};
+})()
 
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
     if (isNullAny(srcAkPair)) {
@@ -537,10 +537,10 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
         loginDevice: loginDevice,
     };
 
+    console.log(111);
     let loginUrl = await getEndpointUrl('login/mobile');
 
     let loginPostResult = (await axios.post(loginUrl, payload)).data;
-
     if (loginPostResult.status === 'ERROR') {
         throw loginPostResult.data;
     }
@@ -2142,8 +2142,6 @@ async function createFolder(payloadObj) {
 
     const result = (await axios.post(postDataUrl, folderPayload)).data
 
-    console.log('createFolder', result);
-
     return result
 }
 
@@ -2170,8 +2168,6 @@ async function getData(parentFolderId, type, rowCount, search = "", category = "
     let getDataUrl = await getEndpointUrl('data/created', `&${params}`);
 
     const result = (await axios.get(getDataUrl)).data
-
-    console.log('getData', result);
 
     return result;
 }
