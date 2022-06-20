@@ -71,6 +71,7 @@ async function sleep(ms) {
 async function getEndpointUrl(action, appendix) {
     if (!hasIntialized) {
         await sleep(10);
+        console.log(22222);
         return getEndpointUrl(action, appendix);
     }
 
@@ -453,7 +454,7 @@ const setDefaultRequestId = (requestId) => {
 }
 
 function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token, isAutoCall = false) {
-    if (!isAutoCall && !hasIntialized) {
+    if (isAutoCall && !hasIntialized) {
         return setTimeout(() => {
             return init(sourceBaseUrl, sourceNetwork, sourceToken, isAutoCall);
         }, 10);
