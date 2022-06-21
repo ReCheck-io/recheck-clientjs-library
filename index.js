@@ -2146,16 +2146,16 @@ async function createFolder(payloadObj) {
     return result
 }
 
-async function getData(parentFolderId, type, rowCount, search = "", category = "") {
+async function getData(parentFolderId, type, rowCount, rowStart = 0, search = "", category = "") {
     if (!type) type = 'RECHECK';
 
     const isFoldersOnly = ['recheck', 'asset', 'nft'].includes(type.toLowerCase());
 
     const queryObject = {
         draw: "1",
-        rowsStart: 0,
+        rowsStart:  !isFoldersOnly ? rowStart : 0,
         rowsLength: !isFoldersOnly ? rowCount : 0,
-        folderRowsStart: 0,
+        folderRowsStart: isFoldersOnly ? rowStart : 0,
         folderRowsLength: isFoldersOnly ? rowCount : 0,
         searchedCategory: category,
         search: { value: search },
