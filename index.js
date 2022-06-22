@@ -71,7 +71,6 @@ async function sleep(ms) {
 async function getEndpointUrl(action, appendix) {
     if (!hasIntialized) {
         await sleep(10);
-        console.log(22222);
         return getEndpointUrl(action, appendix);
     }
 
@@ -190,7 +189,7 @@ function hexStringToArrayBuffer(hexString) {
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
 
-(function setOrigin() {
+function setOrigin() {
     hasIntialized = false;
 
     if (typeof window !== 'undefined'
@@ -214,7 +213,7 @@ function hexStringToArrayBuffer(hexString) {
             return init(baseUrl, network, token, true);
         });
     }
-})()
+}
 
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
     if (isNullAny(srcAkPair)) {
@@ -538,7 +537,6 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
         loginDevice: loginDevice,
     };
 
-    console.log(111);
     let loginUrl = await getEndpointUrl('login/mobile');
 
     let loginPostResult = (await axios.post(loginUrl, payload)).data;
