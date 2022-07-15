@@ -5,12 +5,14 @@ const session25519 = require('session25519');
 const {keccak256, keccak_256} = require('js-sha3');
 const bs58check = require('bs58check');
 const axios = require('axios');
+const Web3 = require('web3');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
 const wordList = require('./wordlist');
 
 let streamSaver = null;
+const isServer = typeof window === 'undefined'
 
 if (typeof window !== 'undefined') {
     streamSaver = require('streamsaver');
@@ -520,6 +522,11 @@ async function getLoginChallenge(returnObj = {}) {
 async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown', returnObj = {}) {
     let loginChallenge = await getLoginChallenge(returnObj);
 
+    // TODO: If has metamask use metamask else with challenge
+    if ((!isServer && window.ethereum) || !keyPair) {
+        return await loginWithMetamask(loginChallenge, firebaseToken, loginDevice);
+    }
+
     return await loginWithChallenge(
         loginChallenge, keyPair, firebaseToken, loginDevice
     );
@@ -536,6 +543,79 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
         rtnToken: 'notoken',
         loginDevice: loginDevice,
     };
+
+    let loginUrl = await getEndpointUrl('login/mobile');
+
+    let loginPostResult = (await axios.post(loginUrl, payload)).data;
+    if (loginPostResult.status === 'ERROR') {
+        throw loginPostResult.data;
+    }
+
+    let resultObj = loginPostResult.data;
+    if (isNullAny(resultObj) || isNullAny(resultObj.rtnToken)) {
+        throw new Error('Unable to retrieve API token.');
+    }
+
+    token = resultObj.rtnToken;
+
+    if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)
+        && resultObj.returnUrlSendStatus !== "success") {
+        throw resultObj.returnUrlSendStatus;
+    }
+
+    return token;
+}
+
+async function loginWithMetamask(challenge, firebaseToken = 'notoken', loginDevice = 'unknown') {
+
+    if (isServer || !window.ethereum) {
+        throw new Error("Could not find MetaMask!")
+    }
+
+    const web3 = new Web3(window.ethereum);
+    window.web3 = new Web3(web3.currentProvider);
+    let eth = window.ethereum;
+    let accounts = await eth.enable();
+    console.log(accounts);
+
+    let challengeSignature = null;
+
+    try {
+        challengeSignature = await eth.request({
+            method: 'personal_sign',
+            params: [challenge, accounts[0]],
+        });
+        console.log(challengeSignature);
+    } catch (err) {
+        console.error(err);
+    }
+
+    let encryptionPublicKey;
+    try {
+        encryptionPublicKey = await eth
+            .request({
+                method: 'eth_getEncryptionPublicKey',
+                params: [accounts[0]]
+            })
+    } catch (error) {
+        console.error(error);
+    }
+
+    console.log('encryptionPublicKey', encryptionPublicKey);
+
+    // TODO: 
+    let payload = {
+        action: 'login',
+        pubKey: accounts[0], // get key from metamask
+        pubEncKey: encryptionPublicKey, // get key from metamask
+        firebase: firebaseToken,
+        challenge: challenge,
+        challengeSignature: challengeSignature, // signMessage(challenge, keyPair.secretKey), // signatureB58 // Sign with metamask
+        rtnToken: 'notoken',
+        loginDevice: loginDevice,
+    };
+
+    console.log('payload', payload);
 
     let loginUrl = await getEndpointUrl('login/mobile');
 

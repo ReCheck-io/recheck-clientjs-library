@@ -25,7 +25,8 @@
     "streamsaver": "^2.0.6",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.0",
-    "web-streams-polyfill": "^3.0.3"
+    "web-streams-polyfill": "^3.0.3",
+    "web3": "^1.7.4"
   },
   "repository": {
     "type": "git",
