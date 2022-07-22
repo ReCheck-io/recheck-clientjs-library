@@ -226,17 +226,17 @@ function setOrigin() {
 async function loadMetamaskData() {
     if (!isServer && window.ethereum) {
         web3 = window.ethereum;
-        let accounts = await web3.request({ method: 'eth_requestAccounts' });
-        metamaskAccount = accounts[0];
+
+        if (isUsingMetamask) {
+            let accounts = await web3.request({ method: 'eth_requestAccounts' });
+            metamaskAccount = accounts[0];
+        }
+
         isUsingMetamask = true;
     }
 }
 
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
-    if (isUsingMetamask) {
-        return await encryptDataToPublicKeyWithMetamask(data, dstPublicEncKey);
-    }
-
     if (isNullAny(srcAkPair)) {
         srcAkPair = await newKeyPair(null); // create random seed
     }
@@ -281,33 +281,7 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
     }
 }
 
-async function encryptDataToPublicKeyWithMetamask(data, dstPublicEncKey) {
-    if (!isUsingMetamask) {
-        throw new Error("Could not find MetaMask!");
-    }
-
-    const encrObject = mmSigUtil.encrypt({
-        data: data,
-        publicKey: dstPublicEncKey,
-        version: 'x25519-xsalsa20-poly1305',
-    });
-    
-    log('encrObject', encrObject);
-    
-    const encryptedData = Buffer.from(JSON.stringify(encrObject), 'utf8').toString('base64');
-    
-    return {
-        payload: encryptedData,
-        dstPublicEncKey: dstPublicEncKey,
-        srcPublicEncKey: encrObject.ephemPublicKey
-    };
-}
-
 async function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
-    if (isUsingMetamask) {
-        return await decryptDataWithMetamask(payload);
-    }
-    
     let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
     let secretKeyArray = hexStringToByte(secretKey);
     let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
@@ -333,31 +307,6 @@ async function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secr
 
         return encodeUTF8(decrypted);//base64DecryptedMessage
     }
-}
-
-async function decryptDataWithMetamask(payload) {
-    if (!isUsingMetamask) {
-        throw new Error("Could not find MetaMask!");
-    }
-
-    const data = JSON.parse(Buffer.from(payload, 'base64'));
-
-    console.log('object to decrypt', data);
-
-    // Convert data to hex string required by MetaMask
-    const ct = `0x${Buffer.from(JSON.stringify(data), 'utf8').toString('hex')}`;
-
-    let decryptedResponse;
-    try {
-        decryptedResponse = await web3.request({
-            method: 'eth_decrypt',
-            params: [ct, metamaskAccount],
-        });
-    } catch (error) {
-        throw new Error(`decryptDataWithMetamask error: ${JSON.stringify(error, null, 4)}`);
-    }
-
-    return decryptedResponse;
 }
 
 async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
@@ -642,6 +591,9 @@ async function loginWithMetamask(challenge, firebaseToken = 'notoken', loginDevi
         throw new Error("Could not find MetaMask!");
     }
 
+    let accounts = await web3.request({ method: 'eth_requestAccounts' });
+    metamaskAccount = accounts[0];
+
     let challengeSignature;
 
     try {
@@ -659,7 +611,7 @@ async function loginWithMetamask(challenge, firebaseToken = 'notoken', loginDevi
     try {
         encryptionPublicKey = await web3.request({
             method: 'eth_getEncryptionPublicKey',
-            params: [currentAccount]
+            params: [metamaskAccount]
         })
     } catch (error) {
         console.error(error);
@@ -667,7 +619,7 @@ async function loginWithMetamask(challenge, firebaseToken = 'notoken', loginDevi
 
     let payload = {
         action: 'login',
-        pubKey: accounts[0], // get key from metamask
+        pubKey: metamaskAccount, // get key from metamask
         pubEncKey: encryptionPublicKey, // get key from metamask
         firebase: firebaseToken,
         challenge: challenge,
@@ -2301,6 +2253,37 @@ async function createFolder(payloadObj) {
     return result
 }
 
+async function updateFolder(payloadObj) {
+    if (!payloadObj || !payloadObj.dataFolderId || !payloadObj.type || !payloadObj.name || !payloadObj.parentFolderId) {
+        throw new Error('Missing params!');
+    }
+
+    const isNFT = payloadObj.type.toLowerCase() === 'nft';
+
+    const folderPayload = {
+        folderType: payloadObj.type,
+        folderName: payloadObj.name,
+        keywords: payloadObj.keywords || "",
+        category: payloadObj.category || "OTHER",
+        dataFolderId: payloadObj.dataFolderId,
+    }
+
+    if (isNFT && (!payloadObj.nftNetwork || !payloadObj.nftTokenId || !payloadObj.nftContractAddress || !payloadObj.metadata)) {
+        throw new Error('Missing NFT Params!');
+    } else {
+        folderPayload.metadata = payloadObj.metadata;
+        folderPayload.nftNetwork = payloadObj.nftNetwork;
+        folderPayload.nftTokenId = payloadObj.nftTokenId;
+        folderPayload.nftContractAddress = payloadObj.nftContractAddress;
+    }
+
+    let postDataUrl = await getEndpointUrl('data/folder/edit');
+
+    const result = (await axios.post(postDataUrl, folderPayload)).data
+
+    return result
+}
+
 async function getData(parentFolderId, type, rowCount, rowStart = 0, search = "", category = "") {
     if (!type) type = 'RECHECK';
 
@@ -2320,9 +2303,9 @@ async function getData(parentFolderId, type, rowCount, rowStart = 0, search = ""
     };
 
     const params = serializeQuery(queryObject);
-console.log(params);
+
     let getDataUrl = await getEndpointUrl('data/created', `&${params}`);
-console.log(getDataUrl);
+
     const result = (await axios.get(getDataUrl)).data
 
     return result;
@@ -2332,6 +2315,7 @@ console.log(getDataUrl);
 
 module.exports = {
     createFolder,
+    updateFolder,
     getData,
 
     getCurrentUserInfo,
@@ -2339,8 +2323,6 @@ module.exports = {
     /////////////////////////////////////////////////////////////////////
     loadMetamaskData: loadMetamaskData,
 
-    decryptDataWithMetamask: decryptDataWithMetamask,
-    encryptDataToPublicKeyWithMetamask: encryptDataToPublicKeyWithMetamask,
     decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
     encryptDataToPublicKeyWithKeyPair: encryptDataToPublicKeyWithKeyPair,
     processEncryptedFileInfo: processEncryptedFileInfo,
