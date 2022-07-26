@@ -13,7 +13,7 @@ Attemps to log in with the provided key pair. The function returns a newly creat
 
 ---
 
-#### loginWithChallenge ( challenge, keyPair )
+#### loginWithChallengeParams ( challenge, keyPair )
 Loggs in with a corresponded challenge code. The function is designed to be used on a mobile device. The challenge is represented as a QR code.  
 
 ---

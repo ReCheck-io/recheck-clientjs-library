@@ -399,7 +399,7 @@ http://localhost:3000/data/create?api=1&token=0dc43000-8933-11ea-8721-bf12354c64
 
 ### login/mobile
 
-This request is called in _loginWithChallenge_ to get the token. 
+This request is called in _loginWithChallengeParams_ to get the token.
 
 - usage http://localhost:3000/login/mobile?noapi=1
 - body 

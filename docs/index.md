@@ -40,7 +40,7 @@ Specify API token, host and blockchain network
 #### login: login,
 Returns a token that the user need in order to communicate with the server. 
 
-#### loginWithChallenge: loginWithChallenge,
+#### loginWithChallengeParams: loginWithChallengeParams,
 Returns a token that the user need in order to communicate with the server. Has a parameter _challenge_. When the user is using our service, upon login into the system there is going to be a QR code that you have to scan. That will create a link between the server and the GUI and you will be prompted to the GUI file manager. 
 
 #### newKeyPair: newKeyPair 
