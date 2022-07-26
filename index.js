@@ -593,15 +593,16 @@ async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown'
 }
 
 async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
+    const challenge = getHash(loginParams.uuid + loginParams.endTimestamp);
     let payload = {
         action: 'login',
         pubKey: keyPair.publicKey,
         pubEncKey: keyPair.publicEncKey,
         firebase: firebaseToken,
-        challenge: loginParams.challenge,
+        challenge: challenge,
         uuid: loginParams.uuid,
         endTimestamp: loginParams.endTimestamp,
-        challengeSignature: signMessage(loginParams.challenge, keyPair.secretKey),//signatureB58
+        challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
         rtnToken: 'notoken',
         loginDevice: loginDevice,
     };
