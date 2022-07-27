@@ -542,8 +542,14 @@ async function getServerInfo() {
     };
 }
 
-async function getCurrentUserInfo() {
-    let getUrl = await getEndpointUrl('user/info');
+async function getCurrentUserInfo(extraQueryParams = null) {
+    let appendix = '';
+
+    if (extraQueryParams) {
+        appendix = `&${serializeQuery(extraQueryParams)}`;
+    }
+    
+    let getUrl = await getEndpointUrl('user/info', appendix);
 
     let serverResponse = (await axios.get(getUrl)).data;
 
@@ -601,6 +607,7 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
     if (!isNullAny(loginParams.externalWalletType, loginParams.externalAddress,
         loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature)) {
         keyPair = await decryptDataWithExternalWallet(loginParams.externalWalletType, loginParams.encryptedAuthKeyPairs);
+        keyPair = JSON.parse(keyPair);
     }
 
     const challenge = getHash(loginParams.uuid + loginParams.endTimestamp);
