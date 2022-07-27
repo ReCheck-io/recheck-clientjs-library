@@ -77,6 +77,7 @@ async function sleep(ms) {
 async function getEndpointUrl(action, appendix) {
     if (!hasInitialized) {
         await sleep(10);
+        console.log('getEndpointUrl loop');
         return getEndpointUrl(action, appendix);
     }
 
@@ -506,7 +507,7 @@ const setDefaultRequestId = (requestId) => {
 }
 
 function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token, isAutoCall = false) {
-    if (!isAutoCall && !hasInitialized) {
+    if (isAutoCall && !hasInitialized) {
         return setTimeout(() => {
             return init(sourceBaseUrl, sourceNetwork, sourceToken, isAutoCall);
         }, 10);
@@ -572,6 +573,10 @@ async function getLoginChallengeParams(returnObj = {}) {
         appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
     }
 
+    if (isUsingMetamask) {
+        appendix += `&externalAddress=${metamaskAccount}`;
+    }
+
     let getChallengeUrl = await getEndpointUrl('login/challenge', appendix);
 
     let serverResponse = (await axios.get(getChallengeUrl)).data;
@@ -607,7 +612,9 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
         loginDevice: loginDevice,
     };
 
-    if (isUsingMetamask && isNullAny(loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature)) {
+    let isExternalWalletRegistration = isUsingMetamask && isNullAny(loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature);
+
+    if (isExternalWalletRegistration) {
         //TODO fix for any external wallet
         const {address, publicKey, publicEncKey} = keyPair;
         const authorizedKeysHash = getHash(`${publicKey}#${publicEncKey}`);
@@ -616,7 +623,7 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
         const trailHash = getHash(authorizedKeysHash + externalAddress + requestType + address + "");
 
         const externalWalletType = "metamask";
-        const encryptedAuthKeyPairs = await encryptDataToExternalPubEncKey(externalWalletType, keyPair);
+        const encryptedAuthKeyPairs = await encryptDataToExternalPubEncKey(externalWalletType, JSON.stringify(keyPair));
         const authorizedKeysHashSignature = await signWithExternalWallet(externalWalletType, authorizedKeysHash);
 
         payload.externalWalletParams = {
@@ -659,8 +666,10 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
         throw resultObj.returnUrlSendStatus;
     }
 
-    if (isUsingMetamask && isNullAny(loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature)) {
+    if (isExternalWalletRegistration) {
         resultObj = {
+            token,
+            isExternalWalletRegistration: isExternalWalletRegistration,
             externalWalletType: payload.externalWalletParams.externalWalletType,
             externalAddress: payload.externalWalletParams.externalAddress,
             encryptedAuthKeyPairs: payload.externalWalletParams.encryptedAuthKeyPairs,
@@ -668,6 +677,7 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
         };
     } else {
         resultObj = {
+            token,
             externalWalletType: loginParams.externalWalletType,
             externalAddress: loginParams.externalAddress,
             encryptedAuthKeyPairs: loginParams.encryptedAuthKeyPairs,
@@ -2237,9 +2247,11 @@ function serializeQuery(params, prefix = '') {
     const query = Object.keys(params).map((key) => {
         const value = params[key];
 
-        if (params.constructor === Array) key = `${prefix}[]`;
-        else if (params.constructor === Object)
+        if (params.constructor === Array) {
+            key = `${prefix}[]`;
+        } else if (params.constructor === Object) {
             key = prefix ? `${prefix}[${key}]` : key;
+        }
 
         if (typeof value === 'object') return serializeQuery(value, key);
         return `${key}=${encodeURIComponent(value)}`;
@@ -2282,12 +2294,41 @@ async function createFolder(payloadObj) {
 
     const result = (await axios.post(postDataUrl, folderPayload)).data
 
-    console.log('createFolder', result);
+    return result
+}
+
+async function updateFolder(payloadObj) {
+    if (!payloadObj || !payloadObj.dataFolderId || !payloadObj.type || !payloadObj.name || !payloadObj.parentFolderId) {
+        throw new Error('Missing params!');
+    }
+
+    const isNFT = payloadObj.type.toLowerCase() === 'nft';
+
+    const folderPayload = {
+        folderType: payloadObj.type,
+        folderName: payloadObj.name,
+        keywords: payloadObj.keywords || "",
+        category: payloadObj.category || "OTHER",
+        dataFolderId: payloadObj.dataFolderId,
+    }
+
+    if (isNFT && (!payloadObj.nftNetwork || !payloadObj.nftTokenId || !payloadObj.nftContractAddress || !payloadObj.metadata)) {
+        throw new Error('Missing NFT Params!');
+    } else {
+        folderPayload.metadata = payloadObj.metadata;
+        folderPayload.nftNetwork = payloadObj.nftNetwork;
+        folderPayload.nftTokenId = payloadObj.nftTokenId;
+        folderPayload.nftContractAddress = payloadObj.nftContractAddress;
+    }
+
+    let postDataUrl = await getEndpointUrl('data/folder/edit');
+
+    const result = (await axios.post(postDataUrl, folderPayload)).data
 
     return result
 }
 
-async function getData(parentFolderId, type, rowCount, search = "", category = "") {
+async function getData(parentFolderId, type, rowCount, rowStart = 0, search = "", category = "") {
     if (!type) type = 'RECHECK';
 
     const isFoldersOnly = ['recheck', 'asset', 'nft'].includes(type.toLowerCase());
@@ -2299,7 +2340,7 @@ async function getData(parentFolderId, type, rowCount, search = "", category = "
         folderRowsStart: isFoldersOnly ? rowStart : 0,
         folderRowsLength: isFoldersOnly ? rowCount : 0,
         searchedCategory: category,
-        search: {value: search},
+        search: { value: search },
         parentFolderId,
         dateRange: ["2000-12-31", "2099-12-31"],
         order: [{column: "3", dir: "DESC"}],
@@ -2311,14 +2352,14 @@ async function getData(parentFolderId, type, rowCount, search = "", category = "
 
     const result = (await axios.get(getDataUrl)).data
 
-    console.log('getData', result);
-
     return result;
 }
 
 
+
 module.exports = {
     createFolder,
+    updateFolder,
     getData,
 
     getCurrentUserInfo,
