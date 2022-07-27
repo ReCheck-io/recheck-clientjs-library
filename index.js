@@ -8,22 +8,21 @@ const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
 const stringify = require('json-stable-stringify');
-const mmSigUtil = require('@metamask/eth-sig-util');
 const wordList = require('./wordlist');
+const mmSigUtil = require('@metamask/eth-sig-util');
 
 let streamSaver = null;
-const isServer = typeof window === 'undefined'
 
 if (typeof window !== 'undefined') {
     streamSaver = require('streamsaver');
 }
 
-let debug = true;
+let debug = false;
 
-let hasIntialized = false;
+let hasInitialized = false;
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "ae"; //ae,eth
+let network = "eth"; //ae,eth
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -34,11 +33,11 @@ let browserKeyPair = undefined; // represents the browser temporary keypair whil
 let recipientsEmailLinkKeyPair = null;
 let notificationObject = null;
 
-// METAMASK Variables
+const isServer = typeof window === 'undefined'
 let isUsingMetamask = false;
 let web3 = null;
 let metamaskAccount = null;
-// =======
+
 
 const newNonce = () => randomBytes(box.nonceLength);
 
@@ -76,7 +75,7 @@ async function sleep(ms) {
 }
 
 async function getEndpointUrl(action, appendix) {
-    if (!hasIntialized) {
+    if (!hasInitialized) {
         await sleep(10);
         console.log('getEndpointUrl loop');
         return getEndpointUrl(action, appendix);
@@ -193,17 +192,63 @@ function hexStringToArrayBuffer(hexString) {
     return array.buffer;
 }
 
+async function signWithExternalWallet(externalWalletType, message) {
+    let messageSignature;
+    try {
+        switch (externalWalletType) {
+            case "metamask":
+                messageSignature = await web3.request({
+                    method: 'personal_sign',
+                    params: [message, metamaskAccount],
+                });
+
+                return messageSignature;
+
+            default:
+                throw Error("Unknown external wallet type");
+        }
+    } catch (error) {
+        log(error);
+        throw error;
+    }
+}
+
+async function encryptDataToExternalPubEncKey(externalWalletType, data) {
+    let encryptedData;
+    try {
+        switch (externalWalletType) {
+            case "metamask":
+                const externalPubEncKey = await web3.request({
+                    method: 'eth_getEncryptionPublicKey',
+                    params: [metamaskAccount]
+                });
+
+                const encrObject = mmSigUtil.encrypt({
+                    data: data,
+                    publicKey: externalPubEncKey,
+                    version: 'x25519-xsalsa20-poly1305',
+                });
+
+                encryptedData = Buffer.from(JSON.stringify(encrObject), 'utf8').toString('base64');
+
+                return encryptedData;
+            default:
+                throw Error("Unknown external wallet type");
+        }
+    } catch (error) {
+        log(error);
+        throw error;
+    }
+}
+
 ////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////// Application layer functions (higher level)
 ////////////////////////////////////////////////////////////
 
 function setOrigin() {
-    hasIntialized = false;
+    hasInitialized = false;
 
-    if (typeof window !== 'undefined'
-        && window
-        && window.location
-        && window.location.origin) {
+    if (!isServer && window.location && window.location.origin) {
         const url = window.location.origin;
         if (isNullAny(url)) {
             return init(baseUrl, network, token, true);
@@ -223,19 +268,6 @@ function setOrigin() {
     }
 }
 
-async function loadMetamaskData() {
-    if (!isServer && window.ethereum) {
-        web3 = window.ethereum;
-
-        if (isUsingMetamask) {
-            let accounts = await web3.request({ method: 'eth_requestAccounts' });
-            metamaskAccount = accounts[0];
-        }
-
-        isUsingMetamask = true;
-    }
-}
-
 async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPair) {
     if (isNullAny(srcAkPair)) {
         srcAkPair = await newKeyPair(null); // create random seed
@@ -244,7 +276,6 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
     let destPublicEncKeyArray = new Uint8Array(decodeBase58Check(dstPublicEncKey));
     let rawSrcAkPair = akPairToRaw(srcAkPair);
     let dstBox = box.before(destPublicEncKeyArray, rawSrcAkPair.secretEncKey);
-
     let encryptedData = encryptData(dstBox, data);
 
     return {
@@ -281,7 +312,7 @@ async function encryptDataToPublicKeyWithKeyPair(data, dstPublicEncKey, srcAkPai
     }
 }
 
-async function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
+function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secretKey) {
     let srcPublicEncKeyArray = new Uint8Array(decodeBase58Check(srcPublicEncKey));
     let secretKeyArray = hexStringToByte(secretKey);
     let decryptedBox = box.before(srcPublicEncKeyArray, secretKeyArray);
@@ -310,7 +341,7 @@ async function decryptDataWithPublicAndPrivateKey(payload, srcPublicEncKey, secr
 }
 
 async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, browserPrivateKey) {
-    let decryptedSymPassword = await decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
+    let decryptedSymPassword = decryptDataWithPublicAndPrivateKey(encryptedFileInfo.encryption.encryptedPassB, devicePublicKey, browserPrivateKey);
     log('Browser decrypts sym password', decryptedSymPassword);
 
     let fullPassword = encodeBase64(hexStringToByte(keccak256(decryptedSymPassword + encryptedFileInfo.encryption.salt)));
@@ -404,6 +435,7 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
         trailExtraArgs = JSON.stringify(trailExtraArgs);
     }
 
+    // return getHash(`${pubSignKey}#${pubEncrKey}` + externalPubKey + "authorize" + userChainId + trailExtraArgs);
     return getHash(dataChainId + senderChainId + requestType + recipientChainId + trailExtraArgs);
 }
 
@@ -475,7 +507,7 @@ const setDefaultRequestId = (requestId) => {
 }
 
 function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = token, isAutoCall = false) {
-    if (isAutoCall && !hasIntialized) {
+    if (isAutoCall && !hasInitialized) {
         return setTimeout(() => {
             return init(sourceBaseUrl, sourceNetwork, sourceToken, isAutoCall);
         }, 10);
@@ -491,7 +523,7 @@ function init(sourceBaseUrl = baseUrl, sourceNetwork = network, sourceToken = to
         network = sourceNetwork;
     }
 
-    hasIntialized = true;
+    hasInitialized = true;
 }
 
 async function getServerInfo() {
@@ -522,51 +554,102 @@ async function getCurrentUserInfo() {
     return serverResponse;
 }
 
-async function getLoginChallenge(returnObj = {}) {
+async function loadMetamaskData() {
+    if (!isServer && window.ethereum) {
+        web3 = window.ethereum;
+
+        if (isUsingMetamask) {
+            let accounts = await web3.request({method: 'eth_requestAccounts'});
+            metamaskAccount = accounts[0];
+        }
+
+        isUsingMetamask = true;
+    }
+}
+
+async function getLoginChallengeParams(returnObj = {}) {
     let appendix = '';
     if (!isNullAny(returnObj)) {
         appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
     }
 
+    if (isUsingMetamask) {
+        appendix += `&externalAddress=${metamaskAccount}`;
+    }
+
     let getChallengeUrl = await getEndpointUrl('login/challenge', appendix);
 
-    let challengeResponse = (await axios.get(getChallengeUrl)).data;
+    let serverResponse = (await axios.get(getChallengeUrl)).data;
 
-    if (isNullAny(challengeResponse.data.challenge)) {
+    if (isNullAny(serverResponse.data) || isNullAny(serverResponse.data.challenge,
+        serverResponse.data.uuid, serverResponse.data.endTimestamp)) {
         throw new Error('Unable to retrieve login challenge.');
     }
 
-    return challengeResponse.data.challenge;
+    return serverResponse.data;
 }
 
 async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown', returnObj = {}) {
-    let loginChallenge = await getLoginChallenge(returnObj);
+    const loginParams = await getLoginChallengeParams(returnObj);
 
-    // TODO: If has metamask use metamask else with challenge
-    if ((!isServer && window.ethereum) || !keyPair) {
-        return await loginWithMetamask(loginChallenge, firebaseToken, loginDevice);
-    }
-
-    return await loginWithChallenge(
-        loginChallenge, keyPair, firebaseToken, loginDevice
+    return await loginWithChallengeParams(
+        loginParams, keyPair, firebaseToken, loginDevice
     );
 }
 
-async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
+async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
+    const challenge = getHash(loginParams.uuid + loginParams.endTimestamp);
     let payload = {
         action: 'login',
         pubKey: keyPair.publicKey,
         pubEncKey: keyPair.publicEncKey,
         firebase: firebaseToken,
         challenge: challenge,
-        challengeSignature: await signMessage(challenge, keyPair.secretKey),//signatureB58
+        uuid: loginParams.uuid,
+        endTimestamp: loginParams.endTimestamp,
+        challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
         rtnToken: 'notoken',
         loginDevice: loginDevice,
     };
 
+    let isExternalWalletRegistration = isUsingMetamask && isNullAny(loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature);
+
+    if (isExternalWalletRegistration) {
+        //TODO fix for any external wallet
+        const {address, publicKey, publicEncKey} = keyPair;
+        const authorizedKeysHash = getHash(`${publicKey}#${publicEncKey}`);
+        const externalAddress = metamaskAccount;
+        const requestType = "authorize";
+        const trailHash = getHash(authorizedKeysHash + externalAddress + requestType + address + "");
+
+        const externalWalletType = "metamask";
+        const encryptedAuthKeyPairs = await encryptDataToExternalPubEncKey(externalWalletType, JSON.stringify(keyPair));
+        const authorizedKeysHashSignature = await signWithExternalWallet(externalWalletType, authorizedKeysHash);
+
+        payload.externalWalletParams = {
+            externalWalletType: "metamask",
+            authorizedKeysHash: authorizedKeysHash,
+            authPubSignKey: keyPair.publicKey,
+            authPubEncrKey: keyPair.publicEncKey,
+            externalAddress: externalAddress,
+            authAddress: address,
+            requestId: "NiftyGUI",
+            requestType: requestType,
+            trailHash: trailHash,
+            trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
+            extraTrailHashes: [],
+            encryptedAuthKeyPairs: encryptedAuthKeyPairs,
+            authorizedKeysHashSignature: authorizedKeysHashSignature,
+        };
+
+        payload.requestBodyHashSignature = 'NULL';
+        payload.requestBodyHashSignature = signMessage(getRequestHash(payload), keyPair.secretKey);
+    }
+
     let loginUrl = await getEndpointUrl('login/mobile');
 
     let loginPostResult = (await axios.post(loginUrl, payload)).data;
+
     if (loginPostResult.status === 'ERROR') {
         throw loginPostResult.data;
     }
@@ -583,74 +666,48 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
         throw resultObj.returnUrlSendStatus;
     }
 
-    return token;
+    if (isExternalWalletRegistration) {
+        resultObj = {
+            token,
+            isExternalWalletRegistration: isExternalWalletRegistration,
+            externalWalletType: payload.externalWalletParams.externalWalletType,
+            externalAddress: payload.externalWalletParams.externalAddress,
+            encryptedAuthKeyPairs: payload.externalWalletParams.encryptedAuthKeyPairs,
+            authorizedKeysHashSignature: payload.externalWalletParams.authorizedKeysHashSignature,
+        };
+    } else {
+        resultObj = {
+            token,
+            externalWalletType: loginParams.externalWalletType,
+            externalAddress: loginParams.externalAddress,
+            encryptedAuthKeyPairs: loginParams.encryptedAuthKeyPairs,
+            authorizedKeysHashSignature: loginParams.authorizedKeysHashSignature,
+        };
+    }
+
+    return resultObj;
 }
 
-async function loginWithMetamask(challenge, firebaseToken = 'notoken', loginDevice = 'unknown') {
-    if (!isUsingMetamask) {
-        throw new Error("Could not find MetaMask!");
-    }
-
-    let accounts = await web3.request({ method: 'eth_requestAccounts' });
-    metamaskAccount = accounts[0];
-
-    let challengeSignature;
-
+async function decryptDataWithExternalWallet(externalWalletType, encrData) {
     try {
-        challengeSignature = await web3.request({
-            method: 'personal_sign',
-            params: [challenge, metamaskAccount],
-        });
+        switch (externalWalletType) {
+            case "metamask":
+                encrData = JSON.parse(Buffer.from(encrData, 'base64'));
 
-        console.log('challengeSignature', challengeSignature);
-    } catch (err) {
-        console.error(err);
-    }
+                // Convert data to hex string required by MetaMask
+                encrData = `0x${Buffer.from(JSON.stringify(encrData), 'utf8').toString('hex')}`;
 
-    let encryptionPublicKey;
-    try {
-        encryptionPublicKey = await web3.request({
-            method: 'eth_getEncryptionPublicKey',
-            params: [metamaskAccount]
-        })
+                return await web3.request({
+                    method: 'eth_decrypt',
+                    params: [encrData, metamaskAccount],
+                });
+            default:
+                throw Error("Unknown external wallet type");
+        }
     } catch (error) {
-        console.error(error);
+        log(error);
+        throw error;
     }
-
-    let payload = {
-        action: 'login',
-        pubKey: metamaskAccount, // get key from metamask
-        pubEncKey: encryptionPublicKey, // get key from metamask
-        firebase: firebaseToken,
-        challenge: challenge,
-        challengeSignature: challengeSignature, // await signMessage(challenge, keyPair.secretKey), // signatureB58 // Sign with metamask
-        rtnToken: 'notoken',
-        loginDevice: loginDevice,
-        isMetamaskSign: true,
-    };
-
-    let loginUrl = await getEndpointUrl('login/mobile');
-
-    let loginPostResult = (await axios.post(loginUrl, payload)).data;
-    if (loginPostResult.status === 'ERROR') {
-        throw loginPostResult.data;
-    }
-
-    let resultObj = loginPostResult.data;
-    if (isNullAny(resultObj) || isNullAny(resultObj.rtnToken)) {
-        throw new Error('Unable to retrieve API token.');
-    }
-
-    token = resultObj.rtnToken;
-
-    if (!isNullAny(resultObj.returnChallenge, resultObj.returnUrl)
-        && resultObj.returnUrlSendStatus !== "success") {
-        throw resultObj.returnUrlSendStatus;
-    }
-
-    isUsingMetamask = true;
-
-    return token;
 }
 
 async function newKeyPair(passPhrase) {
@@ -918,7 +975,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                 requestType: requestType,
                 requestBodyHashSignature: 'NULL',
                 trailHash: trailHash,
-                trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(await signMessage(trailHash, keyPair.secretKey))
+                trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
                 dataName: fileObj.dataName,
                 dataExtension: fileObj.dataExtension,
                 sizeBytes: fileSizeBytes,
@@ -935,7 +992,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                 }
             };
 
-            // TODO: signature await signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
+            // TODO: signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
             fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
             return fileUploadData;
@@ -1028,13 +1085,13 @@ async function validate(fileOriginalHash, userId, dataId, isExternal = false, tx
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(await signMessage(trailHash, keyPair.secretKey))
+        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
         encryption: {
             decrDataOrigHash: fileOriginalHash
         }
     };
 
-    //TODO signature await signMessage(getRequestHash(postObj), keyPair.secretKey)
+    //TODO signature signMessage(getRequestHash(postObj), keyPair.secretKey)
     postObj.requestBodyHashSignature = getRequestHash(postObj);
 
     let validateUrl = await getEndpointUrl('credentials/validate');
@@ -1089,7 +1146,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let encryptedPassA = getShareResponse.data.encryption.encryptedPassA;
     let pubKeyA = getShareResponse.data.encryption.pubKeyA;
-    let decryptedPassword = await decryptDataWithPublicAndPrivateKey(encryptedPassA, pubKeyA, keyPair.secretEncKey);
+    let decryptedPassword = decryptDataWithPublicAndPrivateKey(encryptedPassA, pubKeyA, keyPair.secretEncKey);
     let syncPassHash = getHash(decryptedPassword);
 
     let recipientEncrKey = getShareResponse.data.encryption.recipientEncrKey;
@@ -1114,7 +1171,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(await signMessage(trailHash, keyPair.secretKey)),
+        trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
         encryption: {
             senderEncrKey: keyPair.publicEncKey,
             syncPassHash: syncPassHash,
@@ -1123,7 +1180,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     };
     createShare[recipientType] = recipient;
 
-    createShare.requestBodyHashSignature = await signMessage(getRequestHash(createShare), keyPair.secretKey);
+    createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
 
     let postUrl = await getEndpointUrl('share/create');
 
@@ -1177,7 +1234,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             shareUrl: generatedShareUrl,
             requestBodyHashSignature: 'NULL',
         }
-        queryObj.requestBodyHashSignature = await signMessage(getRequestHash(queryObj), keyPair.secretKey);
+        queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
 
         let query = Buffer.from(stringify(queryObj)).toString('base64');
 
@@ -1230,10 +1287,10 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(await signMessage(trailHash, userSecretKey)),
+        trailHashSignatureHash: getHash(signMessage(trailHash, userSecretKey)),
     };
 
-    signObj.requestBodyHashSignature = await signMessage(getRequestHash(signObj), userSecretKey);
+    signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj), userSecretKey);
 
     let postUrl = await getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
@@ -1291,11 +1348,11 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let requestType = 'download';
     let trailHash = getTrailHash(dataChainId, userId, requestType, userId, trailExtraArgs);
 
-    let trailHashSignatureHash = getHash(await signMessage(trailHash, keyPair.secretKey));
+    let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
 
     let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
     let getUrl = await getEndpointUrl('credentials/info', query);
-    getUrl = getUrl.replace('NULL', await signMessage(getRequestHash(getUrl), keyPair.secretKey));
+    getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
     log('decrypt get request', getUrl);
 
 
@@ -1311,7 +1368,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
 
     let pubKeysBInfo = dataEncryption.pubKeysBInfo;
 
-    let decryptedPassword = await decryptDataWithPublicAndPrivateKey(dataEncryption.encryptedPassA, dataEncryption.pubKeyA, keyPair.secretEncKey);
+    let decryptedPassword = decryptDataWithPublicAndPrivateKey(dataEncryption.encryptedPassA, dataEncryption.pubKeyA, keyPair.secretEncKey);
     log('User device decrypts the sym password', decryptedPassword);
 
     let syncPassHash = getHash(decryptedPassword);
@@ -1319,8 +1376,8 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let reEncryptedPasswordInfo = await encryptDataToPublicKeyWithKeyPair(decryptedPassword, pubKeysBInfo.pubEncrKeyB, keyPair);
     log('User device reencrypts password for browser', reEncryptedPasswordInfo);
 
-    let pubSignKeyBSign = await signMessage(pubKeysBInfo.pubSignKeyB, keyPair.secretKey);
-    let pubEncrKeyBSign = await signMessage(pubKeysBInfo.pubEncrKeyB, keyPair.secretKey);
+    let pubSignKeyBSign = signMessage(pubKeysBInfo.pubSignKeyB, keyPair.secretKey);
+    let pubEncrKeyBSign = signMessage(pubKeysBInfo.pubEncrKeyB, keyPair.secretKey);
 
     let devicePost = {
         dataId: dataChainId,
@@ -1358,10 +1415,10 @@ async function pollOpen(credentialsResponse, receiverPubKey, isExternal = false,
 
     let requestType = "credentials";
     let trailHash = getTrailHash(dataId, userId, requestType, userId);
-    let trailHashSignatureHash = getHash(await signMessage(trailHash, browserKeyPair.secretKey));
+    let trailHashSignatureHash = getHash(signMessage(trailHash, browserKeyPair.secretKey));
 
     let pollUrl = await getEndpointUrl('data/info', `&userId=${userId}&dataId=${dataId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`);
-    pollUrl = pollUrl.replace('NULL', await signMessage(getRequestHash(pollUrl), browserKeyPair.secretKey));
+    pollUrl = pollUrl.replace('NULL', signMessage(getRequestHash(pollUrl), browserKeyPair.secretKey));
 
     for (let i = 0; i < pollingTime; i++) {
         let pollRes = (await axios.get(pollUrl)).data;
@@ -1418,17 +1475,17 @@ async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
 
     for (let i = 1; i <= chunksCount; i++) {
         let chunkHashOrDataId = i === 1 ? encrInfo.dataId : lastChunkHash;
-        let previousChunkHashSign = await signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
+        let previousChunkHashSign = signMessage(chunkHashOrDataId, browserKeyPair.secretKey);
         let query = `&chunkId=${i}&dataId=${encrInfo.dataId}&previousChunkHashSign=${previousChunkHashSign}`;
         let getUrl = await getEndpointUrl('data/content', query);
 
         if (i === chunksCount) {
             let requestType = 'completed';
             let trailHash = getTrailHash(encrInfo.dataId, encrInfo.userId, requestType, encrInfo.userId);
-            let trailHashSignatureHash = getHash(await signMessage(trailHash, browserKeyPair.secretKey));
+            let trailHashSignatureHash = getHash(signMessage(trailHash, browserKeyPair.secretKey));
 
             getUrl += `&requestType=${requestType}&requestId=${defaultRequestId}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
-            getUrl = getUrl.replace('NULL', await signMessage(getRequestHash(getUrl), browserKeyPair.secretKey));
+            getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), browserKeyPair.secretKey));
         }
 
         const result = (await axios.get(getUrl)).data;
@@ -1499,7 +1556,7 @@ async function pollChunks(encrInfo, receiverPubKey, downloadOnly) {
         tmp.set(new Uint8Array(buffer1), 0);
         tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
         return tmp;
-    };
+    }
 }
 
 async function pollShare(dataIds, recipients, userId, isExternal = false, functionId = '') {
@@ -1954,7 +2011,7 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
     }
 }
 
-async function signMessage(message, secretKey, signWithMetamask = isUsingMetamask) {
+function signMessage(message, secretKey) {
     try {
         switch (network) {
             case "ae":
@@ -1963,21 +2020,6 @@ async function signMessage(message, secretKey, signWithMetamask = isUsingMetamas
                 return encodeBase58Check(signatureBytes);// signatureB58;
 
             case "eth":
-                if (signWithMetamask) {
-                    let signature;
-
-                    try {
-                        signature = await web3.request({
-                            method: 'personal_sign',
-                            params: [message, metamaskAccount],
-                        });
-                    } catch (err) {
-                        console.error('signWithMetamask error:', err);
-                    }
-
-                    return signature;
-                }
-
                 const messageHash = ethCrypto.hash.keccak256(message);
 
                 return ethCrypto.sign(
@@ -2050,11 +2092,11 @@ async function registerHash(requestType, targetUserId, keyPair, requestId = defa
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(await signMessage(trailHash, keyPair.secretKey)),
+        trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
         extraTrailHashes: extraTrailHashes
     };
 
-    body.requestBodyHashSignature = await signMessage(getRequestHash(body), keyPair.secretKey);
+    body.requestBodyHashSignature = signMessage(getRequestHash(body), keyPair.secretKey);
 
     let postUrl = await getEndpointUrl('tx/create');
     log('registerHash, ', body);
@@ -2186,7 +2228,7 @@ function sendNotification() {
                     log('notification', result)
                 });
         }
-    
+
         notificationObject = null;
     });
 
@@ -2205,9 +2247,11 @@ function serializeQuery(params, prefix = '') {
     const query = Object.keys(params).map((key) => {
         const value = params[key];
 
-        if (params.constructor === Array) key = `${prefix}[]`;
-        else if (params.constructor === Object)
-        key = prefix ? `${prefix}[${key}]` : key;
+        if (params.constructor === Array) {
+            key = `${prefix}[]`;
+        } else if (params.constructor === Object) {
+            key = prefix ? `${prefix}[${key}]` : key;
+        }
 
         if (typeof value === 'object') return serializeQuery(value, key);
         return `${key}=${encodeURIComponent(value)}`;
@@ -2321,10 +2365,10 @@ module.exports = {
     getCurrentUserInfo,
 
     /////////////////////////////////////////////////////////////////////
-    loadMetamaskData: loadMetamaskData,
 
-    decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
     encryptDataToPublicKeyWithKeyPair: encryptDataToPublicKeyWithKeyPair,
+    decryptDataWithPublicAndPrivateKey: decryptDataWithPublicAndPrivateKey,
+    decryptDataWithExternalWallet: decryptDataWithExternalWallet,
     processEncryptedFileInfo: processEncryptedFileInfo,
     isNullAny: isNullAny,
     getHash: getHash,
@@ -2343,9 +2387,10 @@ module.exports = {
     // login i login with challenge
     // login hammer 0(account) 0x.. (challenge code)
     // node hammer login 1 (second user's login)
-    getLoginChallenge: getLoginChallenge,
+    getLoginChallengeParams: getLoginChallengeParams,
     login: login,
-    loginWithChallenge: loginWithChallenge,
+    loginWithChallengeParams: loginWithChallengeParams,
+    loadMetamaskData: loadMetamaskData,
 
     /* Create a keypair and recovery phrase */
     newKeyPair: newKeyPair,
