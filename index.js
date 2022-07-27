@@ -598,6 +598,11 @@ async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown'
 }
 
 async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
+    if (!isNullAny(loginParams.externalWalletType, loginParams.externalAddress,
+        loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature)) {
+        keyPair = await decryptDataWithExternalWallet(loginParams.externalWalletType, loginParams.encryptedAuthKeyPairs);
+    }
+
     const challenge = getHash(loginParams.uuid + loginParams.endTimestamp);
     let payload = {
         action: 'login',
@@ -612,7 +617,8 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
         loginDevice: loginDevice,
     };
 
-    let isExternalWalletRegistration = isUsingMetamask && isNullAny(loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature);
+    const isExternalWalletRegistration = isUsingMetamask && isNullAny(loginParams.externalWalletType,
+        loginParams.externalAddress, loginParams.encryptedAuthKeyPairs, loginParams.authorizedKeysHashSignature);
 
     if (isExternalWalletRegistration) {
         //TODO fix for any external wallet
@@ -669,7 +675,7 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
     if (isExternalWalletRegistration) {
         resultObj = {
             token,
-            isExternalWalletRegistration: isExternalWalletRegistration,
+            keyPair,
             externalWalletType: payload.externalWalletParams.externalWalletType,
             externalAddress: payload.externalWalletParams.externalAddress,
             encryptedAuthKeyPairs: payload.externalWalletParams.encryptedAuthKeyPairs,
@@ -678,6 +684,7 @@ async function loginWithChallengeParams(loginParams, keyPair, firebaseToken = 'n
     } else {
         resultObj = {
             token,
+            keyPair,
             externalWalletType: loginParams.externalWalletType,
             externalAddress: loginParams.externalAddress,
             encryptedAuthKeyPairs: loginParams.encryptedAuthKeyPairs,
