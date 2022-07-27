@@ -2335,7 +2335,7 @@ async function getData(parentFolderId, type, rowCount, rowStart = 0, search = ""
 
     const queryObject = {
         draw: "1",
-        rowsStart:  !isFoldersOnly ? rowStart : 0,
+        rowsStart: !isFoldersOnly ? rowStart : 0,
         rowsLength: !isFoldersOnly ? rowCount : 0,
         folderRowsStart: isFoldersOnly ? rowStart : 0,
         folderRowsLength: isFoldersOnly ? rowCount : 0,
