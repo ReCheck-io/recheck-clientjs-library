@@ -37,6 +37,7 @@ const isServer = typeof window === 'undefined'
 let isUsingMetamask = false;
 let web3 = null;
 let metamaskAccount = null;
+let extraMetamaskParams = {};
 
 
 const newNonce = () => randomBytes(box.nonceLength);
@@ -88,7 +89,11 @@ async function getEndpointUrl(action, appendix) {
     }
 
     if (!isNullAny(appendix)) {
-        url = url + appendix;
+        url += appendix;
+
+        if (!isNullAny(extraMetamaskParams)) {
+            url += `&${serializeQuery(extraMetamaskParams)}`;
+        }
     }
 
     return url;
@@ -560,16 +565,44 @@ async function getCurrentUserInfo(extraQueryParams = null) {
     return serverResponse;
 }
 
-async function loadMetamaskData() {
-    if (!isServer && window.ethereum) {
-        web3 = window.ethereum;
-
-        if (isUsingMetamask) {
-            let accounts = await web3.request({method: 'eth_requestAccounts'});
-            metamaskAccount = accounts[0];
+async function loadMetamaskData(extraParams = null) {
+    let status = false;
+    
+    if (!isServer) {
+        if (window.ethereum) {
+            await handleEthereum();
+        } else {
+            window.addEventListener('ethereum#initialized', handleEthereum, {
+                once: true,
+            });
+            
+            // If the event is not dispatched by the end of the timeout,
+            // the user probably doesn't have MetaMask installed.
+            setTimeout(handleEthereum, 3000); // 3 seconds
         }
 
-        isUsingMetamask = true;
+        return status;
+
+        async function handleEthereum() {
+            const { ethereum } = window;
+            if (ethereum && ethereum.isMetaMask) {
+                web3 = ethereum;
+                status = true;
+
+                if (isUsingMetamask) {
+                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                    if (accounts && accounts.length) {
+                        metamaskAccount = accounts[0];
+                    }
+                }
+
+                extraMetamaskParams = extraParams;
+                isUsingMetamask = true;
+            } else {
+                status = false;
+                log('Please install MetaMask!');
+            }
+        }
     }
 }
 
@@ -914,7 +947,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                         }
 
                         const dataContentPostUrl = await getEndpointUrl('data/content');
-                        let result = (await axios.post(dataContentPostUrl, chunkPayload)).data;
+                        let result = (await axios.post(dataContentPostUrl, {...chunkPayload,...extraMetamaskParams})).data;
 
                         if (!result || !result.data) {
                             response = {
@@ -940,7 +973,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                             saltKey = null;
                             delete fileUploadData.payload;
                             const dataCreatePostUrl = await getEndpointUrl('data/create');
-                            let result = (await axios.post(dataCreatePostUrl, fileUploadData)).data;
+                            let result = (await axios.post(dataCreatePostUrl, {...fileUploadData,...extraMetamaskParams})).data;
 
                             if (!result || !result.data) {
                                 response = {
@@ -1110,7 +1143,7 @@ async function validate(fileOriginalHash, userId, dataId, isExternal = false, tx
 
     let validateUrl = await getEndpointUrl('credentials/validate');
 
-    let result = (await axios.post(validateUrl, postObj)).data;
+    let result = (await axios.post(validateUrl, {...postObj,...extraMetamaskParams})).data;
 
     if (!txPolling) {
         return result;
@@ -1198,7 +1231,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let postUrl = await getEndpointUrl('share/create');
 
-    let serverPostResponse = (await axios.post(postUrl, createShare)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...createShare,...extraMetamaskParams})).data;
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
 
@@ -1271,7 +1304,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             };
 
             let submitUrl = await getEndpointUrl('email/share/create');
-            let submitRes = (await axios.post(submitUrl, emailSelectionsObj)).data;
+            let submitRes = (await axios.post(submitUrl, {...emailSelectionsObj,...extraMetamaskParams})).data;
             log('Server returns result', submitRes.data);
             if (submitRes.status === "ERROR") {
                 throw submitRes.data;
@@ -1309,7 +1342,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
     let postUrl = await getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
 
-    let serverPostResponse = (await axios.post(postUrl, signObj)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...signObj,...extraMetamaskParams})).data;
     log('Server responds to data sign POST', serverPostResponse.data);
 
     if (!txPolling) {
@@ -1341,7 +1374,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     let browserPubKeySubmitUrl = await getEndpointUrl('credentials/create/pubkeyb');
     log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
 
-    let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, browserPubKeySubmit)).data;
+    let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, {...browserPubKeySubmit,...extraMetamaskParams})).data;
     log('browser poll post result', browserPubKeySubmitRes.data);
 
     if (browserPubKeySubmitRes.status === 'ERROR') {
@@ -1410,7 +1443,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let postUrl = await getEndpointUrl('credentials/create/passb');
     log('decrypt post', postUrl);
 
-    let serverPostResponse = (await axios.post(postUrl, devicePost)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...devicePost,...extraMetamaskParams})).data;
     log('User device POST to server encryption info', devicePost);
     log('Server responds to user device POST', serverPostResponse.data);
 
@@ -1782,7 +1815,7 @@ async function select(files, recipients, emailShareCommPubKeys = null, isExterna
         }
     }
 
-    let result = (await axios.post(validateUrl, postBody)).data;
+    let result = (await axios.post(validateUrl, {...postBody,...extraMetamaskParams})).data;
 
     if (result.status === 'ERROR') {
         throw result.data;
@@ -2115,7 +2148,7 @@ async function registerHash(requestType, targetUserId, keyPair, requestId = defa
     let postUrl = await getEndpointUrl('tx/create');
     log('registerHash, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, body)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
     log('Server responds to registerHash POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
@@ -2159,7 +2192,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
     let postUrl = await getEndpointUrl('data/id/create');
     log('saveExternalId, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, body)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
     log('Server responds to saveExternalId POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
@@ -2202,7 +2235,7 @@ async function createShortQueryUrl(url) {
     let postUrl = await getEndpointUrl('email/share/url/create');
     log('createShortUrl, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, body)).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
     log('Server responds to createShortUrl POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR"
@@ -2237,7 +2270,7 @@ function setNotificationObject(selectionActionHash, challenge = null) {
 function sendNotification() {
     getEndpointUrl('user/notification').then(notificationUrl => {
         if (!isNullAny(notificationObject)) {
-            axios.post(notificationUrl, notificationObject)
+            axios.post(notificationUrl, {...notificationObject,...extraMetamaskParams})
                 .then((result) => {
                     log('notification', result)
                 });
@@ -2306,7 +2339,7 @@ async function createFolder(payloadObj) {
 
     let postDataUrl = await getEndpointUrl('data/folder/create');
 
-    const result = (await axios.post(postDataUrl, folderPayload)).data
+    const result = (await axios.post(postDataUrl, {...folderPayload,...extraMetamaskParams})).data
 
     return result
 }
@@ -2337,7 +2370,7 @@ async function updateFolder(payloadObj) {
 
     let postDataUrl = await getEndpointUrl('data/folder/edit');
 
-    const result = (await axios.post(postDataUrl, folderPayload)).data
+    const result = (await axios.post(postDataUrl, {...folderPayload,...extraMetamaskParams})).data
 
     return result
 }
