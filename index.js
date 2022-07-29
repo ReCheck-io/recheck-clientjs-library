@@ -90,9 +90,12 @@ async function getEndpointUrl(action, appendix) {
 
     if (!isNullAny(appendix)) {
         url += appendix;
+    }
 
-        if (!isNullAny(extraMetamaskParams)) {
-            url += `&${serializeQuery(extraMetamaskParams)}`;
+    if (!isNullAny(extraMetamaskParams)) {
+        const metamaskParams = `&${serializeQuery(extraMetamaskParams)}`;
+        if (!isNullAny(appendix) && !appendix.includes(metamaskParams)) {
+            url += metamaskParams;
         }
     }
 
