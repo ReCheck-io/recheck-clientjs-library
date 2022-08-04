@@ -2428,6 +2428,7 @@ module.exports = {
     setDefaultRequestId: setDefaultRequestId,
     /* Specify API token and API host */
 
+    setOrigin: setOrigin,
     init: init,
     //get server info - api version/current blockchain type
     getServerInfo: getServerInfo,
