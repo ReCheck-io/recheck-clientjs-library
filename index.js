@@ -570,6 +570,7 @@ async function getCurrentUserInfo(extraQueryParams = null) {
 
 async function loadMetamaskData(extraParams = null) {
     let status = false;
+    extraMetamaskParams = extraParams;
     
     if (!isServer) {
         if (window.ethereum) {
@@ -599,7 +600,6 @@ async function loadMetamaskData(extraParams = null) {
                     }
                 }
 
-                extraMetamaskParams = extraParams;
                 isUsingMetamask = true;
             } else {
                 status = false;
