@@ -3,12 +3,16 @@ const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-
 const diceware = require('diceware');
 const session25519 = require('session25519');
 const {keccak256, keccak_256} = require('js-sha3');
+const bs58 = require('bs58');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
+const nearAPI = require("near-api-js");
+const nearSeedPhrase = require('near-seed-phrase')
 const stringify = require('json-stable-stringify');
-const wordList = require('./wordlist');
+const generalWordList = require('./wordlist');
+const nearWordList = require('./near-wordlist');
 const mmSigUtil = require('@metamask/eth-sig-util');
 
 let streamSaver = null;
@@ -22,7 +26,7 @@ let debug = false;
 let hasInitialized = false;
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "eth"; //ae,eth
+let network = "near"; //ae,eth,near
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -169,6 +173,9 @@ function isValidAddress(address) {
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
             return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
+        case"near":
+            return new RegExp(`^[0-9a-f]{64}$`).test(address)//normal address
+                || (new RegExp(`^(?=.{2,64}$)(([a-z\\d]+[\\-_])*[a-z\\d]+\\.)*([a-z\\d]+[\\-_])*[a-z\\d]+$`).test(address));//custom address
         default:
             return false;
     }
@@ -556,7 +563,7 @@ async function getCurrentUserInfo(extraQueryParams = null) {
     if (extraQueryParams) {
         appendix = `&${serializeQuery(extraQueryParams)}`;
     }
-    
+
     let getUrl = await getEndpointUrl('user/info', appendix);
 
     let serverResponse = (await axios.get(getUrl)).data;
@@ -571,7 +578,7 @@ async function getCurrentUserInfo(extraQueryParams = null) {
 async function loadMetamaskData(extraParams = null) {
     let status = false;
     extraMetamaskParams = extraParams;
-    
+
     if (!isServer) {
         if (window.ethereum) {
             await handleEthereum();
@@ -579,7 +586,7 @@ async function loadMetamaskData(extraParams = null) {
             window.addEventListener('ethereum#initialized', handleEthereum, {
                 once: true,
             });
-            
+
             // If the event is not dispatched by the end of the timeout,
             // the user probably doesn't have MetaMask installed.
             setTimeout(handleEthereum, 3000); // 3 seconds
@@ -588,13 +595,13 @@ async function loadMetamaskData(extraParams = null) {
         return status;
 
         async function handleEthereum() {
-            const { ethereum } = window;
+            const {ethereum} = window;
             if (ethereum && ethereum.isMetaMask) {
                 web3 = ethereum;
                 status = true;
 
                 if (isUsingMetamask) {
-                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await ethereum.request({method: 'eth_requestAccounts'});
                     if (accounts && accounts.length) {
                         metamaskAccount = accounts[0];
                     }
@@ -761,9 +768,10 @@ async function decryptDataWithExternalWallet(externalWalletType, encrData) {
 }
 
 async function newKeyPair(passPhrase) {
+    const isNearNetwork = network === "near";
 
     if (isNullAny(passPhrase)) {
-        passPhrase = diceware(12);
+        passPhrase = isNearNetwork ? nearSeedPhrase.generateSeedPhrase().seedPhrase : diceware(12);
     } else {
         passPhrase = passPhrase.toLowerCase();
         const words = passPhrase.split(' ');
@@ -772,6 +780,7 @@ async function newKeyPair(passPhrase) {
             throw ('Invalid passphrase. Must be 12 words long.');
         }
 
+        const wordList = isNearNetwork ? nearWordList : generalWordList;
         for (let i = 0; i < 12; i++) {
             if (!wordList.includes(words[i])) {
                 throw("An existing word is not from the dictionary, your secret phrase is wrong.")
@@ -779,13 +788,15 @@ async function newKeyPair(passPhrase) {
         }
     }
 
-    let keys = await _session25519(passPhrase, getHash(passPhrase));
+    const keys = isNearNetwork ? nearSeedPhrase.parseSeedPhrase(passPhrase) : await _session25519(passPhrase, getHash(passPhrase));
 
-    let publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
-    let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
+    let publicEncBufferEncoded;
+    let secretEncBufferHex;
     let secretSignBuffer;
     switch (network) {
         case "ae":
+            publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+            secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
             let publicSignBuffer = Buffer.from(keys.publicSignKey);
             secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
             let address = `re_${encodeBase58Check(publicSignBuffer)}`;
@@ -800,6 +811,8 @@ async function newKeyPair(passPhrase) {
             };
 
         case "eth":
+            publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+            secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
             secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
             let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
             let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
@@ -813,7 +826,22 @@ async function newKeyPair(passPhrase) {
                 secretEncKey: secretEncBufferHex,
                 phrase: passPhrase
             };
+        case "near":
+            keys.publicKey = keys.publicKey.replace("ed25519:", "")
+            keys.secretKey = keys.secretKey.replace("ed25519:", "")
 
+            const encKeys = await _session25519(keys.secretKey, getHash(keys.secretKey));
+            const nearKeyPair = nearAPI.utils.KeyPair.fromString(keys.secretKey);
+            const accountId = nearAPI.utils.PublicKey.fromString(nearKeyPair.getPublicKey().toString()).data.toString("hex");
+
+            return {
+                address: accountId,
+                publicKey: keys.publicKey,
+                secretKey: keys.secretKey,
+                publicEncKey: bs58check.encode(Buffer.from(encKeys.publicKey)),
+                secretEncKey: Buffer.from(encKeys.secretKey).toString('hex'),  // 32-bytes private key,
+                phrase: passPhrase
+            };
         default:
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
@@ -950,7 +978,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                         }
 
                         const dataContentPostUrl = await getEndpointUrl('data/content');
-                        let result = (await axios.post(dataContentPostUrl, {...chunkPayload,...extraMetamaskParams})).data;
+                        let result = (await axios.post(dataContentPostUrl, {...chunkPayload, ...extraMetamaskParams})).data;
 
                         if (!result || !result.data) {
                             response = {
@@ -976,7 +1004,7 @@ async function storeData(files, userChainId, userChainIdPubEncKey, progressCb = 
                             saltKey = null;
                             delete fileUploadData.payload;
                             const dataCreatePostUrl = await getEndpointUrl('data/create');
-                            let result = (await axios.post(dataCreatePostUrl, {...fileUploadData,...extraMetamaskParams})).data;
+                            let result = (await axios.post(dataCreatePostUrl, {...fileUploadData, ...extraMetamaskParams})).data;
 
                             if (!result || !result.data) {
                                 response = {
@@ -1146,7 +1174,7 @@ async function validate(fileOriginalHash, userId, dataId, isExternal = false, tx
 
     let validateUrl = await getEndpointUrl('credentials/validate');
 
-    let result = (await axios.post(validateUrl, {...postObj,...extraMetamaskParams})).data;
+    let result = (await axios.post(validateUrl, {...postObj, ...extraMetamaskParams})).data;
 
     if (!txPolling) {
         return result;
@@ -1234,7 +1262,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
 
     let postUrl = await getEndpointUrl('share/create');
 
-    let serverPostResponse = (await axios.post(postUrl, {...createShare,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...createShare, ...extraMetamaskParams})).data;
     log('Share POST to server encryption info', createShare);
     log('Server responds to user device POST', serverPostResponse.data);
 
@@ -1307,7 +1335,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             };
 
             let submitUrl = await getEndpointUrl('email/share/create');
-            let submitRes = (await axios.post(submitUrl, {...emailSelectionsObj,...extraMetamaskParams})).data;
+            let submitRes = (await axios.post(submitUrl, {...emailSelectionsObj, ...extraMetamaskParams})).data;
             log('Server returns result', submitRes.data);
             if (submitRes.status === "ERROR") {
                 throw submitRes.data;
@@ -1345,7 +1373,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
     let postUrl = await getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
 
-    let serverPostResponse = (await axios.post(postUrl, {...signObj,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...signObj, ...extraMetamaskParams})).data;
     log('Server responds to data sign POST', serverPostResponse.data);
 
     if (!txPolling) {
@@ -1377,7 +1405,7 @@ async function prepare(dataChainId, userChainId, isExternal = false) {
     let browserPubKeySubmitUrl = await getEndpointUrl('credentials/create/pubkeyb');
     log('browser poll post submit pubKeyB', browserPubKeySubmitUrl);
 
-    let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, {...browserPubKeySubmit,...extraMetamaskParams})).data;
+    let browserPubKeySubmitRes = (await axios.post(browserPubKeySubmitUrl, {...browserPubKeySubmit, ...extraMetamaskParams})).data;
     log('browser poll post result', browserPubKeySubmitRes.data);
 
     if (browserPubKeySubmitRes.status === 'ERROR') {
@@ -1446,7 +1474,7 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let postUrl = await getEndpointUrl('credentials/create/passb');
     log('decrypt post', postUrl);
 
-    let serverPostResponse = (await axios.post(postUrl, {...devicePost,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...devicePost, ...extraMetamaskParams})).data;
     log('User device POST to server encryption info', devicePost);
     log('Server responds to user device POST', serverPostResponse.data);
 
@@ -1818,7 +1846,7 @@ async function select(files, recipients, emailShareCommPubKeys = null, isExterna
         }
     }
 
-    let result = (await axios.post(validateUrl, {...postBody,...extraMetamaskParams})).data;
+    let result = (await axios.post(validateUrl, {...postBody, ...extraMetamaskParams})).data;
 
     if (result.status === 'ERROR') {
         throw result.data;
@@ -2065,9 +2093,12 @@ function signMessage(message, secretKey) {
     try {
         switch (network) {
             case "ae":
-                let signatureBytes = naclSign(Buffer.from(message), hexStringToByte(secretKey));
-
-                return encodeBase58Check(signatureBytes);// signatureB58;
+                return encodeBase58Check(
+                    naclSign(
+                        Buffer.from(message),
+                        hexStringToByte(secretKey)
+                    )
+                );// signatureB58;
 
             case "eth":
                 const messageHash = ethCrypto.hash.keccak256(message);
@@ -2076,6 +2107,11 @@ function signMessage(message, secretKey) {
                     secretKey,
                     messageHash
                 );// signature;
+
+            case "near":
+                return encodeBase58Check(
+                    nearAPI.utils.KeyPair.fromString(secretKey).sign(Buffer.from(message)).signature
+                );// signatureB58;
         }
     } catch (ignored) {
         return false;
@@ -2112,6 +2148,16 @@ function verifyMessage(message, signature, pubKey) {
                     signature,
                     ethCrypto.hash.keccak256(message)
                 ); //signer;
+            case "near":
+                let decodedPubKey = [];
+                bs58.decode(pubKey).forEach(e => decodedPubKey.push(parseInt(e)));
+
+                return nacl.sign.detached.verify(
+                    Buffer.from(message),
+                    decodeBase58Check(signature),
+                    new Uint8Array(decodedPubKey)
+                );
+
         }
     } catch (ignored) {
         return false;
@@ -2151,7 +2197,7 @@ async function registerHash(requestType, targetUserId, keyPair, requestId = defa
     let postUrl = await getEndpointUrl('tx/create');
     log('registerHash, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body, ...extraMetamaskParams})).data;
     log('Server responds to registerHash POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
@@ -2195,7 +2241,7 @@ async function saveExternalId(externalId, userChainId, dataOriginalHash = null) 
     let postUrl = await getEndpointUrl('data/id/create');
     log('saveExternalId, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body, ...extraMetamaskParams})).data;
     log('Server responds to saveExternalId POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR") {
@@ -2238,7 +2284,7 @@ async function createShortQueryUrl(url) {
     let postUrl = await getEndpointUrl('email/share/url/create');
     log('createShortUrl, ', body);
 
-    let serverPostResponse = (await axios.post(postUrl, {...body,...extraMetamaskParams})).data;
+    let serverPostResponse = (await axios.post(postUrl, {...body, ...extraMetamaskParams})).data;
     log('Server responds to createShortUrl POST', serverPostResponse.data);
 
     if (serverPostResponse.status === "ERROR"
@@ -2273,7 +2319,7 @@ function setNotificationObject(selectionActionHash, challenge = null) {
 function sendNotification() {
     getEndpointUrl('user/notification').then(notificationUrl => {
         if (!isNullAny(notificationObject)) {
-            axios.post(notificationUrl, {...notificationObject,...extraMetamaskParams})
+            axios.post(notificationUrl, {...notificationObject, ...extraMetamaskParams})
                 .then((result) => {
                     log('notification', result)
                 });
@@ -2342,7 +2388,7 @@ async function createFolder(payloadObj) {
 
     let postDataUrl = await getEndpointUrl('data/folder/create');
 
-    const result = (await axios.post(postDataUrl, {...folderPayload,...extraMetamaskParams})).data
+    const result = (await axios.post(postDataUrl, {...folderPayload, ...extraMetamaskParams})).data
 
     return result
 }
@@ -2373,7 +2419,7 @@ async function updateFolder(payloadObj) {
 
     let postDataUrl = await getEndpointUrl('data/folder/edit');
 
-    const result = (await axios.post(postDataUrl, {...folderPayload,...extraMetamaskParams})).data
+    const result = (await axios.post(postDataUrl, {...folderPayload, ...extraMetamaskParams})).data
 
     return result
 }
@@ -2390,7 +2436,7 @@ async function getData(parentFolderId, type, rowCount, rowStart = 0, search = ""
         folderRowsStart: isFoldersOnly ? rowStart : 0,
         folderRowsLength: isFoldersOnly ? rowCount : 0,
         searchedCategory: category,
-        search: { value: search },
+        search: {value: search},
         parentFolderId,
         dateRange: ["2000-12-31", "2099-12-31"],
         order: [{column: "3", dir: "DESC"}],
@@ -2404,7 +2450,6 @@ async function getData(parentFolderId, type, rowCount, rowStart = 0, search = ""
 
     return result;
 }
-
 
 
 module.exports = {
