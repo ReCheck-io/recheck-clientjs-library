@@ -2,19 +2,23 @@ const {box, secretbox, randomBytes} = require('tweetnacl');
 const {decodeUTF8, encodeUTF8, encodeBase64, decodeBase64} = require('tweetnacl-util');
 const diceware = require('diceware');
 const session25519 = require('session25519');
-const keccak256 = require('keccak256');
+const {keccak256, keccak_256} = require('js-sha3');
+const bs58 = require('bs58');
 const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
+const nearAPI = require("near-api-js");
+const nearSeedPhrase = require('near-seed-phrase')
 const stringify = require('json-stable-stringify');
-const wordList = require('./wordlist');
+const generalWordList = require('./wordlist');
+const nearWordList = require('./near-wordlist');
 
 let debug = false;
 
 let baseUrl = 'http://localhost:4000';
 let token = null;
-let network = "avax"; //ae,eth,poly,avax
+let network = "near"; //ae,eth,poly,avax,near
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -145,6 +149,9 @@ function isValidAddress(address) {
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
             return new RegExp(`^re_[0-9a-zA-Z]{41,}$`).test(address);
+        case"near":
+            return new RegExp(`^[0-9a-f]{64}$`).test(address)//normal address
+                || (new RegExp(`^(?=.{2,64}$)(([a-z\\d]+[\\-_])*[a-z\\d]+\\.)*([a-z\\d]+[\\-_])*[a-z\\d]+$`).test(address));//custom address
         default:
             return false;
     }
@@ -353,14 +360,49 @@ function getTrailHash(dataChainId, senderChainId, requestType, recipientChainId 
 function isNullAny(...args) {
     for (let i = 0; i < args.length; i++) {
         let current = args[i];
-
-        if (current == null //element == null covers element === undefined
-            || (current.hasOwnProperty('length') && current.length === 0) // has length and it's zero
-            || (current.constructor === Object && Object.keys(current).length === 0) // is an Object and has no keys
-            || current.toString().toLowerCase() === 'null'
-            || current.toString().toLowerCase() === 'undefined'
-            || current.toString().trim() === "") {
-
+        if ((current && (current.constructor === Object || current.constructor === keccak_256.create().constructor))) {
+            try {
+                current = JSON.parse(JSON.stringify(args[i]));
+            } catch (ignored) {
+            }
+        }
+        if (current == null || // element == null covers element === undefined
+            (current.hasOwnProperty("length") && current.length === 0) || // has length and it's zero
+            (current.constructor === Object && Object.keys(current).length === 0) || // is an Object and has no keys
+            current.toString().toLowerCase() === "null" ||
+            current.toString().toLowerCase() === "undefined" ||
+            current.toString().trim() === "") {
+            return true;
+        }
+        if (isNaN(current)) {
+            try {
+                if (+new Date(current) === 0) {
+                    // is not a number and can be parsed as null date 1970
+                    return true;
+                }
+            } catch (ignored) {
+            }
+        }
+        try {
+            const parsed = JSON.parse(current);
+            if (parsed !== current && isNullAny(parsed)) {
+                // recursive check for stringified object
+                return true;
+            }
+        } catch (ignored) {
+        }
+        // check for hashes of null values
+        if ([
+            "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", // null/undefined/""/[].toString(),
+            "0x7bc087f4ef9d0dc15fef823bff9c78cc5cca8be0a85234afcfd807f412f40877", // {}.toString()
+            "0x518674ab2b227e5f11e9084f615d57663cde47bce1ba168b4c19c7ee22a73d70", // JSON.stringify([])
+            "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d", // JSON.stringify({})
+            "0xefbde2c3aee204a69b7696d4b10ff31137fe78e3946306284f806e2dfc68b805", // "null"
+            "0x019726c6babc1de231f26fd6cbb2df2c912784a2e1ba55295496269a6d3ff651", // "undefined"
+            "0x681afa780d17da29203322b473d3f210a7d621259a4e6ce9e403f5a266ff719a", // " "
+            "0xfc6664300e2ce056cb146b05edef3501ff8bd027c49a8dde866901679a24fb7e", // new Date(0).toString()
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+        ].includes(current)) {
             return true;
         }
     }
@@ -466,9 +508,10 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
 }
 
 async function newKeyPair(passPhrase) {
+    const isNearNetwork = network === "near";
 
     if (isNullAny(passPhrase)) {
-        passPhrase = diceware(12);
+        passPhrase = isNearNetwork ? nearSeedPhrase.generateSeedPhrase().seedPhrase : diceware(12);
     } else {
         passPhrase = passPhrase.toLowerCase();
         const words = passPhrase.split(' ');
@@ -477,6 +520,7 @@ async function newKeyPair(passPhrase) {
             throw ('Invalid passphrase. Must be 12 words long.');
         }
 
+        const wordList = isNearNetwork ? nearWordList : generalWordList;
         for (let i = 0; i < 12; i++) {
             if (!wordList.includes(words[i])) {
                 throw("An existing word is not from the dictionary, your secret phrase is wrong.")
@@ -484,17 +528,18 @@ async function newKeyPair(passPhrase) {
         }
     }
 
-    let keys = await _session25519(passPhrase, getHash(passPhrase));
+    const keys = isNearNetwork ? nearSeedPhrase.parseSeedPhrase(passPhrase) : await _session25519(passPhrase, getHash(passPhrase));
 
-    let publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
-    let secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
+    let publicEncBufferEncoded;
+    let secretEncBufferHex;
     let secretSignBuffer;
     switch (network) {
         case "ae":
+            publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+            secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
             let publicSignBuffer = Buffer.from(keys.publicSignKey);
             secretSignBuffer = Buffer.from(keys.secretSignKey).toString('hex'); // 64-bytes private key
             let address = `re_${encodeBase58Check(publicSignBuffer)}`;
-
             return {
                 address: address,
                 publicKey: address,
@@ -503,13 +548,13 @@ async function newKeyPair(passPhrase) {
                 secretEncKey: secretEncBufferHex,
                 phrase: passPhrase
             };
-
         case "eth":
+            publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+            secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
             secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
             let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
             let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
             let publicAddress = ethCrypto.publicKey.toAddress(publicSignKey);
-
             return {
                 address: publicAddress,
                 publicKey: publicSignKey,
@@ -518,41 +563,24 @@ async function newKeyPair(passPhrase) {
                 secretEncKey: secretEncBufferHex,
                 phrase: passPhrase
             };
-
-        case "poly":
-            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
-            let secretSignKeyPoly = `0x${secretSignBuffer.toString('hex')}`;
-            let publicSignKeyPoly = ethCrypto.publicKeyByPrivateKey(secretSignKeyPoly);
-            let publicAddressPoly = ethCrypto.publicKey.toAddress(publicSignKeyPoly);
-
+        case "near":
+            keys.publicKey = keys.publicKey.replace("ed25519:", "")
+            keys.secretKey = keys.secretKey.replace("ed25519:", "")
+            const encKeys = await _session25519(keys.secretKey, getHash(keys.secretKey));
+            const nearKeyPair = nearAPI.utils.KeyPair.fromString(keys.secretKey);
+            const accountId = nearAPI.utils.PublicKey.fromString(nearKeyPair.getPublicKey().toString()).data.toString("hex");
             return {
-                address: publicAddressPoly,
-                publicKey: publicSignKeyPoly,
-                secretKey: secretSignKeyPoly,
-                publicEncKey: publicEncBufferEncoded,
-                secretEncKey: secretEncBufferHex,
-                phrase: passPhrase
-            };
-
-        case "avax":
-            secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
-            let secretSignKeyAvax = `0x${secretSignBuffer.toString('hex')}`;
-            let publicSignKeyAvax = ethCrypto.publicKeyByPrivateKey(secretSignKeyAvax);
-            let publicAddressAvax = ethCrypto.publicKey.toAddress(publicSignKeyAvax);
-
-            return {
-                address: publicAddressAvax,
-                publicKey: publicSignKeyAvax,
-                secretKey: secretSignKeyAvax,
-                publicEncKey: publicEncBufferEncoded,
-                secretEncKey: secretEncBufferHex,
+                address: accountId,
+                publicKey: keys.publicKey,
+                secretKey: keys.secretKey,
+                publicEncKey: bs58check.encode(Buffer.from(encKeys.publicKey)),
+                secretEncKey: Buffer.from(encKeys.secretKey).toString('hex'),  // 32-bytes private key,
                 phrase: passPhrase
             };
         default:
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
     }
-
     async function _session25519(key1, key2) {
         return new Promise(resolve => {
             session25519(key1, key2, (err, result) => resolve(result));
@@ -1505,9 +1533,12 @@ function signMessage(message, secretKey) {
     try {
         switch (network) {
             case "ae":
-                let signatureBytes = naclSign(Buffer.from(message), hexStringToByte(secretKey));
-
-                return encodeBase58Check(signatureBytes);// signatureB58;
+                return encodeBase58Check(
+                    naclSign(
+                        Buffer.from(message),
+                        hexStringToByte(secretKey)
+                    )
+                );// signatureB58;
 
             case "eth":
                 const messageHash = ethCrypto.hash.keccak256(message);
@@ -1532,6 +1563,11 @@ function signMessage(message, secretKey) {
                     secretKey,
                     messageHashAvax
                 );// signature;
+
+            case "near":
+                return encodeBase58Check(
+                    nearAPI.utils.KeyPair.fromString(secretKey).sign(Buffer.from(message)).signature
+                );// signatureB58;
 
             default:
                 throw new Error("Unknown chain network");
@@ -1583,6 +1619,16 @@ function verifyMessage(message, signature, pubKey) {
                     signature,
                     ethCrypto.hash.keccak256(message)
                 ); //signer;
+
+            case "near":
+                let decodedPubKey = [];
+                bs58.decode(pubKey).forEach(e => decodedPubKey.push(parseInt(e)));
+
+                return nacl.sign.detached.verify(
+                    Buffer.from(message),
+                    decodeBase58Check(signature),
+                    new Uint8Array(decodedPubKey)
+                );
 
             default:
                 throw new Error("Unknown chain network");
