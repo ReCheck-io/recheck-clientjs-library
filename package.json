@@ -21,6 +21,7 @@
     "commander": "^3.0.2",
     "diceware": "0.0.1",
     "eth-crypto": "^1.5.2",
+    "js-sha3": "^0.8.0",
     "json-stable-stringify": "latest",
     "near-api-js": "^0.45.1",
     "near-seed-phrase": "^0.2.0",
