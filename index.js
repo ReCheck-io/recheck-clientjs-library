@@ -395,7 +395,7 @@ async function processEncryptedFileInfo(encryptedFileInfo, devicePublicKey, brow
 }
 
 function getHash(string) {
-    return `0x${keccak256(hexStringToArrayBuffer(string))}`;
+    return `0x${keccak256(string)}`;
 }
 
 function getHashFromHashObject(hashObj) {
@@ -405,7 +405,7 @@ function getHashFromHashObject(hashObj) {
 function getUpdatedHashObj(string, hashObj = null) {
     if (isNullAny(hashObj)) {
         hashObj = keccak_256.create();
-        return hashObj.update(hexStringToArrayBuffer(string));
+        return hashObj.update(string);
     }
 
     return hashObj.update(string);
@@ -622,7 +622,7 @@ async function getLoginChallengeParams(returnObj = {}) {
         appendix = `&returnChallenge=${returnObj.returnChallenge}&returnUrl=${returnObj.returnUrl}`;
     }
 
-    if (isUsingMetamask) {
+    if (isUsingMetamask && !appendix.includes('externalAddress')) {
         appendix += `&externalAddress=${metamaskAccount}`;
     }
 
