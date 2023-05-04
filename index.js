@@ -443,7 +443,9 @@ async function getServerInfo() {
     return {
         apiVersion: serverResponse.apiVersion,
         blockchain: serverResponse.blockchain,
-        contractAddress: serverResponse.contractAddress
+        contractAddress: serverResponse.contractAddress,
+        explorerUrl: serverResponse.explorerUrl,
+        isTestnet: serverResponse.isTestnet,
     };
 }
 
