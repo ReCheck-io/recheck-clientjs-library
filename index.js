@@ -142,9 +142,7 @@ function isValidEmail(emailAddress) {
 function isValidAddress(address) {
     switch (network) {
         case'eth':
-            return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'poly':
-            return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'avax':
             return new RegExp(`^0x[0-9a-fA-F]{40}$`).test(address);
         case'ae':
@@ -342,6 +340,11 @@ function getRequestHash(requestBodyOrUrl) {
         }
 
         let host = `${urlSplit[0]}//${urlSplit[2]}`;
+
+        //TODO remove token for hash check in core
+        //if (url.contains("token=") && !isNullAny(token)) {
+        //     url = url.replace(token, "TOKEN");
+        // }
 
         return url.replace(host, '');
     }
@@ -551,6 +554,8 @@ async function newKeyPair(passPhrase) {
                 phrase: passPhrase
             };
         case "eth":
+        case "poly":
+        case "avax":
             publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
             secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
             secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
@@ -1543,27 +1548,13 @@ function signMessage(message, secretKey) {
                 );// signatureB58;
 
             case "eth":
+            case "poly":
+            case "avax":
                 const messageHash = ethCrypto.hash.keccak256(message);
 
                 return ethCrypto.sign(
                     secretKey,
                     messageHash
-                );// signature;
-
-            case "poly":
-                const messageHashPoly = ethCrypto.hash.keccak256(message);
-
-                return ethCrypto.sign(
-                    secretKey,
-                    messageHashPoly
-                );// signature;
-
-            case "avax":
-                const messageHashAvax = ethCrypto.hash.keccak256(message);
-
-                return ethCrypto.sign(
-                    secretKey,
-                    messageHashAvax
                 );// signature;
 
             case "near":
@@ -1605,17 +1596,7 @@ function verifyMessage(message, signature, pubKey) {
                 return false;
 
             case "eth":
-                return ethCrypto.recover(
-                    signature,
-                    ethCrypto.hash.keccak256(message)
-                ); //signer;
-
             case "poly":
-                return ethCrypto.recover(
-                    signature,
-                    ethCrypto.hash.keccak256(message)
-                ); //signer;
-
             case "avax":
                 return ethCrypto.recover(
                     signature,
