@@ -222,5 +222,5 @@ yarn.lock
 
 /.npmignore
 
-browserify/*.js.tmp-browserify-*
 *.sample
+/browserify
