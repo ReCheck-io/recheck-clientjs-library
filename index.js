@@ -8,17 +8,28 @@ const bs58check = require('bs58check');
 const axios = require('axios');
 const nacl = require('tweetnacl');
 const ethCrypto = require('eth-crypto');
-const nearAPI = require("near-api-js");
-const nearSeedPhrase = require('near-seed-phrase')
+const nearAPI = require('near-api-js');
+const nearSeedPhrase = require('near-seed-phrase');
 const stringify = require('json-stable-stringify');
+const bip39 = require('@scure/bip39');
+const concordium = require('@concordium/web-sdk');
+const { wordlist: concordiumWordList } = require('@scure/bip39/wordlists/english');
 const generalWordList = require('./wordlist');
 const nearWordList = require('./near-wordlist');
 
+// Check if you're in a Node.js environment
+if (typeof global !== 'undefined' && typeof process !== 'undefined' && process.version) {
+    axios.defaults.adapter = require('axios/lib/adapters/http');
+  } else {
+    axios.defaults.adapter = require('axios/lib/adapters/xhr');
+  }
+
 let debug = false;
 
-let baseUrl = 'http://localhost:4000';
+let baseUrl = "http://localhost:4000";
 let token = null;
-let network = "near"; //ae,eth,poly,avax,near
+let network = "ccd"; //ae,eth,poly,avax,near,ccd
+const ccdNetwork = "Testnet";
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -150,6 +161,8 @@ function isValidAddress(address) {
         case"near":
             return new RegExp(`^[0-9a-f]{64}$`).test(address)//normal address
                 || (new RegExp(`^(?=.{2,64}$)(([a-z\\d]+[\\-_])*[a-z\\d]+\\.)*([a-z\\d]+[\\-_])*[a-z\\d]+$`).test(address));//custom address
+        case "ccd":
+            return new RegExp(`^[1-9A-HJ-NP-Za-km-z]{47,50}$`).test(address);
         default:
             return false;
     }
@@ -480,11 +493,12 @@ async function login(keyPair, firebaseToken = 'notoken', loginDevice = 'unknown'
 async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken', loginDevice = 'unknown') {
     let payload = {
         action: 'login',
+        address: keyPair.address,
         pubKey: keyPair.publicKey,
         pubEncKey: keyPair.publicEncKey,
         firebase: firebaseToken,
         challenge: challenge,
-        challengeSignature: signMessage(challenge, keyPair.secretKey),//signatureB58
+        challengeSignature: await signMessage(challenge, keyPair.secretKey, keyPair.address),//signatureB58
         rtnToken: 'notoken',
         loginDevice: loginDevice,
     };
@@ -512,28 +526,36 @@ async function loginWithChallenge(challenge, keyPair, firebaseToken = 'notoken',
     return token;
 }
 
-async function newKeyPair(passPhrase) {
+async function newKeyPair(passPhrase, ccdAddress = null, identityIndex = "", identityProviderIndex = undefined, credNumber = undefined) {
     const isNearNetwork = network === "near";
+    const isConcordiumNetwork = network === "ccd";
+    const chainWordsLength = isConcordiumNetwork ? 24 : 12;
 
     if (isNullAny(passPhrase)) {
-        passPhrase = isNearNetwork ? nearSeedPhrase.generateSeedPhrase().seedPhrase : diceware(12);
+        if (isNearNetwork) {
+            passPhrase = nearSeedPhrase.generateSeedPhrase().seedPhrase;
+        } else if (isConcordiumNetwork) {
+            passPhrase = bip39.generateMnemonic(concordiumWordList, 256);
+        } else {
+            passPhrase = diceware(12);
+        }
     } else {
         passPhrase = passPhrase.toLowerCase();
         const words = passPhrase.split(' ');
 
-        if (words.length !== 12) {
-            throw ('Invalid passphrase. Must be 12 words long.');
+        if (!isConcordiumNetwork && words.length !== 12 || isConcordiumNetwork && words.length !== 24) {
+            throw (`Invalid passphrase. Must be ${chainWordsLength} words long.`);
         }
 
-        const wordList = isNearNetwork ? nearWordList : generalWordList;
-        for (let i = 0; i < 12; i++) {
+        const wordList = isNearNetwork ? nearWordList : isConcordiumNetwork ? concordiumWordList : generalWordList;
+        for (let i = 0; i < chainWordsLength; i++) {
             if (!wordList.includes(words[i])) {
-                throw("An existing word is not from the dictionary, your secret phrase is wrong.")
+                throw("An existing word is not from the dictionary, your secret phrase is wrong.");
             }
         }
     }
 
-    const keys = isNearNetwork ? nearSeedPhrase.parseSeedPhrase(passPhrase) : await _session25519(passPhrase, getHash(passPhrase));
+    const keys = isNearNetwork ? nearSeedPhrase.parseSeedPhrase(passPhrase) : await _session25519(passPhrase + identityIndex, getHash(passPhrase));
 
     let publicEncBufferEncoded;
     let secretEncBufferHex;
@@ -584,6 +606,44 @@ async function newKeyPair(passPhrase) {
                 secretEncKey: Buffer.from(encKeys.secretKey).toString('hex'),  // 32-bytes private key,
                 phrase: passPhrase
             };
+        case "ccd": 
+            if (ccdAddress) {
+                const wallet = concordium.ConcordiumHdWallet.fromSeedPhrase(passPhrase, ccdNetwork);
+                let publicKey = wallet.getAccountPublicKey(identityProviderIndex, identityIndex, credNumber).toString("hex");
+                let secretKey = wallet.getAccountSigningKey(identityProviderIndex, identityIndex, credNumber).toString("hex");
+
+                publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+                secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
+    
+                return {
+                    phrase: passPhrase,
+                    
+                    address: ccdAddress, // address parameter
+                    publicKey: publicKey,
+                    secretKey: secretKey,
+
+                    publicEncKey: publicEncBufferEncoded,
+                    secretEncKey: secretEncBufferHex
+                };
+
+            } else {
+                publicEncBufferEncoded = encodeBase58Check(Buffer.from(keys.publicKey));
+                secretEncBufferHex = Buffer.from(keys.secretKey).toString('hex');  // 32-bytes private key
+                secretSignBuffer = Buffer.from(keys.secretKey); // 32-bytes private key
+                let secretSignKey = `0x${secretSignBuffer.toString('hex')}`;
+                let publicSignKey = ethCrypto.publicKeyByPrivateKey(secretSignKey);
+                let publicAddress = ethCrypto.publicKey.toAddress(publicSignKey);
+
+                return {
+                    address: publicAddress,
+                    publicKey: publicSignKey,
+                    secretKey: secretSignKey,
+                    publicEncKey: publicEncBufferEncoded,
+                    secretEncKey: secretEncBufferHex,
+                    phrase: passPhrase
+                };
+            }
+
         default:
             log("Current selected network: ", network);
             throw new Error("Can not find selected network");
@@ -641,7 +701,7 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
             requestType: requestType,
             requestBodyHashSignature: 'NULL',
             trailHash: trailHash,
-            trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
+            trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(await signMessage(trailHash, keyPair.secretKey))
             dataName: fileObj.dataName,
             dataExtension: fileObj.dataExtension,
             category: fileObj.category,
@@ -657,7 +717,7 @@ async function store(fileObj, userChainId, userChainIdPubEncKey, externalId = nu
             }
         };
 
-        //TODO signature signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
+        //TODO signature await signMessage(getRequestHash(fileUploadData), keyPair.secretKey)
         fileUploadData.requestBodyHashSignature = getRequestHash(fileUploadData);
 
         return fileUploadData;
@@ -739,13 +799,13 @@ async function validate(fileContents, userId, dataId, isExternal = false, txPoll
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(signMessage(trailHash, keyPair.secretKey))
+        trailHashSignatureHash: getHash(trailHash),//TODO signature getHash(await signMessage(trailHash, keyPair.secretKey))
         encryption: {
             decrDataOrigHash: fileHash
         }
     };
 
-    //TODO signature signMessage(getRequestHash(postObj), keyPair.secretKey)
+    //TODO signature await signMessage(getRequestHash(postObj), keyPair.secretKey)
     postObj.requestBodyHashSignature = getRequestHash(postObj);
 
     let validateUrl = getEndpointUrl('credentials/validate');
@@ -825,7 +885,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
+        trailHashSignatureHash: getHash(await signMessage(trailHash, keyPair.secretKey, keyPair.address)),
         encryption: {
             senderEncrKey: keyPair.publicEncKey,
             syncPassHash: syncPassHash,
@@ -834,7 +894,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
     };
     createShare[recipientType] = recipient;
 
-    createShare.requestBodyHashSignature = signMessage(getRequestHash(createShare), keyPair.secretKey);
+    createShare.requestBodyHashSignature = await signMessage(getRequestHash(createShare), keyPair.secretKey, keyPair.address);
 
     let postUrl = getEndpointUrl('share/create');
 
@@ -887,7 +947,7 @@ async function share(dataId, recipient, keyPair, isExternal = false, txPolling =
             shareUrl: generatedShareUrl,
             requestBodyHashSignature: 'NULL',
         }
-        queryObj.requestBodyHashSignature = signMessage(getRequestHash(queryObj), keyPair.secretKey);
+        queryObj.requestBodyHashSignature = await signMessage(getRequestHash(queryObj), keyPair.secretKey, keyPair.address);
 
         let query = Buffer.from(stringify(queryObj)).toString('base64');
 
@@ -928,10 +988,7 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
     dataId = await processExternalId(dataId, userId, isExternal);
 
     let requestType = 'sign';
-
     let trailHash = getTrailHash(dataId, userId, requestType, recipientId, trailExtraArgs);
-
-    let userSecretKey = keyPair.secretKey;
 
     let signObj = {
         dataId: dataId,
@@ -941,10 +998,10 @@ async function sign(dataId, recipientId, keyPair, isExternal = false, txPolling 
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(signMessage(trailHash, userSecretKey)),
+        trailHashSignatureHash: getHash(await signMessage(trailHash, keyPair.secretKey, keyPair.address)),
     };
 
-    signObj.requestBodyHashSignature = signMessage(getRequestHash(signObj), userSecretKey);
+    signObj.requestBodyHashSignature = await signMessage(getRequestHash(signObj), keyPair.secretKey, keyPair.address);
 
     let postUrl = getEndpointUrl('signature/create');
     log('dataSign, ', signObj);
@@ -1003,11 +1060,11 @@ async function reEncrypt(userId, dataChainId, keyPair, isExternal = false, trail
     let requestType = 'download';
     let trailHash = getTrailHash(dataChainId, userId, requestType, userId, trailExtraArgs);
 
-    let trailHashSignatureHash = getHash(signMessage(trailHash, keyPair.secretKey));
+    let trailHashSignatureHash = getHash(await signMessage(trailHash, keyPair.secretKey, keyPair.address));
 
     let query = `&userId=${userId}&dataId=${dataChainId}&requestId=${defaultRequestId}&requestType=${requestType}&requestBodyHashSignature=NULL&trailHash=${trailHash}&trailHashSignatureHash=${trailHashSignatureHash}`;
     let getUrl = getEndpointUrl('credentials/info', query);
-    getUrl = getUrl.replace('NULL', signMessage(getRequestHash(getUrl), keyPair.secretKey));
+    getUrl = getUrl.replace('NULL', await signMessage(getRequestHash(getUrl), keyPair.secretKey, keyPair.address));
     log('decrypt get request', getUrl);
 
     let serverEncryptionInfo = (await axios.get(getUrl)).data;
@@ -1536,9 +1593,14 @@ async function execSelection(selection, keyPair, txPolling = false, trailExtraAr
     }
 }
 
-function signMessage(message, secretKey) {
+async function signMessage(message, secretKey, ccdAddress = null, useNetwork = null) {
+    let currentNetwork = network;
+    if (useNetwork && network === "ccd" && useNetwork !== network) {
+        currentNetwork = useNetwork;
+    }
+
     try {
-        switch (network) {
+        switch (currentNetwork) {
             case "ae":
                 return encodeBase58Check(
                     naclSign(
@@ -1562,6 +1624,14 @@ function signMessage(message, secretKey) {
                     nearAPI.utils.KeyPair.fromString(secretKey).sign(Buffer.from(message)).signature
                 );// signatureB58;
 
+            case "ccd":
+                const signer = concordium.buildAccountSigner(secretKey);
+                const account = concordium.AccountAddress.fromBase58(ccdAddress);
+
+                const signature = await concordium.signMessage(account, message, signer);
+                const signatureHex = signature['0']['0'];
+
+                return signatureHex;
             default:
                 throw new Error("Unknown chain network");
         }
@@ -1569,19 +1639,23 @@ function signMessage(message, secretKey) {
         return false;
     }
 
-
     function naclSign(data, privateKey) {
         return nacl.sign.detached(Buffer.from(data), Buffer.from(privateKey));
     }
 }
 
-function verifyMessage(message, signature, pubKey) {
+async function verifyMessage(message, signature, pubKey, ccdAddress = null, useNetwork = null) {
     if (isNullAny(pubKey)) {
         return false;
     }
 
+    let currentNetwork = network;
+    if (useNetwork) {
+        currentNetwork = useNetwork;
+    }
+
     try {
-        switch (network) {
+        switch (currentNetwork) {
             case "ae":
                 let verifyResult = nacl.sign.detached.verify(
                     new Uint8Array(Buffer.from(message)),
@@ -1612,6 +1686,19 @@ function verifyMessage(message, signature, pubKey) {
                     decodeBase58Check(signature),
                     new Uint8Array(decodedPubKey)
                 );
+            case "ccd":
+                // TODO: Client instance should change between testnet/mainnet
+                const client = new concordium.ConcordiumGRPCWebClient(
+                    'node.testnet.concordium.com',
+                    20000,
+                );
+                
+                const accountObject = concordium.AccountAddress.fromBase58(ccdAddress);
+                const accountInfo = await client.getAccountInfo(accountObject, undefined);
+
+                const isValid = await concordium.verifyMessageSignature(message, messageSignature, accountInfo);
+        
+                return isValid;
 
             default:
                 throw new Error("Unknown chain network");
@@ -1645,11 +1732,11 @@ async function registerHash(dataChainId, requestType, targetUserId, keyPair, req
         requestType: requestType,
         requestBodyHashSignature: 'NULL',
         trailHash: trailHash,
-        trailHashSignatureHash: getHash(signMessage(trailHash, keyPair.secretKey)),
+        trailHashSignatureHash: getHash(await signMessage(trailHash, keyPair.secretKey, keyPair.address)),
         extraTrailHashes: extraTrailHashes
     };
 
-    body.requestBodyHashSignature = signMessage(getRequestHash(body), keyPair.secretKey);
+    body.requestBodyHashSignature = await signMessage(getRequestHash(body), keyPair.secretKey, keyPair.address);
 
     let postUrl = getEndpointUrl('tx/create');
     log('registerHash, ', body);
