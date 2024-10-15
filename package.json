@@ -1,15 +1,23 @@
 {
+  "version": "1.0.24-beta.10",
   "name": "recheck-clientjs-library",
-  "version": "1.0.24-beta.5",
   "description": "Encryption library that uses two PKI key pairs. ",
   "author": "ReCheck BV <info@recheck.io>",
-  "main": "index.js",
+  "main": "dist/recheck-node.js",
+  "module": "dist/recheck-web-client.js",
+  "repository": "https://github.com/ReCheck-io/recheck-clientjs-library.git",
+  "bugs": {
+    "url": "https://github.com/ReCheck-io/recheck-clientjs-library/issues"
+  },
+  "homepage": "https://github.com/ReCheck-io/recheck-clientjs-library#readme",
   "license": "MIT",
   "scripts": {
-    "build": "npx webpack",
+    "build:dev": "npm run cleanDist && npx webpack",
+    "build:prod": "npm run cleanDist && NODE_ENV=production npx webpack",
+    "build:prod:copy": "npm run build:prod && npm run rm && npm run copy",
     "copy": "cp ./dist/recheck-web-client.js ../recheck-gui/html/js/recheck/recheck-web-client.js",
     "rm": "rm ../recheck-gui/html/js/recheck/recheck-web-client.js",
-    "browserify": "npm run build && npm run rm && npm run copy"
+    "cleanDist": "rimraf ./dist"
   },
   "dependencies": {
     "@concordium/web-sdk": "^7.5.1",
@@ -36,20 +44,6 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ReCheck-io/recheck-clientjs-library.git"
-  },
-  "bugs": {
-    "url": "https://github.com/ReCheck-io/recheck-clientjs-library/issues"
-  },
-  "homepage": "https://github.com/ReCheck-io/recheck-clientjs-library#readme",
-  "keywords": [
-    "encryption",
-    "npm",
-    "blockchain",
-    "PKI"
-  ],
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.4",
@@ -58,8 +52,15 @@
     "browserify": "^17.0.0",
     "crypto-browserify": "^3.12.0",
     "path-browserify": "^1.0.1",
+    "rimraf": "^6.0.1",
     "stream-browserify": "^3.0.0",
     "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4"
-  }
+  },
+  "keywords": [
+    "encryption",
+    "npm",
+    "blockchain",
+    "PKI"
+  ]
 }

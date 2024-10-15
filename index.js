@@ -12,7 +12,6 @@ const nearAPI = require('near-api-js');
 const nearSeedPhrase = require('near-seed-phrase');
 const stringify = require('json-stable-stringify');
 const bip39 = require('@scure/bip39');
-const concordium = require('@concordium/web-sdk');
 const { wordlist: concordiumWordList } = require('@scure/bip39/wordlists/english');
 const generalWordList = require('./wordlist');
 const nearWordList = require('./near-wordlist');
@@ -29,7 +28,7 @@ let debug = false;
 let baseUrl = "http://localhost:4000";
 let token = null;
 let network = "ccd"; //ae,eth,poly,avax,near,ccd
-const ccdNetwork = "Testnet";
+const ccdNetwork = "Mainnet";
 
 let defaultRequestId = 'ReCheck';
 const pollingTime = 90;
@@ -608,6 +607,9 @@ async function newKeyPair(passPhrase, ccdAddress = null, identityIndex = "", ide
             };
         case "ccd": 
             if (ccdAddress) {
+                const concordiumModule = await import('@concordium/web-sdk');
+                const concordium = concordiumModule.default || concordiumModule;
+
                 const wallet = concordium.ConcordiumHdWallet.fromSeedPhrase(passPhrase, ccdNetwork);
                 let publicKey = wallet.getAccountPublicKey(identityProviderIndex, identityIndex, credNumber).toString("hex");
                 let secretKey = wallet.getAccountSigningKey(identityProviderIndex, identityIndex, credNumber).toString("hex");
@@ -1625,6 +1627,9 @@ async function signMessage(message, secretKey, ccdAddress = null, useNetwork = n
                 );// signatureB58;
 
             case "ccd":
+                const concordiumModule = await import('@concordium/web-sdk');
+                const concordium = concordiumModule.default || concordiumModule;
+
                 const signer = concordium.buildAccountSigner(secretKey);
                 const account = concordium.AccountAddress.fromBase58(ccdAddress);
 
@@ -1688,6 +1693,9 @@ async function verifyMessage(message, signature, pubKey, ccdAddress = null, useN
                 );
             case "ccd":
                 // TODO: Client instance should change between testnet/mainnet
+                const concordiumModule = await import('@concordium/web-sdk');
+                const concordium = concordiumModule.default || concordiumModule;
+
                 const client = new concordium.ConcordiumGRPCWebClient(
                     'node.testnet.concordium.com',
                     20000,

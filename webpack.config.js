@@ -2,14 +2,17 @@ const path = require("path");
 const webpack = require("webpack");
 const TerserPlugin = require("terser-webpack-plugin");
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const generalConfig = {
-  devtool: "source-map",
-  mode: "development",
+  devtool: isProduction ? false : "source-map",
+  mode: isProduction ? "production" : "development",
   optimization: {
-    // minimize: true, // Enable minification
+    minimize: isProduction,
+    splitChunks: false,
     minimizer: [
       new TerserPlugin({
-        extractComments: false, // Disable license comments
+        extractComments: false,
       }),
     ],
   },
@@ -51,6 +54,8 @@ module.exports = [
     output: {
       path: path.resolve(__dirname, "dist"),
       filename: "recheck-web-client.js",
+      libraryTarget: "umd",
+      globalObject: 'this',
     },
     module: {
       rules: [
@@ -64,6 +69,10 @@ module.exports = [
             },
           },
         },
+        {
+          test: /\.wasm$/,
+          type: "webassembly/async",
+        },
       ],
     },
     resolve: {
@@ -75,6 +84,12 @@ module.exports = [
         process: require.resolve("process/browser"),
         buffer: require.resolve("buffer"),
       },
+      alias: {
+        '@concordium/rust-bindings': '@concordium/rust-bindings/bundler',
+      }
+    },
+    experiments: {
+      asyncWebAssembly: true,
     },
     plugins: [
       new webpack.ProvidePlugin({
@@ -82,6 +97,10 @@ module.exports = [
         process: "process/browser",
       }),
     ],
+    externals: {
+      '@concordium/web-sdk': '@concordium/web-sdk',
+      '@concordium/rust-bindings': '@concordium/rust-bindings',
+    },
     ...generalConfig,
   },
 ];
